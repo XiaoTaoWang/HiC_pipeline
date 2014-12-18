@@ -122,6 +122,8 @@ def getargs():
                              performed on all files contained in that folder.''')
     removeNoise.add_argument('--duplicates', action = 'store_false',
                              help = '''Remove read pairs resulting from PCR amplification.''')
+    removeNoise.add_argument('--startNearRsite', action = 'store_true',
+                             help = '''Remove reads that start within 5 bp near a restriction site.''')
     removeNoise.add_argument('--RandomBreaks', action = 'store_false',
                              help = '''Remove "random breaks" in which corresponding fragments
                              did not arise from normal restriction digestion.''')
@@ -192,7 +194,7 @@ def getargs():
 
 def run():
     ## Necessary Modules
-    from mirnylib import genome, hdf5
+    from mirnylib import genome, h5dict
     # Parse Arguments
     args, commands = getargs()
     # Improve the performance if you don't want to run it
@@ -464,7 +466,71 @@ def merge(args):
         for member in queueL2:
             fragments = HiCdataset(filename = member[1], genome = genome_db, mode = 'w')
             fragments.merge(member[0])
+
+def filtering(args):
+    ## Necessary Modules
+    from hiclib.fragmentHiC import HiCdataset
+    import glob
+    
+    def core(filename):
+        # Read data from unfiltered library
+        lib = HiCdataset(filename, genome = genome_db, mode = 'r')
+        ## Retrive dangling ends and estimate library size of sequencing
+        DSmask = (lib.chrms1 >= 0) * (lib.chrms2 >= 0)
+        sameFragMask = (lib.fragids1 == lib.fragids2) * DSmask
+        cutDifs = lib.cuts2[sameFragMask] > lib.cuts1[sameFragMask]
+        s1 = lib.strands1[sameFragMask]
+        s2 = lib.strands2[sameFragMask]
+        SSDE = (s1 != s2)
+        SS = SSDE * (cutDifs == s2)
+        Dangling = SSDE & (~SS)
+        dist = lib.evaluate("a = - cuts1 * (2 * strands1 -1) - "
+                            "cuts2 * (2 * strands2 - 1)",
+                            ["cuts1", "cuts2", "strands1", "strands2"])
+        Dangling_L = dist[sameFragMask][Dangling]
+        library_L = int(np.ceil((np.percentile(Dangling_L, 95))))
+        ## Create a new library for filtering
+        filteredF = os.path.join(filteredFolder, os.path.basename(filename).replace('merged', 'filtered'))
+        fragments = HiCdataset(filteredF, genome = genome_db,
+                               maximumMoleculeLength = library_L,
+                               mode = 'w')
+        fragments.parseInputData(filename, removeSS = True)
+        ## Additional Filtering
+        if args.duplicates:
+            fragments.filterDuplicates()
+        if args.startNearRsite:
+            fragments.filterRsiteStart(offset=5)
+        if args.RandomBreaks:
+            t_N = fragments.N
+            fragments.maskFilter((fragments.dists1 + fragments.dists2) <= library_L)
+            fragments.metadata["330_removeRandomBreaks"] = t_N - fragments.N
+        if args.extremeFragments:
+            fragments.filterLarge()
+        if args.cistotrans:
+            fragments.filterExtreme(cutH=0.005, cutL=0)
         
+    ## Validity of arguments
+    Sources = os.path.abspath(os.path.expanduser(args.mergedDir))
+    if not os.path.exists(Sources):
+        logging.error('%s does not exists on your system!', Sources)
+        sys.exit(1)
+    
+    # Output Folder
+    filteredFolder = 'filtered-%s' % args.genomeName
+    if not os.path.exists(filteredFolder):
+        os.mkdir(filteredFolder)
+    
+    ## Two cases: a directory or a single file
+    if os.path.isdir(Sources):
+        queue = [os.path.join(Sources, i) for i in glob.glob(os.path.join(Sources, '*-merged.hdf5'))]
+        if len(queue) == 0:
+            logging.error('No proper file can be found at %s', Sources)
+            sys.exit(1)
+        else:
+            for f in queue:
+                core(f)
+    else:
+        core(Sources)
 
 if __name__ == '__main__':
     run()
