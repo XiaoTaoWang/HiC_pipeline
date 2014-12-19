@@ -159,7 +159,9 @@ def getargs():
     ## Iterative Correction
     iterC = subparser.add_parser('correcting',
                                  help = '''Perform iterative corrections on the original HeatMap.''',
-                                 description = '''Two modes are provided for different resolutions.''',
+                                 description = '''Two modes are provided for different resolutions.
+                                 The program will choose a better one for you according to the data
+                                 format.''',
                                  epilog = '''After calling this command, a folder with corrected
                                  HeatMaps (in HDF5 format) is created under current working
                                  directory.''')
@@ -168,11 +170,6 @@ def getargs():
                        path points to one file, we only correct for that HeatMap. If the path
                        points to a folder, we will perform iterative corrections for all HeaMaps
                        in that folder.''')
-    mg = iterC.add_mutually_exclusive_group(required = True)
-    mg.add_argument('--lowRes', action = 'store_true',
-                    help = '''Suitable for low-resolution cases and all-by-all HeatMaps.''')
-    mg.add_argument('--highRes', action = 'store_true',
-                    help = '''Suitable for high-resolution and chromosome-by-chromosome HeatMaps.''')
     iterC.set_defaults(func = correcting)
                     
     ## Pile Up
@@ -561,7 +558,7 @@ def binning(args):
     unit, denominator = ('K', 1000) if (args.resolution / 1000 < 1000) else ('M', 1000000)
     nLabel = str(args.resolution / denominator) + unit
     for f in queue:
-        hFile = os.path.join(hFolder, os.path.basename(f).replace('filtered', 'filtered-%s' % nLabel))
+        hFile = os.path.join(hFolder, os.path.basename(f).replace('.hdf5', '-%s.hm' % nLabel))
         fragments = HiCdataset(f, genome = genome_db, mode = 'r')
         ## Different Modes
         if args.mode == 'wholeGenome':
@@ -571,9 +568,86 @@ def binning(args):
         if args.mode == 'withOverlaps':
             fragments.saveHiResHeatmapWithOverlaps(hFile, resolution = args.resolution)
 
+def correcting(args):
+    ## Two modes
+    def Lcore(filename):
+        # Necessary Modules
+        from hiclib import binnedData
+        # Output file
+        cFile = os.path.join(cFolder, os.path.basename(filename).replace('.hm', '_c.hm'))
+        # Create a binnedData object, load the data.
+        BD = binnedData.binnedData(resolution, genome_db)
+        name = '-'.join(os.path.basename(filename).split('-')[:3])
+        BD.simpleLoad(filename, name)
+        ## Perform ICE
+        # Remove the contacts between loci located within the same bin.
+        BD.removeDiagonal()
+        # Remove bins with less than half of a bin sequenced.
+        BD.removeBySequencedCount(0.5)
+        # Remove 0.5% bins with the lowest number of records
+        BD.removePoorRegions(cutoff = 0.5, coverage = True)
+        BD.removePoorRegions(cutoff = 0.5, coverage = False)
+        # Truncate top 0.05% of inter-chromosomal counts (possibly, PCR blowouts).
+        BD.truncTrans(high = 0.0005)
+        # Perform iterative correction.
+        BD.iterativeCorrectWithoutSS()
+        # Save the iteratively corrected heatmap.
+        BD.export(name, cFile)
 
+    def Hcore(filename):
+        # Necessary Modules
+        from hiclib.highResBinnedData import HiResHiC
+        # Output file
+        cFile = os.path.join(cFolder, os.path.basename(filename).replace('.hm', '_c.hm'))
+        # Intermediate file
+        iFile = os.path.join(cFolder, os.path.basename(filename).replace('.hm', '_i.hm'))
+        ## Perform ICE
+        BD = HiResHiC(genome_db, resolution, iFile, mode='w')
+        BD.loadData(dictLike = filename)
+        BD.removeDiagonal()
+        ## Remove x% poor regions ...
+        temp = BD.getMarginals(normalizeForIC = False)
+        allMarg = np.concatenate(temp)
+        percent = (1 - (allMarg >= 100).sum() / (allMarg > 0).sum()) * 100
+        BD.removePoorRegions(percent)
+        BD.iterativeCorrection(1e-2)
+        BD.export(cFile)
+        # Remove intermediate files
+        os.remove(iFile)
         
-        
+    ## Validity of arguments
+    Sources = os.path.abspath(os.path.expanduser(args.HeatMap))
+    if not os.path.exists(Sources):
+        logging.error('%s does not exists on your system!', Sources)
+        sys.exit(1)
+    
+    ## Output Dir
+    cFolder = 'Corrected-%s' % args.genomeName
+    if not os.path.exists(cFolder):
+        os.mkdir(cFolder)
+    
+    ## Corrections start
+    if os.path.isdir(Sources):
+        queue = [os.path.join(Sources, i) for i in glob.glob(os.path.join(Sources, '*.hm'))]
+        if len(queue) == 0:
+            logging.error('No proper files can be found at %s!', Sources)
+            sys.exit(1)
+    else:
+        queue = [Sources]
+    
+    for f in queue:
+        # Raw Data
+        raw = h5dict.h5dict(f, mode = 'r')
+        Keys = raw.keys()
+        if 'heatmap' in Keys: # Low resolution case
+            resolution = int(raw['resolution'])
+            Lcore(f)
+        else: # High resolution case
+            rlabel = os.path.basename(f).split('-')[-1].replace('.hm', '')
+            ends = rlabel[-1]
+            resolution = (int(rlabel[:-1]) * 1000) if (ends == 'K') else (int(rlabel[:-1]) * 1000000)
+            Hcore(f)
+            
 
 if __name__ == '__main__':
     run()
