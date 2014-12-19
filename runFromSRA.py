@@ -98,7 +98,7 @@ def getargs():
                         of SRA file name, cell line name, biological replicate label, and
                         restriction enzyme name. An example file is distributed along with
                         this software, please check it.''')
-    multiF.add_argument('-l', '--level', type = int, default = 1, choices = [1, 2],
+    multiF.add_argument('-l', '--level', type = int, default = 2, choices = [1, 2],
                         help = '''Set merging level. 1: hdf5 files from the same biological
                         replicate will be merged, 2: hdf5 files from the same cell line will be
                         merged.''')
@@ -328,6 +328,7 @@ def mapping(args, commands):
     ## Output Folders
     bamFolder = 'bams-%s' % args.genomeName
     hdf5F = 'hdf5-%s' % args.genomeName
+    args.HDF5 = hdf5F # To communicate with next processing step (merge)
     if not os.path.exists(bamFolder):
         os.mkdir(bamFolder)
     if not os.path.exists(hdf5F):
@@ -421,6 +422,7 @@ def merge(args):
     mergedFolder = 'merged-%s' % args.genomeName
     if not os.path.exists(mergedFolder):
         os.mkdir(mergedFolder)
+    args.mergedDir = mergedFolder # To communicate with next processing step (filtering)
     ## Now, start merging
     metadata = [l.rstrip().split() for l in open(mFile)]
     ## Hierarchical merging structures
@@ -516,6 +518,7 @@ def filtering(args):
     filteredFolder = 'filtered-%s' % args.genomeName
     if not os.path.exists(filteredFolder):
         os.mkdir(filteredFolder)
+    args.filteredDir = filteredFolder # To communicate with next processing step (binning)
     
     ## Two cases: a directory or a single file
     if os.path.isdir(Sources):
@@ -544,6 +547,8 @@ def binning(args):
     hFolder = 'Heatmaps-%s' % args.genomeName
     if not os.path.exists(hFolder):
         os.mkdir(hFolder)
+    # To communicate with next processing step (correcting)
+    args.HeatMap = hFolder
     
     ## Generate HeatMaps
     if os.path.isdir(Sources):
@@ -648,6 +653,16 @@ def correcting(args):
             resolution = (int(rlabel[:-1]) * 1000) if (ends == 'K') else (int(rlabel[:-1]) * 1000000)
             Hcore(f)
             
+def pileup(args):
+    mapping(args)
+    args.level = 2
+    merge(args)
+    filtering(args)
+    args.mode = 'withOverlaps'
+    args.resolution = 10000
+    binning(args)
+    correcting(args)
+    
 
 if __name__ == '__main__':
     run()
