@@ -150,7 +150,7 @@ def getargs():
     binReads.add_argument('-M', '--mode', default = 'wholeGenome',
                           choices = ['wholeGenome', 'byChromosome', 'withOverlaps'],
                           help = '''Memory usage: withOverlaps > byChromosome > wholeGenome.
-                          Resolution capacity:
+                          Resolution capacity (take human genome for example):
                           withOverlaps (10kb) > byChromosome (40kb) > wholeGenome (200kb).''')
     binReads.add_argument('-R', '--resolution', type = int, default = 200000,
                           help = 'Resolution of a heatmap. Unit: bp')
@@ -524,13 +524,56 @@ def filtering(args):
     if os.path.isdir(Sources):
         queue = [os.path.join(Sources, i) for i in glob.glob(os.path.join(Sources, '*-merged.hdf5'))]
         if len(queue) == 0:
-            logging.error('No proper file can be found at %s', Sources)
+            logging.error('No proper files can be found at %s!', Sources)
             sys.exit(1)
         else:
             for f in queue:
                 core(f)
     else:
         core(Sources)
+
+def binning(args):
+    ## Necessary Modules
+    from hiclib.fragmentHiC import HiCdataset
+    import glob
+    
+    ## Validity of arguments
+    Sources = os.path.abspath(os.path.expanduser(args.filteredDir))
+    if not os.path.exists(Sources):
+        logging.error('%s does not exists on your system!', Sources)
+        sys.exit(1)
+    
+    # Output Dir
+    hFolder = 'Heatmaps-%s' % args.genomeName
+    if not os.path.exists(hFolder):
+        os.mkdir(hFolder)
+    
+    ## Generate HeatMaps
+    if os.path.isdir(Sources):
+        queue = [os.path.join(Sources, i) for i in glob.glob(os.path.join(Sources, '*-filtered.hdf5'))]
+        if len(queue) == 0:
+            logging.error('No proper files can be found at %s!', Sources)
+            sys.exit(1)
+    else:
+        queue = [Sources]
+    
+    # Appropriate Units
+    unit, denominator = ('K', 1000) if (args.resolution / 1000 < 1000) else ('M', 1000000)
+    nLabel = str(args.resolution / denominator) + unit
+    for f in queue:
+        hFile = os.path.join(hFolder, os.path.basename(f).replace('filtered', 'filtered-%s' % nLabel))
+        fragments = HiCdataset(f, genome = genome_db, mode = 'r')
+        ## Different Modes
+        if args.mode == 'wholeGenome':
+            fragments.saveHeatmap(hFile, resolution = args.resolution)
+        if args.mode == 'byChromosome':
+            fragments.saveByChromosomeHeatmap(hFile, resolution = args.resolution)
+        if args.mode == 'withOverlaps':
+            fragments.saveHiResHeatmapWithOverlaps(hFile, resolution = args.resolution)
+
+
+        
+        
 
 if __name__ == '__main__':
     run()
