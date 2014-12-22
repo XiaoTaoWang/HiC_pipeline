@@ -6,8 +6,17 @@
 # Organization: HuaZhong Agricultural University
 
 ## Required Modules
-import os, sys, argparse, logging, logging.handlers
-import numpy as np
+import os, sys, argparse, logging, logging.handlers, glob
+
+try:
+    import numpy as np
+except ImportError:
+    pass
+
+try:
+    from hiclib.fragmentHiC import HiCdataset
+except ImportError:
+    pass
 
 def getargs():
     ## Construct an ArgumentParser object for command-line arguments
@@ -214,6 +223,90 @@ def getargs():
     
     return args, commands
 
+# A customized HiCdataset class, which makes filtering processes more flexible
+class cHiCdataset(HiCdataset):
+    # Only parseInputData is changed
+    def parseInputData(self, dictLike, commandArgs, **kwargs):
+        '''
+        Added Parameters
+        ----------------
+        commandArgs : NameSpace
+            A NameSpace object defined by argparse.            
+        '''
+        ## Necessary Modules
+        import numexpr
+        # Simply load merged data
+        self.merge([dictLike])
+        # Total Reads
+        self.trackLen = len(self.chrms1)
+        
+        self.metadata["100_TotalReads"] = self.trackLen
+        self.metadata["152_removedUnusedChromosomes"] = self.trackLen - self.N
+        self.metadata["150_ReadsWithoutUnusedChromosomes"] = self.N
+        
+        DSmask = (self.chrms1 >= 0) * (self.chrms2 >= 0)
+        self.metadata["200_totalDSReads"] = DSmask.sum()
+        self.metadata["201_DS+SS"] = len(DSmask)
+        self.metadata["202_SSReadsRemoved"] = len(DSmask) - DSmask.sum()
+        
+        mask = DSmask
+        
+        ## Information based on restriction fragments
+        sameFragMask = self.evaluate("a = (fragids1 == fragids2)",
+                                     ["fragids1", "fragids2"]) * DSmask
+        cutDifs = self.cuts2[sameFragMask] > self.cuts1[sameFragMask]
+        s1 = self.strands1[sameFragMask]
+        s2 = self.strands2[sameFragMask]
+        SSDE = (s1 != s2)
+        SS = SSDE * (cutDifs == s2)
+        Dangling = SSDE & (~SS)
+        SS_N = SS.sum()
+        SSDE_N = SSDE.sum()
+        sameFrag_N = sameFragMask.sum()
+        
+        dist = self.evaluate("a = - cuts1 * (2 * strands1 -1) - "
+                             "cuts2 * (2 * strands2 - 1)",
+                             ["cuts1", "cuts2", "strands1", "strands2"])
+        Dangling_L = dist[sameFragMask][Dangling]
+        library_L = int(np.ceil((np.percentile(Dangling_L, 95))))
+        self.maximumMoleculeLength = library_L
+        
+        readsMolecules = self.evaluate(
+            "a = numexpr.evaluate('(chrms1 == chrms2) & (strands1 != strands2) &  (dist >=0) &"
+            " (dist <= maximumMoleculeLength)')",
+            internalVariables=["chrms1", "chrms2", "strands1", "strands2"],
+            externalVariables={"dist": dist},
+            constants={"maximumMoleculeLength": self.maximumMoleculeLength, "numexpr": numexpr})
+        
+        if commandArgs.sameFragments:
+            mask *= (-sameFragMask)
+            noSameFrag = mask.sum()
+            self.metadata["210_sameFragmentReadsRemoved"] = sameFrag_N
+            self.metadata["212_Self-Circles"] = SS_N
+            self.metadata["214_DandlingEnds"] = SSDE_N - SS_N
+            self.metadata["216_error"] = sameFrag_N - SSDE_N
+            mask *= (readsMolecules == False)
+            extraDE = mask.sum()
+            self.metadata["220_extraDandlingEndsRemoved"] = -extraDE + noSameFrag
+            
+        if commandArgs.RandomBreaks:
+            ini_N = mask.sum()
+            mask *= ((self.dists1 + self.dists2) <= library_L)
+            rb_N = ini_N - mask.sum()
+            self.metadata["330_removeRandomBreaks"] = rb_N
+        
+        if mask.sum() == 0:
+            raise Exception(
+                'No reads left after filtering. Please, check the input data')
+            
+        del DSmask, sameFragMask
+        del dist, readsMolecules
+        
+        self.metadata["300_ValidPairs"] = self.N
+        
+        self.maskFilter(mask)
+
+
 def run():
     # Parse Arguments
     args, commands = getargs()
@@ -256,7 +349,7 @@ def initialize(args):
 
 def mapping(args, commands):
     ## Import necessary modules
-    import atexit, glob
+    import atexit
     import hiclib.mapping as iterM
     from mirnylib import h5dict
     
@@ -446,11 +539,6 @@ def mapping(args, commands):
         os.remove(lockFile)
 
 def merge(args, commands):
-    # Required Modules
-    from hiclib.fragmentHiC import HiCdataset
-    
-    # Initialization
-    dataLocation, genomeFolder, genome_db = initialize(args)
     
     ## Validity of arguments
     Sources = os.path.abspath(os.path.expanduser(args.HDF5))
@@ -480,18 +568,20 @@ def merge(args, commands):
         enzyme = rep[1]
         queueL1.append((filenames, outfile, enzyme))
     for member in queueL1:
+        # Initialize a Genome Object
+        dataLocation, genomeFolder, genome_db = initialize(args)
+        genome_db.setEnzyme(member[-1])
         ## Parsing individual files, no filtering processes are applied.
         lanePools = []
         for source in member[0]:
             parseName = os.path.join(mergedFolder, '%s-parsed.hdf5' % os.path.basename(source).replace('.hdf5', ''))
             parseF = HiCdataset(filename = parseName,
                                 genome = genome_db,
-                                enzymeName = member[-1],
                                 mode = 'w')
             parseF.parseInputData(source, noFiltering = True)
             lanePools.append(parseName)
         ## Merge files altogether
-        fragments = HiCdataset(filename = member[1], genome = genome_db, enzymeName = member[-1], mode = 'w')
+        fragments = HiCdataset(filename = member[1], genome = genome_db, mode = 'w')
         fragments.merge(lanePools)
         # Clean up parsed individual files
         for delFile in lanePools:
@@ -508,113 +598,25 @@ def merge(args, commands):
             queueL2.append((filenames, outfile, enzyme))
         
         for member in queueL2:
-            fragments = HiCdataset(filename = member[1], genome = genome_db, enzymeName = member[-1], mode = 'w')
+            # Initialize a Genome Object
+            dataLocation, genomeFolder, genome_db = initialize(args)
+            genome_db.setEnzyme(member[-1])
+            fragments = HiCdataset(filename = member[1], genome = genome_db, mode = 'w')
             fragments.merge(member[0])
 
-def filtering(args, commands):
-    ## Necessary Modules
-    from hiclib.fragmentHiC import HiCdataset
-    import glob
-    
-    # A customized HiCdataset class, which makes filtering processes more flexible
-    class cHiCdataset(HiCdataset):
-        # Only parseInputData is changed
-        def parseInputData(self, dictLike, args, **kwargs):
-            '''
-            Added Parameters
-            ----------------
-            args : NameSpace
-                A NameSpace object defined by argparse.
-                
-            '''
-            ## Necessary Modules
-            import numexpr
-            # Simply load merged data
-            self.merge([dictLike])
-            # Total Reads
-            self.trackLen = len(self.chrms1)
-            
-            self.metadata["100_TotalReads"] = self.trackLen
-            self.metadata["152_removedUnusedChromosomes"] = self.trackLen - self.N
-            self.metadata["150_ReadsWithoutUnusedChromosomes"] = self.N
-            
-            DSmask = (self.chrms1 >= 0) * (self.chrms2 >= 0)
-            self.metadata["200_totalDSReads"] = DSmask.sum()
-            self.metadata["201_DS+SS"] = len(DSmask)
-            self.metadata["202_SSReadsRemoved"] = len(DSmask) - DSmask.sum()
-            
-            mask = DSmask
-            
-            ## Information based on restriction fragments
-            sameFragMask = self.evaluate("a = (fragids1 == fragids2)",
-                                         ["fragids1", "fragids2"]) * DSmask
-            cutDifs = self.cuts2[sameFragMask] > self.cuts1[sameFragMask]
-            s1 = self.strands1[sameFragMask]
-            s2 = self.strands2[sameFragMask]
-            SSDE = (s1 != s2)
-            SS = SSDE * (cutDifs == s2)
-            Dangling = SSDE & (~SS)
-            SS_N = SS.sum()
-            SSDE_N = SSDE.sum()
-            sameFrag_N = sameFragMask.sum()
-            
-            dist = self.evaluate("a = - cuts1 * (2 * strands1 -1) - "
-                                 "cuts2 * (2 * strands2 - 1)",
-                                 ["cuts1", "cuts2", "strands1", "strands2"])
-            Dangling_L = dist[sameFragMask][Dangling]
-            library_L = int(np.ceil((np.percentile(Dangling_L, 95))))
-            self.maximumMoleculeLength = library_L
-            
-            readsMolecules = self.evaluate(
-                "a = numexpr.evaluate('(chrms1 == chrms2) & (strands1 != strands2) &  (dist >=0) &"
-                " (dist <= maximumMoleculeLength)')",
-                internalVariables=["chrms1", "chrms2", "strands1", "strands2"],
-                externalVariables={"dist": dist},
-                constants={"maximumMoleculeLength": self.maximumMoleculeLength, "numexpr": numexpr})
-            
-            if args.sameFragments:
-                mask *= (-sameFragMask)
-                noSameFrag = mask.sum()
-                self.metadata["210_sameFragmentReadsRemoved"] = sameFrag_N
-                self.metadata["212_Self-Circles"] = SS_N
-                self.metadata["214_DandlingEnds"] = SSDE_N - SS_N
-                self.metadata["216_error"] = sameFrag_N - SSDE_N
-            
-                mask *= (readsMolecules == False)
-                extraDE = mask.sum()
-                self.metadata["220_extraDandlingEndsRemoved"] = -extraDE + noSameFrag
-            
-            if args.RandomBreaks:
-                ini_N = mask.sum()
-                mask *= ((self.dists1 + self.dists2) <= library_L)
-                rb_N = ini_N - mask.sum()
-                self.metadata["330_removeRandomBreaks"] = rb_N
-                
-            if mask.sum() == 0:
-                raise Exception(
-                    'No reads left after filtering. Please, check the input data')
-            
-            del DSmask, sameFragMask
-            del dist, readsMolecules
-            
-            self.metadata["300_ValidPairs"] = self.N
-            
-            self.maskFilter(mask)
-            
-    
-    # Initialization
-    dataLocation, genomeFolder, genome_db = initialize(args)
+def filtering(args, commands):      
     
     def core(filename, args):
         # Parse restriction enzyme name from the file name
         enzyme = os.path.basename(filename).split('-')[1]
+        # Initialize a Genome Object
+        dataLocation, genomeFolder, genome_db = initialize(args)
+        genome_db.setEnzyme(enzyme)
         ## Create a cHiCdataset object
         filteredF = os.path.join(filteredFolder, os.path.basename(filename).replace('merged', 'filtered'))
-        fragments = cHiCdataset(filteredF, genome = genome_db,
-                                enzymeName = enzyme,
-                                mode = 'w')
+        fragments = cHiCdataset(filteredF, genome = genome_db, mode = 'w')
         ## Self-Circles, Dangling-Ends, and Random-Breaks may be filtered
-        fragments.parseInputData(filename, args)
+        fragments.parseInputData(filename, commandArgs = args)
         ## Additional Filtering
         if args.duplicates:
             fragments.filterDuplicates()
@@ -650,13 +652,6 @@ def filtering(args, commands):
         core(Sources, args)
 
 def binning(args, commands):
-    ## Necessary Modules
-    from hiclib.fragmentHiC import HiCdataset
-    import glob
-    
-     # Initialization
-    dataLocation, genomeFolder, genome_db = initialize(args)
-    
     ## Validity of arguments
     Sources = os.path.abspath(os.path.expanduser(args.filteredDir))
     if not os.path.exists(Sources):
@@ -686,7 +681,10 @@ def binning(args, commands):
         hFile = os.path.join(hFolder, os.path.basename(f).replace('.hdf5', '-%s.hm' % nLabel))
         # Parse restriction enzyme name from the file name
         enzyme = os.path.basename(f).split('-')[1]
-        fragments = HiCdataset(f, genome = genome_db, enzymeName = enzyme, mode = 'r')
+         # Initialize a Genome Object
+        dataLocation, genomeFolder, genome_db = initialize(args)
+        genome_db.setEnzyme(enzyme)
+        fragments = cHiCdataset(f, genome = genome_db, mode = 'r')
         ## Different Modes
         if args.mode == 'wholeGenome':
             fragments.saveHeatmap(hFile, resolution = args.resolution)
@@ -697,7 +695,6 @@ def binning(args, commands):
 
 def correcting(args, commands):
     ## Necessary Modules
-    import glob
     from mirnylib import h5dict
     
      # Initialization
@@ -790,6 +787,8 @@ def pileup(args, commands):
     mapping(args, commands)
     args.level = 2
     merge(args, commands)
+    args.duplicates = args.sameFragments = args.startNearRsite = True
+    args.RandomBreaks = args.extremeFragments = args.cistotrans = True
     filtering(args, commands)
     args.mode = 'withOverlaps'
     args.resolution = 10000
