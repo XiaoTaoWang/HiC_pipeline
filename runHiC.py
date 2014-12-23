@@ -41,13 +41,6 @@ def getargs():
     # Version
     parser.add_argument('-v', '--version', action = 'version', version = '%(prog)s 0.1.0',
                         help = 'Print version number and exit')
-    # About Logging
-    parser.add_argument('--verbose', type = int, default = 2, choices = [0, 1, 2, 3],
-                        help = 'Set logging level. 0: only show error messages, 1: also report '
-                               'warnings, 2: show process information, 3: debug. '
-                               'Note: We log all messages of all levels to a disk file'
-                               '(calfea.log), while simultaneously logging process '
-                               'information or above to the console.')
     
     ## One for all
     common = argparse.ArgumentParser(add_help = False)
@@ -324,25 +317,18 @@ def run():
         ## Root Logger Configuration
         logger = logging.getLogger()
         # Logger Level
-        nLevel = (4 - args.verbose) * 10
-        if nLevel == 20:
-            nLevel += 1
-        logger.setLevel(nLevel)
-        console = logging.StreamHandler()
+        logger.setLevel(21)
         filehandler = logging.handlers.RotatingFileHandler('calfea.log',
                                                            maxBytes = 100000,
                                                            backupCount = 5)
         # Set level for Handlers
-        console.setLevel(nLevel)
         filehandler.setLevel('DEBUG')
         # Customizing Formatter
         formatter = logging.Formatter(fmt = '%(name)-20s %(levelname)-7s @ %(asctime)s: %(message)s',
                                       datefmt = '%m/%d/%y %H:%M:%S')
         ## Unified Formatter
-        console.setFormatter(formatter)
         filehandler.setFormatter(formatter)
         # Add Handlers
-        logger.addHandler(console)
         logger.addHandler(filehandler)
         ## Logging for argument setting
         arglist = ['# ARGUMENT LIST:',
@@ -384,6 +370,17 @@ def run():
         argtxt = '\n'.join(arglist)
         logger.log(level = 21, '\n' + argtxt)
         
+        if commands[1] == 'pileup':
+            logging.log(21, 'A pipeline covering all processes from sequencing data to '
+                        'corrected HeatMaps will be conducted.')
+            logging.log(21, 'All stages are customized:')
+            logging.log(21, 'Set --level to 2 for merge')
+            logging.log(21, 'All available filtering processes will be performed on '
+                        'all merged hdf5 files')
+            logging.log(21, 'Set --mode to withOverlaps and --resolution to 10000 '
+                        'for binning')
+            logging.log(21, 'Generate and correct HeatMaps for all filtered hdf5 files')
+            
         # Subcommand
         args.func(args, commands)
 
@@ -504,7 +501,7 @@ def mapping(args, commands):
             bowtieIndex = os.path.join(genomeFolder, args.genomeName)
             logging.log(21, 'Set --bowtieIndex to %s', bowtieIndex)
         else:
-            logging.log(21, 'Index files can not be found, generating under the'
+            logging.log(21, 'Index files can not be found. Generating them under the'
                         ' genome folder ...')
             bowtieIndex = buildIndex(genomeFolder)
             logging.log(21, 'Done!')
@@ -543,33 +540,45 @@ def mapping(args, commands):
     if not os.path.exists(hdf5F):
         os.mkdir(hdf5F)
     
+    logging.log(21, 'Bowtie2 alignment results will be saved in bam format under %s',
+                bamFolder)
+    logging.log(21, 'Bam files will be parsed into hdf5 format under %s', hdf5F)
+    
     # Read Metadata
     metadata = [l.rstrip().split() for l in open(mFile)]
     database = dict([(i[0], i[-1]) for i in metadata])
-    for i in 3 * sorted(list(Set)):
+    for i in sorted(list(Set)):
+        logging.log(21, 'Current %s file: %s', args.Format, i)
+        
+        finalFile = os.path.join(hdf5F, '%s.hdf5' % i)
+        lockFile = os.path.join(hdf5F, '%s.lock' % i)
+        
+        if os.path.exists(finalFile) and not os.path.exists(lockFile):
+            logging.log(21, '%s already exists, skipping', finalFile)
+            continue
+        
+        if os.path.exists(lockFile):
+            logging.log(21, 'Someone is working on %s, skipping', finalFile)
+            continue
+        
         # Parameters used in iterative mapping
         lengthFile = os.path.join(lengths, i)
         if Format == 'sra':
             length = (int(open(lengthFile).readlines()[0]) - 1) / 2
         else:
             length = int(open(lengthFile).readlines()[0])
+        logging.log(21, 'Extract sequence length ... %s', length)
+        logging.log(21, 'Determining parameters for iterative mapping ...')
         minlen, step = calculateStep(length, 25)
+        logging.log(21, 'minlen = %s, step = %s', minlen, step)
         
-        finalFile = os.path.join(hdf5F, '%s.hdf5' % i)
-        lockFile = os.path.join(hdf5F, '%s.lock' % i)
-        
-        if os.path.exists(finalFile) and not os.path.exists(lockFile):
-            logging.info('% is there, skipping', finalFile)
-            continue
-        
-        if os.path.exists(lockFile):
-            logging.info('Someone is working on %s', finalFile)
-            continue
-        
+        logging.log(21, 'Create %s to ensure process safety ...', lockFile)
         lock = open(lockFile, 'w')
         lock.close()
+        logging.log(21, '%s will be removed if the program terminates normally.')
         
         atexit.register(cleanFile, lockFile)
+        
         cleanup = ['rm', '-rf', os.path.join(bamFolder, '%s*' % i)]
         os.system(' '.join(cleanup))
         
@@ -581,12 +590,15 @@ def mapping(args, commands):
         if Format == 'sra':
             sourceFile = os.path.join(fastqDir, i + '.sra')
             # The First Side
+            logging.log(21, 'Mapping first side of the reads ...')
             iterM.iterative_mapping(fastq_path = sourceFile,
                                     out_sam_path = '%s/%s_1.bam' % (bamFolder, i),
                                     seq_start = 0,
                                     seq_end = length,
                                     bash_reader = 'fastq-dump -Z',
                                     **Parameters)
+            logging.log(21, 'Done!')
+            logging.log(21, 'Mapping second side of the reads ...')
             # The Second Side
             iterM.iterative_mapping(fastq_path = sourceFile,
                                     out_sam_path = '%s/%s_2.bam' % (bamFolder, i),
@@ -594,14 +606,20 @@ def mapping(args, commands):
                                     seq_end = 2 * length,
                                     bash_reader = 'fastq-dump -Z',
                                     **Parameters)
+            logging.log(21, 'Done!')
         else:
+            logging.log(21, 'Mapping first side of the reads ...')
             iterM.iterative_mapping(fastq_path = os.path.join(fastqDir, i + '_1.fastq'),
                                     out_sam_path = '%s/%s_1.bam' % (bamFolder, i),
                                     **Parameters)
+            logging.log(21, 'Done!')
+            logging.log(21, 'Mapping second side of the reads ...')
             iterM.iterative_mapping(fastq_path = os.path.join(fastqDir, i + '_2.fastq'),
                                     out_sam_path = '%s/%s_2.bam' % (bamFolder, i),
                                     **Parameters)
+            logging.log(21, 'Done!')
         
+        logging.log(21, 'Parsing mapped sequences ...')
         ## Parse the mapped sequences into a Python data structure
         ## Assign the ultra-sonic fragments to restriction fragments
         lib = h5dict.h5dict(finalFile)
@@ -611,6 +629,7 @@ def mapping(args, commands):
                         genome_db = genome_db,
                         enzyme_name = database[i],
                         save_seqs = False)
+        logging.log(21, 'Done!')
         
         os.remove(lockFile)
 
@@ -625,10 +644,15 @@ def merge(args, commands):
     if not os.path.exists(mFile):
         logging.error('%s can not be found under current working directory!', mFile)
         sys.exit(1)
+    
+    logging.log(21, 'According to %s, merge hdf5 files under %s', args.metadata, Sources)
     # Output Folder
     mergedFolder = 'merged-%s' % args.genomeName
     if not os.path.exists(mergedFolder):
         os.mkdir(mergedFolder)
+    
+    logging.log(21, 'Merged files will be saved under %s', mergedFolder)
+    
     args.mergedDir = mergedFolder # To communicate with next processing step (filtering)
     ## Now, start merging
     metadata = [l.rstrip().split() for l in open(mFile)]
@@ -636,6 +660,7 @@ def merge(args, commands):
     bioReps = set((i[1], i[3], i[2]) for i in metadata)
     cellLines = set((i[1], i[3]) for i in metadata)
     ## The First level, biological replicates
+    logging.log(21, 'Merging data from the same biological replicate ...')
     queueL1 = []
     for rep in bioReps:
         filenames = [os.path.join(Sources, '%s.hdf5' % i[0]) for i in metadata
@@ -662,7 +687,9 @@ def merge(args, commands):
         # Clean up parsed individual files
         for delFile in lanePools:
             os.remove(delFile)
+    logging.log(21, 'Done!')
     
+    logging.log(21, 'Merging data of the same cell line using the same restriction enzyme ...')
     if args.level == 2:
         ## The Second level, cell lines, optional
         queueL2 = []
@@ -679,6 +706,7 @@ def merge(args, commands):
             genome_db.setEnzyme(member[-1])
             fragments = HiCdataset(filename = member[1], genome = genome_db, mode = 'w')
             fragments.merge(member[0])
+    logging.log(21, 'Done!')
 
 def filtering(args, commands):      
     
@@ -715,17 +743,27 @@ def filtering(args, commands):
         os.mkdir(filteredFolder)
     args.filteredDir = filteredFolder # To communicate with next processing step (binning)
     
+    logging.log(21, 'Filtered files will be saved under %s', filteredFolder)
+    
     ## Two cases: a directory or a single file
     if os.path.isdir(Sources):
+        logging.log(21, 'Perform filtering process on all merged hdf5 files under %s ...', Sources)
         queue = [os.path.join(Sources, i) for i in glob.glob(os.path.join(Sources, '*-merged.hdf5'))]
         if len(queue) == 0:
             logging.error('No proper files can be found at %s!', Sources)
             sys.exit(1)
         else:
             for f in queue:
+                logging.log(21, 'Current file: %s', f)
                 core(f, args)
+                logging.log(21, 'Done!')
     else:
+        if not Sources.endswith('-merged.hdf5'):
+            logging.error('Invalid file name: suffix "-merged.hdf5" can not be found!')
+            sys.exit(1)
+        logging.log(21, 'Perform filtering process on %s ...', Sources)
         core(Sources, args)
+        logging.log(21, 'Done!')
 
 def binning(args, commands):
     ## Validity of arguments
@@ -741,19 +779,27 @@ def binning(args, commands):
     # To communicate with next processing step (correcting)
     args.HeatMap = hFolder
     
+    logging.log(21, 'HeatMaps will be saved in hdf5 format under %s', hFolder)
+    
     ## Generate HeatMaps
     if os.path.isdir(Sources):
+        logging.log(21, 'Generate HeatMaps based on filtered hdf5 files under %s', Sources)
         queue = [os.path.join(Sources, i) for i in glob.glob(os.path.join(Sources, '*-filtered.hdf5'))]
         if len(queue) == 0:
             logging.error('No proper files can be found at %s!', Sources)
             sys.exit(1)
     else:
+        if not Sources.endswith('-filtered.hdf5'):
+            logging.error('Invalid file name: suffix "-filtered.hdf5" can not be found!')
+            sys.exit(1)
+        logging.log(21, 'HeatMap will be generated using data from %s', Sources)
         queue = [Sources]
     
     # Appropriate Units
     unit, denominator = ('K', 1000) if (args.resolution / 1000 < 1000) else ('M', 1000000)
     nLabel = str(args.resolution / denominator) + unit
     for f in queue:
+        logging.log(21, 'Current source file: %s', f)
         hFile = os.path.join(hFolder, os.path.basename(f).replace('.hdf5', '-%s.hm' % nLabel))
         # Parse restriction enzyme name from the file name
         enzyme = os.path.basename(f).split('-')[1]
@@ -768,6 +814,8 @@ def binning(args, commands):
             fragments.saveByChromosomeHeatmap(hFile, resolution = args.resolution)
         if args.mode == 'withOverlaps':
             fragments.saveHiResHeatmapWithOverlaps(hFile, resolution = args.resolution)
+    
+    logging.log(21, 'Done!')
 
 def correcting(args, commands):
     ## Necessary Modules
@@ -833,16 +881,24 @@ def correcting(args, commands):
     if not os.path.exists(cFolder):
         os.mkdir(cFolder)
     
+    logging.log(21, 'Corrected HeatMaps will be generated under %s', cFolder)
+    
     ## Corrections start
     if os.path.isdir(Sources):
+        logging.log(21, 'Correct all HeatMaps under %s', Sources)
         queue = [os.path.join(Sources, i) for i in glob.glob(os.path.join(Sources, '*.hm'))]
         if len(queue) == 0:
             logging.error('No proper files can be found at %s!', Sources)
             sys.exit(1)
     else:
+        if not Sources.endswith('.hm'):
+            logging.error('Invalid file name: suffix ".hm" can not be found!')
+            sys.exit(1)
+        logging.log(21, 'Only %s will be corrected', Sources)
         queue = [Sources]
     
     for f in queue:
+        logging.log(21, 'Current source file: %s', f)
         # Raw Data
         raw = h5dict.h5dict(f, mode = 'r')
         Keys = raw.keys()
@@ -854,6 +910,8 @@ def correcting(args, commands):
             ends = rlabel[-1]
             resolution = (int(rlabel[:-1]) * 1000) if (ends == 'K') else (int(rlabel[:-1]) * 1000000)
             Hcore(f)
+    
+    logging.log(21, 'Done!')
             
 def pileup(args, commands):
     """
