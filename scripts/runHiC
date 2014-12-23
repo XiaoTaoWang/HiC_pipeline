@@ -13,11 +13,6 @@ try:
 except ImportError:
     pass
 
-try:
-    from hiclib.fragmentHiC import HiCdataset
-except ImportError:
-    pass
-
 def getargs():
     ## Construct an ArgumentParser object for command-line arguments
     parser = argparse.ArgumentParser(description = '''This software is based on hiclib
@@ -222,89 +217,6 @@ def getargs():
     args = parser.parse_args(commands)
     
     return args, commands
-
-# A customized HiCdataset class, which makes filtering processes more flexible
-class cHiCdataset(HiCdataset):
-    # Only parseInputData is changed
-    def parseInputData(self, dictLike, commandArgs, **kwargs):
-        '''
-        Added Parameters
-        ----------------
-        commandArgs : NameSpace
-            A NameSpace object defined by argparse.            
-        '''
-        ## Necessary Modules
-        import numexpr
-        # Simply load merged data
-        self.merge([dictLike])
-        # Total Reads
-        self.trackLen = len(self.chrms1)
-        
-        self.metadata["100_TotalReads"] = self.trackLen
-        self.metadata["152_removedUnusedChromosomes"] = self.trackLen - self.N
-        self.metadata["150_ReadsWithoutUnusedChromosomes"] = self.N
-        
-        DSmask = (self.chrms1 >= 0) * (self.chrms2 >= 0)
-        self.metadata["200_totalDSReads"] = DSmask.sum()
-        self.metadata["201_DS+SS"] = len(DSmask)
-        self.metadata["202_SSReadsRemoved"] = len(DSmask) - DSmask.sum()
-        
-        mask = DSmask
-        
-        ## Information based on restriction fragments
-        sameFragMask = self.evaluate("a = (fragids1 == fragids2)",
-                                     ["fragids1", "fragids2"]) * DSmask
-        cutDifs = self.cuts2[sameFragMask] > self.cuts1[sameFragMask]
-        s1 = self.strands1[sameFragMask]
-        s2 = self.strands2[sameFragMask]
-        SSDE = (s1 != s2)
-        SS = SSDE * (cutDifs == s2)
-        Dangling = SSDE & (~SS)
-        SS_N = SS.sum()
-        SSDE_N = SSDE.sum()
-        sameFrag_N = sameFragMask.sum()
-        
-        dist = self.evaluate("a = - cuts1 * (2 * strands1 -1) - "
-                             "cuts2 * (2 * strands2 - 1)",
-                             ["cuts1", "cuts2", "strands1", "strands2"])
-        Dangling_L = dist[sameFragMask][Dangling]
-        library_L = int(np.ceil((np.percentile(Dangling_L, 95))))
-        self.maximumMoleculeLength = library_L
-        
-        readsMolecules = self.evaluate(
-            "a = numexpr.evaluate('(chrms1 == chrms2) & (strands1 != strands2) &  (dist >=0) &"
-            " (dist <= maximumMoleculeLength)')",
-            internalVariables=["chrms1", "chrms2", "strands1", "strands2"],
-            externalVariables={"dist": dist},
-            constants={"maximumMoleculeLength": self.maximumMoleculeLength, "numexpr": numexpr})
-        
-        if commandArgs.sameFragments:
-            mask *= (-sameFragMask)
-            noSameFrag = mask.sum()
-            self.metadata["210_sameFragmentReadsRemoved"] = sameFrag_N
-            self.metadata["212_Self-Circles"] = SS_N
-            self.metadata["214_DandlingEnds"] = SSDE_N - SS_N
-            self.metadata["216_error"] = sameFrag_N - SSDE_N
-            mask *= (readsMolecules == False)
-            extraDE = mask.sum()
-            self.metadata["220_extraDandlingEndsRemoved"] = -extraDE + noSameFrag
-            
-        if commandArgs.RandomBreaks:
-            ini_N = mask.sum()
-            mask *= ((self.dists1 + self.dists2) <= library_L)
-            rb_N = ini_N - mask.sum()
-            self.metadata["330_removeRandomBreaks"] = rb_N
-        
-        if mask.sum() == 0:
-            raise Exception(
-                'No reads left after filtering. Please, check the input data')
-            
-        del DSmask, sameFragMask
-        del dist, readsMolecules
-        
-        self.metadata["300_ValidPairs"] = self.N
-        
-        self.maskFilter(mask)
 
 
 def run():
@@ -634,6 +546,8 @@ def mapping(args, commands):
         os.remove(lockFile)
 
 def merge(args, commands):
+    # Necessary Modules
+    from hiclib.fragmentHiC import HiCdataset
     
     ## Validity of arguments
     Sources = os.path.abspath(os.path.expanduser(args.HDF5))
@@ -708,7 +622,9 @@ def merge(args, commands):
             fragments.merge(member[0])
     logging.log(21, 'Done!')
 
-def filtering(args, commands):      
+def filtering(args, commands):
+    # Necessary Modules
+    import cHiCdataset.cHiCdataset as cHiCdataset
     
     def core(filename, args):
         # Parse restriction enzyme name from the file name
@@ -766,6 +682,8 @@ def filtering(args, commands):
         logging.log(21, 'Done!')
 
 def binning(args, commands):
+    # Necessary Modules
+    import cHiCdataset.cHiCdataset as cHiCdataset
     ## Validity of arguments
     Sources = os.path.abspath(os.path.expanduser(args.filteredDir))
     if not os.path.exists(Sources):
@@ -825,7 +743,7 @@ def correcting(args, commands):
     dataLocation, genomeFolder, genome_db = initialize(args)
     
     ## Two modes
-    def Lcore(filename):
+    def Lcore(filename, resolution):
         # Necessary Modules
         from hiclib import binnedData
         # Output file
@@ -849,26 +767,25 @@ def correcting(args, commands):
         # Save the iteratively corrected heatmap.
         BD.export(name, cFile)
 
-    def Hcore(filename):
+    def Hcore(filename, resolution):
         # Necessary Modules
-        from hiclib.highResBinnedData import HiResHiC
+        from mirnylib.numutils import completeIC
         # Output file
         cFile = os.path.join(cFolder, os.path.basename(filename).replace('.hm', '_c.hm'))
-        # Intermediate file
-        iFile = os.path.join(cFolder, os.path.basename(filename).replace('.hm', '_i.hm'))
-        ## Perform ICE
-        BD = HiResHiC(genome_db, resolution, iFile, mode='w')
-        BD.loadData(dictLike = filename)
-        BD.removeDiagonal()
-        ## Remove x% poor regions ...
-        temp = BD.getMarginals(normalizeForIC = False)
-        allMarg = np.concatenate(temp)
-        percent = (1 - (allMarg >= 100).sum() / (allMarg > 0).sum()) * 100
-        BD.removePoorRegions(percent)
-        BD.iterativeCorrection(1e-2)
-        BD.export(cFile)
-        # Remove intermediate files
-        os.remove(iFile)
+        # Create a hdf5 file manually
+        mydict = h5dict.h5dict(cFile)
+        # Raw HeatMap
+        raw = h5dict.h5dict(f, mode = 'r')
+        ## Perform ICE for each chsomosome
+        keys = raw.keys()
+        cisKeys = [i for i in keys if len(set(i.split()))==1]
+        for i in cisKeys:
+            # Extract Cis HeatMap
+            rawHeatMap = raw[i]
+            # Only work for cis-heatmaps
+            cHeatMap, bias = completeIC(rawHeatMap, returnBias=True)
+            mydict[i] = cHeatMap
+        mydict['resolution'] = resolution
         
     ## Validity of arguments
     Sources = os.path.abspath(os.path.expanduser(args.HeatMap))
@@ -904,12 +821,12 @@ def correcting(args, commands):
         Keys = raw.keys()
         if 'heatmap' in Keys: # Low resolution case
             resolution = int(raw['resolution'])
-            Lcore(f)
+            Lcore(f, resolution)
         else: # High resolution case
             rlabel = os.path.basename(f).split('-')[-1].replace('.hm', '')
             ends = rlabel[-1]
             resolution = (int(rlabel[:-1]) * 1000) if (ends == 'K') else (int(rlabel[:-1]) * 1000000)
-            Hcore(f)
+            Hcore(f, resolution)
     
     logging.log(21, 'Done!')
             
