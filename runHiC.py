@@ -318,11 +318,11 @@ def run():
         logger = logging.getLogger()
         # Logger Level
         logger.setLevel(21)
-        filehandler = logging.handlers.RotatingFileHandler('calfea.log',
-                                                           maxBytes = 100000,
+        filehandler = logging.handlers.RotatingFileHandler('runHiC.log',
+                                                           maxBytes = 50000,
                                                            backupCount = 5)
         # Set level for Handlers
-        filehandler.setLevel('DEBUG')
+        filehandler.setLevel(21)
         # Customizing Formatter
         formatter = logging.Formatter(fmt = '%(name)-20s %(levelname)-7s @ %(asctime)s: %(message)s',
                                       datefmt = '%m/%d/%y %H:%M:%S')
@@ -368,7 +368,7 @@ def run():
             arglist.extend(['# Source HeatMap = %s' % args.HeatMap])
         
         argtxt = '\n'.join(arglist)
-        logger.log(level = 21, '\n' + argtxt)
+        logging.log(21, '\n' + argtxt)
         
         if commands[1] == 'pileup':
             logging.log(21, 'A pipeline covering all processes from sequencing data to '
