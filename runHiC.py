@@ -41,6 +41,13 @@ def getargs():
     # Version
     parser.add_argument('-v', '--version', action = 'version', version = '%(prog)s 0.1.0',
                         help = 'Print version number and exit')
+    # About Logging
+    parser.add_argument('--verbose', type = int, default = 2, choices = [0, 1, 2, 3],
+                        help = 'Set logging level. 0: only show error messages, 1: also report '
+                               'warnings, 2: show process information, 3: debug. '
+                               'Note: We log all messages of all levels to a disk file'
+                               '(calfea.log), while simultaneously logging process '
+                               'information or above to the console.')
     
     ## One for all
     common = argparse.ArgumentParser(add_help = False)
@@ -312,6 +319,71 @@ def run():
     args, commands = getargs()
     # Improve the performance if you don't want to run it
     if commands[-1] not in ['-h', '-v', '--help', '--version']:
+        # Define a special level name
+        logging.addLevelName(21, 'main')
+        ## Root Logger Configuration
+        logger = logging.getLogger()
+        # Logger Level
+        nLevel = (4 - args.verbose) * 10
+        if nLevel == 20:
+            nLevel += 1
+        logger.setLevel(nLevel)
+        console = logging.StreamHandler()
+        filehandler = logging.handlers.RotatingFileHandler('calfea.log',
+                                                           maxBytes = 100000,
+                                                           backupCount = 5)
+        # Set level for Handlers
+        console.setLevel(nLevel)
+        filehandler.setLevel('DEBUG')
+        # Customizing Formatter
+        formatter = logging.Formatter(fmt = '%(name)-20s %(levelname)-7s @ %(asctime)s: %(message)s',
+                                      datefmt = '%m/%d/%y %H:%M:%S')
+        ## Unified Formatter
+        console.setFormatter(formatter)
+        filehandler.setFormatter(formatter)
+        # Add Handlers
+        logger.addHandler(console)
+        logger.addHandler(filehandler)
+        ## Logging for argument setting
+        arglist = ['# ARGUMENT LIST:',
+                   '# Sub-Command Name = %s' % commands[1],
+                   '# Data Root Directory = %s' % args.dataFolder,
+                   '# MetaData = %s' % args.metadata,
+                   '# Genome Name = %s' % args.genomeName,
+                   '# Chromosomes = %s' % args.chroms,
+                   '# FASTA template = %s' % args.template,
+                   '# Gap File = %s' % args.gapFile
+                   ]
+        if (commands[1] == 'mapping') or (commands[1] == 'pileup'):
+            arglist.extend(['# Sequencing data = %s' % args.fastqDir,
+                            '# Sequencing Format = %s' % args.Format,
+                            '# Bowtie2 Path = %s' % args.bowtiePath,
+                            '# Bowtie2 Threads = %s' % args.threads,
+                            ])
+            if '--bowtieIndex' in commands:
+                arglist.extend(['# Bowtie2 Genome Index = %s' % args.bowtieIndex])
+            arglist.extend(['# Cache Folder = %s' % args.cache])
+        if commands[1] == 'merge':
+            arglist.extend(['# Source Files = %s' % args.HDF5,
+                            '# Merging Level = %s' % args.level])
+        if commands[1] == 'filtering':
+            arglist.extend(['# Source Files = %s' % args.mergedDir,
+                            '# Remove PCR Duplicates = %s' % args.duplicates,
+                            '# Remove Same Fragments = %s' % args.sameFragments,
+                            '# Remove Random Breaks = %s' % args.RandomBreaks,
+                            '# Remove Extreme Fragments = %s' % args.extremeFragments,
+                            '# Remove startNearRsite = %s' % args.startNearRsite,
+                            '# Remove cistotrans = %s' % args.cistotrans])
+        if commands[1] == 'binning':
+            arglist.extend(['# Source Files = %s' % args.filteredDir,
+                            '# HeatMap Mode = %s' % args.mode,
+                            '# HeatMap Resolution = %s' % args.resolution])
+        if commands[1] == 'correcting':
+            arglist.extend(['# Source HeatMap = %s' % args.HeatMap])
+        
+        argtxt = '\n'.join(arglist)
+        logger.log(level = 21, '\n' + argtxt)
+        
         # Subcommand
         args.func(args, commands)
 
@@ -333,13 +405,13 @@ def initialize(args):
     ## Generate a dummy gap file under genome folder if there's no one yet
     gapFile = os.path.join(genomeFolder, args.gapFile)
     if not os.path.exists(gapFile):
-        logging.info('No gap file can be found at %s, generating a dummy one ...',
-                     genomeFolder)
+        logging.log(21, 'No gap file can be found at %s, generating a dummy one ...',
+                    genomeFolder)
         tempfile = open(gapFile, 'w')
         tempfile.write('0\tNA1000\t0\t0\t0\tN\t0\tcentromere\tno\n')
         tempfile.flush()
         tempfile.close()
-        logging.info('Done!')
+        logging.log(21, 'Done!')
     
     # Python Genome Object
     genome_db = genome.Genome(genomeFolder, readChrms = args.chroms)
@@ -424,17 +496,21 @@ def mapping(args, commands):
     if '--bowtieIndex' in commands:
         bowtieIndex = os.path.abspath(os.path.expanduser(args.bowtieIndex))
     else:
+        logging.log(21, 'You haven\'t specify the Bowtie2 Genome Index Files.')
+        logging.log(21, 'Try to find them at %s ...', genomeFolder)
         icheck = glob.glob(os.path.join(genomeFolder, '%s*.bt2' % args.genomeName))
         if len(icheck) != 0:
-            logging.info('Index files are found at %s', genomeFolder)
+            logging.log(21, 'Index files are found at %s', genomeFolder)
             bowtieIndex = os.path.join(genomeFolder, args.genomeName)
-            logging.info('Set --bowtieIndex to %s', bowtieIndex)
+            logging.log(21, 'Set --bowtieIndex to %s', bowtieIndex)
         else:
-            logging.info('Index path is not provided, generating under the'
-                         ' genome folder ...')
+            logging.log(21, 'Index files can not be found, generating under the'
+                        ' genome folder ...')
             bowtieIndex = buildIndex(genomeFolder)
-            logging.info('Done!')
-    
+            logging.log(21, 'Done!')
+            
+    logging.log(21, 'Now, extract read pairs from %s files and map them to %s',
+                args.Format, args.genomeName)
     ## Sequencing Data Format
     Format = args.Format.lower()
     sraNames = [os.path.join(fastqDir, i) for i in glob.glob(os.path.join(
