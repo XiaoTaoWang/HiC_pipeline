@@ -1,0 +1,96 @@
+Introduction
+------------
+runHiC is a easy-to-use Hi-C processing software based on hiclib (https://bitbucket.org/mirnylab/hiclib) [1]_.
+Different from hiclib, which was born for flexibility, runHiC is a customized pipeline, which can be
+run from command line directly.
+
+Installation
+-------------
+- Install required python packages:
+
+We recommend using `conda <http://conda.pydata.org/miniconda.html>`_, an excellent Python package and
+environment manager.
+
+Open a terminal and type::
+
+    $ conda install numpy numexpr scipy matplotlib cython biopython h5py pysam pip
+
+Install bx-python and joblib using pip::
+
+    $ pip install joblib bx-python
+
+Install mirnylib and hiclib from source code:
+
+Download `mirnylib <https://bitbucket.org/mirnylab/mirnylib>`_ and `hiclib <https://bitbucket.org/mirnylab/hiclib>`_,
+and run install_linux.py contained in the unpacked folder, respectively.
+
+.. note:: According to our experiences, do not install mirnylib and hiclib through pip!
+
+- Non-python library (or software) dependencies:
+
+Install samtools:
+
+Download `samtools <http://sourceforge.net/projects/samtools/files/>`_, unpack it, change to the extracted
+directory::
+
+    $ make
+
+Make **samtools** accessible to the system. (Via environment variable *PATH*)
+
+Install Bowtie2:
+
+Download the `source code <http://sourceforge.net/projects/bowtie-bio/files/bowtie2/>`_, unzip it and
+add the path to the extracted directory to *PATH*.
+
+- Install runHiC:
+
+Use easy_install::
+
+    $ conda install setuptools
+    $ easy_install runHiC
+
+Design Concepts
+---------------
+runHiC is able to perform the entire analysis from sequencing data to corrected HeatMaps.
+
+runHiC separate the whole process into 5 stages and you can begin and end at any stage using certain
+subcommands.
+
+All 6 subcommands are listed below:
+
+- *mapping*: Iteratively map pair-end sequencing reads to a supplied genome
+- *merge*: Merge alignment results corresponding to the same experiment together
+- *filtering*: Remove noises at the level of aligned read pairs and restriction fragments
+- *binning*: Bin filtered reads at certain resolution (original Heat Maps are generated)
+- *correcting*: Perform iterative corrections on the original Heat Maps
+- *pileup*: Streamline all 5 subcommands above from *mapping* to *correcting*.
+
+Preparation
+-----------
+Before running this program, you need to carry out several other things to improve performance:
+
+- Re-organize your directory arrangements:
+
+Although not required, we recommend creating a data root directory separate from the working
+directory.
+
+- Place genome and sequencing data under the data root directory
+
+Genome sequences should be stored chromosome by chromosome in FASTA format under a subfolder named
+after corresponding genome name. Sequencing read-pairs should be stored in SRA or FASTQ format under
+another subfolder (any valid name).
+
+- Construct a metadata file describing your sequencing data under the working directory
+
+Four columns are required: prefix of SRA file name, cell line name, biological replicate label, and
+restriction enzyme name. An example file is distributed along with this software, please check it.
+
+Usage
+-----
+Open a terminal, type ``runHiC -h`` and ``runHiC <subcommand> -h`` for help information.
+
+
+References
+----------
+.. [1] Imakaev M, Fudenberg G, McCord RP et al. Iterative correction of Hi-C data
+      reveals hallmarks ofchromosome organization. Nat Methods, 2012, 9: 999-1003.
