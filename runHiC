@@ -826,7 +826,12 @@ def correcting(args, commands):
             rlabel = os.path.basename(f).split('-')[-1].replace('.hm', '')
             ends = rlabel[-1]
             resolution = (int(rlabel[:-1]) * 1000) if (ends == 'K') else (int(rlabel[:-1]) * 1000000)
-            Hcore(f, resolution)
+            try:
+                Hcore(f, resolution)
+            except ValueError:
+                logging.warning('Iterative correction will remove more than a half of the matrix')
+                logging.warning('Skipping ...')
+                continue
     
     logging.log(21, 'Done!')
             
