@@ -1,7 +1,7 @@
 Introduction
 ------------
 runHiC is a easy-to-use Hi-C processing software based on hiclib (https://bitbucket.org/mirnylab/hiclib) [1]_.
-Different from hiclib, which was born for flexibility, runHiC is a customized pipeline, which can be
+Different from hiclib, which was born for flexibility, runHiC is a customized pipeline, and can be
 run from command line directly.
 
 Installation
