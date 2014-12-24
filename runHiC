@@ -624,7 +624,7 @@ def merge(args, commands):
 
 def filtering(args, commands):
     # Necessary Modules
-    import cHiCdataset.cHiCdataset as cHiCdataset
+    from utilities import cHiCdataset
     
     def core(filename, args):
         # Parse restriction enzyme name from the file name
@@ -683,7 +683,7 @@ def filtering(args, commands):
 
 def binning(args, commands):
     # Necessary Modules
-    import cHiCdataset.cHiCdataset as cHiCdataset
+    from utilities import cHiCdataset
     ## Validity of arguments
     Sources = os.path.abspath(os.path.expanduser(args.filteredDir))
     if not os.path.exists(Sources):
