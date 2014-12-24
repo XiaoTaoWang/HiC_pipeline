@@ -4,6 +4,11 @@ runHiC is a easy-to-use Hi-C processing software based on hiclib (https://bitbuc
 Different from hiclib, which was born for flexibility, runHiC is a customized pipeline, and can be
 run from command line directly.
 
+Links
+------
+- `Repository <https://github.com/XiaoTaoWang/HiC_pipeline>`_
+- `PyPI <https://pypi.python.org/pypi/runHiC>`_
+
 Installation
 -------------
 - Install required python packages:
