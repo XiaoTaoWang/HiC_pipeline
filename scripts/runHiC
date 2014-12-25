@@ -494,7 +494,7 @@ def mapping(args, commands):
         logging.log(21, 'Create %s to ensure process safety ...', lockFile)
         lock = open(lockFile, 'w')
         lock.close()
-        logging.log(21, '%s will be removed if the program terminates normally.')
+        logging.log(21, '%s will be removed if the program terminates normally.', lockFile)
         
         atexit.register(cleanFile, lockFile)
         
