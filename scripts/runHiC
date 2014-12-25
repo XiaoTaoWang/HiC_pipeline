@@ -238,7 +238,7 @@ def run():
         # Logger Level
         logger.setLevel(21)
         filehandler = logging.handlers.RotatingFileHandler('runHiC.log',
-                                                           maxBytes = 30000,
+                                                           maxBytes = 50000,
                                                            backupCount = 5)
         # Set level for Handlers
         filehandler.setLevel(21)
@@ -251,7 +251,7 @@ def run():
         logger.addHandler(filehandler)
         ## Logging for argument setting
         arglist = ['# ARGUMENT LIST:',
-                   '# Sub-Command Name = %s' % commands[1],
+                   '# Sub-Command Name = %s' % commands[0],
                    '# Data Root Directory = %s' % args.dataFolder,
                    '# MetaData = %s' % args.metadata,
                    '# Genome Name = %s' % args.genomeName,
@@ -259,7 +259,7 @@ def run():
                    '# FASTA template = %s' % args.template,
                    '# Gap File = %s' % args.gapFile
                    ]
-        if (commands[1] == 'mapping') or (commands[1] == 'pileup'):
+        if (commands[0] == 'mapping') or (commands[0] == 'pileup'):
             arglist.extend(['# Sequencing data = %s' % args.fastqDir,
                             '# Sequencing Format = %s' % args.Format,
                             '# Bowtie2 Path = %s' % args.bowtiePath,
@@ -268,10 +268,10 @@ def run():
             if '--bowtieIndex' in commands:
                 arglist.extend(['# Bowtie2 Genome Index = %s' % args.bowtieIndex])
             arglist.extend(['# Cache Folder = %s' % args.cache])
-        if commands[1] == 'merge':
+        if commands[0] == 'merge':
             arglist.extend(['# Source Files = %s' % args.HDF5,
                             '# Merging Level = %s' % args.level])
-        if commands[1] == 'filtering':
+        if commands[0] == 'filtering':
             arglist.extend(['# Source Files = %s' % args.mergedDir,
                             '# Remove PCR Duplicates = %s' % args.duplicates,
                             '# Remove Same Fragments = %s' % args.sameFragments,
@@ -279,26 +279,26 @@ def run():
                             '# Remove Extreme Fragments = %s' % args.extremeFragments,
                             '# Remove startNearRsite = %s' % args.startNearRsite,
                             '# Remove cistotrans = %s' % args.cistotrans])
-        if commands[1] == 'binning':
+        if commands[0] == 'binning':
             arglist.extend(['# Source Files = %s' % args.filteredDir,
                             '# HeatMap Mode = %s' % args.mode,
                             '# HeatMap Resolution = %s' % args.resolution])
-        if commands[1] == 'correcting':
+        if commands[0] == 'correcting':
             arglist.extend(['# Source HeatMap = %s' % args.HeatMap])
+        
+        if commands[0] == 'pileup':
+            arglist.extend(['# Merging Level = %s' % args.level,
+                            '# Remove PCR Duplicates = True',
+                            '# Remove Same Fragments = True',
+                            '# Remove Random Breaks = True',
+                            '# Remove Extreme Fragments = True',
+                            '# Remove startNearRsite = True',
+                            '# Remove cistotrans = True',
+                            '# HeatMap Mode = %s' % args.mode,
+                            '# HeatMap Resolution = %s' % args.resolution])
         
         argtxt = '\n'.join(arglist)
         logging.log(21, '\n' + argtxt)
-        
-        if commands[1] == 'pileup':
-            logging.log(21, 'A pipeline covering all processes from sequencing data to '
-                        'corrected HeatMaps will be conducted.')
-            logging.log(21, 'All stages are customized:')
-            logging.log(21, 'Set --level to 2 for merge')
-            logging.log(21, 'All available filtering processes will be performed on '
-                        'all merged hdf5 files')
-            logging.log(21, 'Set --mode to withOverlaps and --resolution to 10000 '
-                        'for binning')
-            logging.log(21, 'Generate and correct HeatMaps for all filtered hdf5 files')
             
         # Subcommand
         args.func(args, commands)
