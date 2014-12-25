@@ -287,7 +287,7 @@ def run():
             arglist.extend(['# Source HeatMap = %s' % args.HeatMap])
         
         if commands[0] == 'pileup':
-            arglist.extend(['# Merging Level = %s' % args.level,
+            arglist.extend(['# Merging Level = 2',
                             '# Remove PCR Duplicates = True',
                             '# Remove Same Fragments = True',
                             '# Remove Random Breaks = True',
