@@ -138,20 +138,20 @@ def getargs():
                              If the path points to one file, filtering will only be performed
                              on that file. If the path points to a folder, filtering will be
                              performed on all files contained in that folder.''')
-    removeNoise.add_argument('--duplicates', action = 'store_false',
+    removeNoise.add_argument('--duplicates', action = 'store_true',
                              help = '''Remove read pairs resulting from PCR amplification.''')
-    removeNoise.add_argument('--sameFragments', action = 'store_false',
+    removeNoise.add_argument('--sameFragments', action = 'store_true',
                              help = '''Remove read pairs which located in the same restriction
                              fragments. Two cases are included: self-ligation products and unligated
                              "dangling end" products.''')
-    removeNoise.add_argument('--startNearRsite', action = 'store_false',
+    removeNoise.add_argument('--startNearRsite', action = 'store_true',
                              help = '''Remove reads that start within 5 bp near a restriction site.''')
-    removeNoise.add_argument('--RandomBreaks', action = 'store_false',
+    removeNoise.add_argument('--RandomBreaks', action = 'store_true',
                              help = '''Remove "random breaks" in which corresponding fragments
                              did not arise from normal restriction digestion.''')
-    removeNoise.add_argument('--extremeFragments', action = 'store_false',
+    removeNoise.add_argument('--extremeFragments', action = 'store_true',
                              help = '''Remove too large and too small fragments.''')
-    removeNoise.add_argument('--cistotrans', action = 'store_false',
+    removeNoise.add_argument('--cistotrans', action = 'store_true',
                              help = '''Remove certain fraction of fragments with the greatest
                              number of reads.''')
     removeNoise.set_defaults(func = filtering)
@@ -207,6 +207,13 @@ def getargs():
                                       command for Hi-C data processing.''',
                                       formatter_class = argparse.ArgumentDefaultsHelpFormatter,
                                       add_help = False)
+    streamline.add_argument('-M', '--mode', default = 'wholeGenome',
+                            choices = ['wholeGenome', 'byChromosome', 'withOverlaps'],
+                            help = '''Memory usage: withOverlaps > byChromosome > wholeGenome.
+                            Resolution capacity (take human genome for example):
+                            withOverlaps (10kb) > byChromosome (40kb) > wholeGenome (200kb).''')
+    streamline.add_argument('-R', '--resolution', type = int, default = 200000,
+                          help = 'Resolution of a heatmap. Unit: bp')
     streamline.set_defaults(func = pileup)
     
      ## Parse the command-line arguments
@@ -844,10 +851,9 @@ def pileup(args, commands):
     args.level = 2
     merge(args, commands)
     args.duplicates = args.sameFragments = args.startNearRsite = True
-    args.RandomBreaks = args.extremeFragments = args.cistotrans = True
+    args.extremeFragments = True
+    args.RandomBreaks = args.cistotrans = True
     filtering(args, commands)
-    args.mode = 'withOverlaps'
-    args.resolution = 10000
     binning(args, commands)
     correcting(args, commands)
     
