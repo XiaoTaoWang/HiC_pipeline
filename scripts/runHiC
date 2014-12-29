@@ -467,90 +467,91 @@ def mapping(args, commands):
     metadata = [l.rstrip().split() for l in open(mFile)]
     database = dict([(i[0], i[-1]) for i in metadata])
     for i in sorted(list(Set)):
-        logging.log(21, 'Current %s file: %s', args.Format, i)
+        if i in database:
+            logging.log(21, 'Current %s file: %s', args.Format, i)
         
-        finalFile = os.path.join(hdf5F, '%s.hdf5' % i)
-        lockFile = os.path.join(hdf5F, '%s.lock' % i)
+            finalFile = os.path.join(hdf5F, '%s.hdf5' % i)
+            lockFile = os.path.join(hdf5F, '%s.lock' % i)
         
-        if os.path.exists(finalFile) and not os.path.exists(lockFile):
-            logging.log(21, '%s already exists, skipping', finalFile)
-            continue
+            if os.path.exists(finalFile) and not os.path.exists(lockFile):
+                logging.log(21, '%s already exists, skipping', finalFile)
+                continue
         
-        if os.path.exists(lockFile):
-            logging.log(21, 'Someone is working on %s, skipping', finalFile)
-            continue
+            if os.path.exists(lockFile):
+                logging.log(21, 'Someone is working on %s, skipping', finalFile)
+                continue
         
-        # Parameters used in iterative mapping
-        lengthFile = os.path.join(lengths, i)
-        if Format == 'sra':
-            length = (int(open(lengthFile).readlines()[0]) - 1) / 2
-        else:
-            length = int(open(lengthFile).readlines()[0])
-        logging.log(21, 'Extract sequence length ... %s', length)
-        logging.log(21, 'Determining parameters for iterative mapping ...')
-        minlen, step = calculateStep(length, 25)
-        logging.log(21, 'minlen = %s, step = %s', minlen, step)
+            # Parameters used in iterative mapping
+            lengthFile = os.path.join(lengths, i)
+            if Format == 'sra':
+                length = (int(open(lengthFile).readlines()[0]) - 1) / 2
+            else:
+                length = int(open(lengthFile).readlines()[0])
+            logging.log(21, 'Extract sequence length ... %s', length)
+            logging.log(21, 'Determining parameters for iterative mapping ...')
+            minlen, step = calculateStep(length, 25)
+            logging.log(21, 'minlen = %s, step = %s', minlen, step)
         
-        logging.log(21, 'Create %s to ensure process safety ...', lockFile)
-        lock = open(lockFile, 'w')
-        lock.close()
-        logging.log(21, '%s will be removed if the program terminates normally.', lockFile)
+            logging.log(21, 'Create %s to ensure process safety ...', lockFile)
+            lock = open(lockFile, 'w')
+            lock.close()
+            logging.log(21, '%s will be removed if the program terminates normally.', lockFile)
         
-        atexit.register(cleanFile, lockFile)
+            atexit.register(cleanFile, lockFile)
         
-        cleanup = ['rm', '-rf', os.path.join(bamFolder, '%s*' % i)]
-        os.system(' '.join(cleanup))
+            cleanup = ['rm', '-rf', os.path.join(bamFolder, '%s*' % i)]
+            os.system(' '.join(cleanup))
         
-        ## Iterative Mapping
-        # Common Parameters
-        Parameters = {'bowtie_path': bowtiePath, 'bowtie_index_path': bowtieIndex,
-                      'min_seq_len': minlen, 'len_step': step, 'nthreads': args.threads,
-                      'temp_dir': cache, 'bowtie_flags': '--very-sensitive'}
-        if Format == 'sra':
-            sourceFile = os.path.join(fastqDir, i + '.sra')
-            # The First Side
-            logging.log(21, 'Mapping first side of the reads ...')
-            iterM.iterative_mapping(fastq_path = sourceFile,
-                                    out_sam_path = '%s/%s_1.bam' % (bamFolder, i),
-                                    seq_start = 0,
-                                    seq_end = length,
-                                    bash_reader = 'fastq-dump -Z',
-                                    **Parameters)
+            ## Iterative Mapping
+            # Common Parameters
+            Parameters = {'bowtie_path': bowtiePath, 'bowtie_index_path': bowtieIndex,
+                          'min_seq_len': minlen, 'len_step': step, 'nthreads': args.threads,
+                          'temp_dir': cache, 'bowtie_flags': '--very-sensitive'}
+            if Format == 'sra':
+                sourceFile = os.path.join(fastqDir, i + '.sra')
+                # The First Side
+                logging.log(21, 'Mapping first side of the reads ...')
+                iterM.iterative_mapping(fastq_path = sourceFile,
+                                        out_sam_path = '%s/%s_1.bam' % (bamFolder, i),
+                                        seq_start = 0,
+                                        seq_end = length,
+                                        bash_reader = 'fastq-dump -Z',
+                                        **Parameters)
+                logging.log(21, 'Done!')
+                logging.log(21, 'Mapping second side of the reads ...')
+                # The Second Side
+                iterM.iterative_mapping(fastq_path = sourceFile,
+                                        out_sam_path = '%s/%s_2.bam' % (bamFolder, i),
+                                        seq_start = length,
+                                        seq_end = 2 * length,
+                                        bash_reader = 'fastq-dump -Z',
+                                        **Parameters)
+                logging.log(21, 'Done!')
+            else:
+                logging.log(21, 'Mapping first side of the reads ...')
+                iterM.iterative_mapping(fastq_path = os.path.join(fastqDir, i + '_1.fastq'),
+                                        out_sam_path = '%s/%s_1.bam' % (bamFolder, i),
+                                        **Parameters)
+                logging.log(21, 'Done!')
+                logging.log(21, 'Mapping second side of the reads ...')
+                iterM.iterative_mapping(fastq_path = os.path.join(fastqDir, i + '_2.fastq'),
+                                        out_sam_path = '%s/%s_2.bam' % (bamFolder, i),
+                                        **Parameters)
+                logging.log(21, 'Done!')
+        
+            logging.log(21, 'Parsing mapped sequences ...')
+            ## Parse the mapped sequences into a Python data structure
+            ## Assign the ultra-sonic fragments to restriction fragments
+            lib = h5dict.h5dict(finalFile)
+            iterM.parse_sam(sam_basename1 = '%s/%s_1.bam' % (bamFolder, i),
+                            sam_basename2 = '%s/%s_2.bam' % (bamFolder, i),
+                            out_dict = lib,
+                            genome_db = genome_db,
+                            enzyme_name = database[i],
+                            save_seqs = False)
             logging.log(21, 'Done!')
-            logging.log(21, 'Mapping second side of the reads ...')
-            # The Second Side
-            iterM.iterative_mapping(fastq_path = sourceFile,
-                                    out_sam_path = '%s/%s_2.bam' % (bamFolder, i),
-                                    seq_start = length,
-                                    seq_end = 2 * length,
-                                    bash_reader = 'fastq-dump -Z',
-                                    **Parameters)
-            logging.log(21, 'Done!')
-        else:
-            logging.log(21, 'Mapping first side of the reads ...')
-            iterM.iterative_mapping(fastq_path = os.path.join(fastqDir, i + '_1.fastq'),
-                                    out_sam_path = '%s/%s_1.bam' % (bamFolder, i),
-                                    **Parameters)
-            logging.log(21, 'Done!')
-            logging.log(21, 'Mapping second side of the reads ...')
-            iterM.iterative_mapping(fastq_path = os.path.join(fastqDir, i + '_2.fastq'),
-                                    out_sam_path = '%s/%s_2.bam' % (bamFolder, i),
-                                    **Parameters)
-            logging.log(21, 'Done!')
         
-        logging.log(21, 'Parsing mapped sequences ...')
-        ## Parse the mapped sequences into a Python data structure
-        ## Assign the ultra-sonic fragments to restriction fragments
-        lib = h5dict.h5dict(finalFile)
-        iterM.parse_sam(sam_basename1 = '%s/%s_1.bam' % (bamFolder, i),
-                        sam_basename2 = '%s/%s_2.bam' % (bamFolder, i),
-                        out_dict = lib,
-                        genome_db = genome_db,
-                        enzyme_name = database[i],
-                        save_seqs = False)
-        logging.log(21, 'Done!')
-        
-        os.remove(lockFile)
+            os.remove(lockFile)
 
 def merge(args, commands):
     # Necessary Modules
