@@ -59,6 +59,8 @@ def getargs():
                         of SRA file name, cell line name, biological replicate label, and
                         restriction enzyme name. An example file is distributed along with
                         this software, please check it.''')
+    common.add_argument('--logFile', default = 'runHiC.log',
+                        help = '''Logging file name.''')
     
     ## Sub-commands
     subparser = parser.add_subparsers(title = 'sub-commands',
@@ -237,7 +239,7 @@ def run():
         logger = logging.getLogger()
         # Logger Level
         logger.setLevel(21)
-        filehandler = logging.handlers.RotatingFileHandler('runHiC.log',
+        filehandler = logging.handlers.RotatingFileHandler(args.logFile,
                                                            maxBytes = 50000,
                                                            backupCount = 5)
         # Set level for Handlers
