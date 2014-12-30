@@ -6,7 +6,7 @@
 # Organization: HuaZhong Agricultural University
 
 ## Required Modules
-import os, sys, argparse, logging, logging.handlers, glob
+import os, sys, argparse, logging, logging.handlers, glob, atexit
 
 try:
     import numpy as np
@@ -227,6 +227,10 @@ def getargs():
     
     return args, commands
 
+def cleanFile(filename):
+    if os.path.exists(filename):
+        os.remove(filename)
+
 
 def run():
     # Parse Arguments
@@ -339,17 +343,11 @@ def initialize(args):
 
 def mapping(args, commands):
     ## Import necessary modules
-    import atexit
     import hiclib.mapping as iterM
     from mirnylib import h5dict
     
      # Initialization
     dataLocation, genomeFolder, genome_db = initialize(args)
-    
-    # A Local Function
-    def cleanFile(filename):
-        if os.path.exists(filename):
-            os.remove(filename)
     
     # Construct bowtie2 genome index
     def buildIndex(genomeFolder):
@@ -598,7 +596,28 @@ def merge(args, commands):
         outfile = os.path.join(mergedFolder, '%s-%s-%s-merged.hdf5' % rep)
         enzyme = rep[1]
         queueL1.append((filenames, outfile, enzyme))
+    
     for member in queueL1:
+        label = '-'.join(os.path.basename(member[1]).split('-')[:3])
+        logging.log(21, 'Current Merging Label: %s', label)
+        ## Support for multiple processes
+        lockFile = os.path.join(mergedFolder, os.path.basename(member[1]).replace('.hdf5', '.lock'))
+        
+        if os.path.exists(member[1]) and not os.path.exists(lockFile):
+            logging.log(21, '%s already exists, skipping', member[1])
+            continue
+        if os.path.exists(lockFile):
+            logging.log(21, 'Someone is working on %s, skipping', member[1])
+            continue
+        
+        logging.log(21, 'Create %s to ensure process safety ...', lockFile)
+        lock = open(lockFile, 'w')
+        lock.close()
+        logging.log(21, '%s will be removed if the program terminates normally.', lockFile)
+        
+        atexit.register(cleanFile, lockFile)
+        
+        logging.log(21, 'Merging ...')
         # Initialize a Genome Object
         dataLocation, genomeFolder, genome_db = initialize(args)
         genome_db.setEnzyme(member[-1])
@@ -617,6 +636,10 @@ def merge(args, commands):
         # Clean up parsed individual files
         for delFile in lanePools:
             os.remove(delFile)
+        
+        os.remove(lockFile)
+        logging.log(21, 'Done!')
+        
     logging.log(21, 'Done!')
     
     if args.level == 2:
@@ -631,11 +654,37 @@ def merge(args, commands):
             queueL2.append((filenames, outfile, enzyme))
         
         for member in queueL2:
+            label = '-'.join(os.path.basename(member[1]).split('-')[:3])
+            logging.log(21, 'Current Merging Label: %s', label)
+            
+            ## Support for multiple processes
+            lockFile = os.path.join(mergedFolder, os.path.basename(member[1]).replace('.hdf5', '.lock'))
+            
+            if os.path.exists(member[1]) and not os.path.exists(lockFile):
+                logging.log(21, '%s already exists, skipping', member[1])
+                continue
+            if os.path.exists(lockFile):
+                logging.log(21, 'Someone is working on %s, skipping', member[1])
+                continue
+            
+            logging.log(21, 'Create %s to ensure process safety ...', lockFile)
+            lock = open(lockFile, 'w')
+            lock.close()
+            logging.log(21, '%s will be removed if the program terminates normally.', lockFile)
+            
+            atexit.register(cleanFile, lockFile)
+            
+            logging.log(21, 'Merging ...')
+            
             # Initialize a Genome Object
             dataLocation, genomeFolder, genome_db = initialize(args)
             genome_db.setEnzyme(member[-1])
             fragments = HiCdataset(filename = member[1], genome = genome_db, mode = 'w')
             fragments.merge(member[0])
+            
+            os.remove(lockFile)
+            logging.log(21, 'Done!')
+            
     logging.log(21, 'Done!')
 
 def filtering(args, commands):
