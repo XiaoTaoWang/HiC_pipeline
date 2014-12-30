@@ -440,17 +440,23 @@ def mapping(args, commands):
     if Format == 'sra':
         Set = set([os.path.basename(i)[:-4] for i in sraNames])
         for i in sraNames:
-            calLength = ['fastq-dump', '-Z', i, '|', 'head', '-n', '2',
-                         '|', 'tail', '-n', '1', '|', 'wc', '-c', '>',
-                         os.path.join(lengths, os.path.basename(i)[:-4])]
-            os.system(' '.join(calLength))
+            lenDes = os.path.join(lengths, os.path.basename(i)[:-4])
+            # Safer communication between processes
+            if not os.path.exists(lenDes):
+                calLength = ['fastq-dump', '-Z', i, '|', 'head', '-n', '2',
+                             '|', 'tail', '-n', '1', '|', 'wc', '-c', '>',
+                             lenDes]
+                os.system(' '.join(calLength))
     else:
         Set = set([os.path.basename(i)[:-8] for i in sraNames])
         for i in Set:
-            leftSide = os.path.join(fastqDir, i + '_1.fastq')
-            calLength = ['head', '-n', '2', leftSide, '|', 'tail', '-n', '1',
-                         'wc', '-c', '>', os.path.join(lengths, i)]
-            os.system(' '.join(calLength))
+            lenDes = os.path.join(lengths, i)
+            # Safer communication between processes
+            if not os.path.exists(lenDes):
+                leftSide = os.path.join(fastqDir, i + '_1.fastq')
+                calLength = ['head', '-n', '2', leftSide, '|', 'tail', '-n', '1',
+                             'wc', '-c', '>', lenDes]
+                os.system(' '.join(calLength))
     
     ## Output Folders
     bamFolder = 'bams-%s' % args.genomeName
