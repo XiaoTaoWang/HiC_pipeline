@@ -619,9 +619,9 @@ def merge(args, commands):
             os.remove(delFile)
     logging.log(21, 'Done!')
     
-    logging.log(21, 'Merging data of the same cell line using the same restriction enzyme ...')
     if args.level == 2:
         ## The Second level, cell lines, optional
+        logging.log(21, 'Merging data of the same cell line using the same restriction enzyme ...')
         queueL2 = []
         for cell in cellLines:
             filenames = [os.path.join(mergedFolder, '%s-%s-%s-merged.hdf5' % i) for i in bioReps
