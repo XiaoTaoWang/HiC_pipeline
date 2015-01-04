@@ -3,12 +3,13 @@
 # Author: XiaoTao Wang
 # Organization: HuaZhong Agricultural University
 
-from hiclib.fragmentHiC import HiCdataset
 import numpy as np
+from hiclib.fragmentHiC import HiCdataset
+from mirnylib.numutils import fasterBooleanIndexing
 
 # A customized HiCdataset class, which makes filtering processes more flexible
 class cHiCdataset(HiCdataset):
-    # Only parseInputData is changed
+    
     def parseInputData(self, dictLike, commandArgs, **kwargs):
         '''
         Added Parameters
@@ -88,3 +89,50 @@ class cHiCdataset(HiCdataset):
         self.metadata["300_ValidPairs"] = self.N
         
         self.maskFilter(mask)
+    
+    def maskFilter(self, mask):
+        """
+        Use numpy's internal mask mechanism when OverflowError occurs.
+
+        Parameters
+        ----------
+        mask : array of bools
+            Indexes of reads to keep
+            
+        """
+        # Uses 16 bytes per read
+        length = 0
+        ms = mask.sum()
+        
+        assert mask.dtype == np.bool
+        
+        self.N = ms
+        self.DSnum = self.N
+        
+        if hasattr(self, "ufragments"):
+            del self.ufragmentlen, self.ufragments
+            
+        for name in self.vectors:
+            data = self._getData(name)
+            ld = len(data)
+            if length == 0:
+                length = ld
+            else:
+                if ld != length:
+                    self.delete()
+            try:
+                # see mirnylib.numutils
+                newdata = fasterBooleanIndexing(data, mask, outLen = ms,
+                                                bounds = False)
+            except OverflowError:
+                newdata = data[mask]
+                
+            del data
+            
+            self._setData(name, newdata)
+            
+            del newdata
+            
+        del mask
+        
+        self.rebuildFragments()
