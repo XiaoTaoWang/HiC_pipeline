@@ -3,9 +3,12 @@
 # Author: XiaoTao Wang
 # Organization: HuaZhong Agricultural University
 
+import logging
 import numpy as np
 from hiclib.fragmentHiC import HiCdataset
 from mirnylib.numutils import fasterBooleanIndexing
+
+log = logging.getLogger(__name__)
 
 # A customized HiCdataset class, which makes filtering processes more flexible
 class cHiCdataset(HiCdataset):
@@ -63,6 +66,7 @@ class cHiCdataset(HiCdataset):
             constants={"maximumMoleculeLength": self.maximumMoleculeLength, "numexpr": numexpr})
         
         if commandArgs.sameFragments:
+            log.log(21, 'Removing read pairs located in the same restriction fragments ...')            
             mask *= (-sameFragMask)
             noSameFrag = mask.sum()
             self.metadata["210_sameFragmentReadsRemoved"] = sameFrag_N
@@ -72,12 +76,18 @@ class cHiCdataset(HiCdataset):
             mask *= (readsMolecules == False)
             extraDE = mask.sum()
             self.metadata["220_extraDandlingEndsRemoved"] = -extraDE + noSameFrag
+            log.log(21, 'Done!')
             
         if commandArgs.RandomBreaks:
+            log.log(21, 'Determined Hi-C library size: ' + str(library_L))
+            log.log(21, 'Removing "Random Breaks" ...')
+            
             ini_N = mask.sum()
             mask *= ((self.dists1 + self.dists2) <= library_L)
             rb_N = ini_N - mask.sum()
             self.metadata["330_removeRandomBreaks"] = rb_N
+            
+            logging.log(21, 'Done!')
         
         if mask.sum() == 0:
             raise Exception(
