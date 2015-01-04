@@ -51,7 +51,6 @@ add the path to the extracted directory to *PATH*.
 
 Use easy_install::
 
-    $ conda install setuptools
     $ easy_install runHiC
 
 Design Concepts
