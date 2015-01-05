@@ -6,7 +6,6 @@
 import logging
 import numpy as np
 from hiclib.fragmentHiC import HiCdataset
-from mirnylib.numutils import fasterBooleanIndexing
 
 log = logging.getLogger(__name__)
 
@@ -102,7 +101,7 @@ class cHiCdataset(HiCdataset):
     
     def maskFilter(self, mask):
         """
-        Use numpy's internal mask mechanism when OverflowError occurs.
+        Use numpy's internal mask mechanism instead.
 
         Parameters
         ----------
@@ -130,12 +129,8 @@ class cHiCdataset(HiCdataset):
             else:
                 if ld != length:
                     self.delete()
-            try:
-                # see mirnylib.numutils
-                newdata = fasterBooleanIndexing(data, mask, outLen = ms,
-                                                bounds = False)
-            except OverflowError:
-                newdata = data[mask]
+            
+            newdata = data[mask]
                 
             del data
             
