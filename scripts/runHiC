@@ -650,21 +650,13 @@ def filtering(args, commands):
         fragments.parseInputData(filename, commandArgs = args)
         ## Additional Filtering
         if args.duplicates:
-            logging.log(21, 'Filtering duplicates in DS reads ...')
             fragments.filterDuplicates()
-            logging.log(21, 'Done!')
         if args.startNearRsite:
-            logging.log(21, 'Filtering reads starting within 5 bp near the restriction site ...')
             fragments.filterRsiteStart(offset=5)
-            logging.log(21, 'Done!')
         if args.extremeFragments:
-            logging.log(21, 'Removing too large and too small fragments ...')
             fragments.filterLarge()
-            logging.log(21, 'Done!')
         if args.cistotrans:
-            logging.log(21, 'Removing the top 0.5% fragments with the greatest number of reads ...')
             fragments.filterExtreme(cutH=0.005, cutL=0)
-            logging.log(21, 'Done!')
         
     ## Validity of arguments
     Sources = os.path.abspath(os.path.expanduser(args.mergedDir))
