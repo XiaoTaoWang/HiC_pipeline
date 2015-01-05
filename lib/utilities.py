@@ -22,7 +22,11 @@ class cHiCdataset(HiCdataset):
         ## Necessary Modules
         import numexpr
         # Simply load merged data
+        log.log(21, 'Loading data ...')
         self.merge([dictLike])
+        log.log(21, 'Done!')
+        
+        log.log(21, 'Determining Hi-C library size from dangling ends ...')
         # Total Reads
         self.trackLen = len(self.chrms1)
         
@@ -57,6 +61,8 @@ class cHiCdataset(HiCdataset):
         library_L = int(np.ceil((np.percentile(Dangling_L, 95))))
         self.maximumMoleculeLength = library_L
         
+        log.log(21, str(library_L))
+        
         readsMolecules = self.evaluate(
             "a = numexpr.evaluate('(chrms1 == chrms2) & (strands1 != strands2) &  (dist >=0) &"
             " (dist <= maximumMoleculeLength)')",
@@ -78,7 +84,6 @@ class cHiCdataset(HiCdataset):
             log.log(21, 'Done!')
             
         if commandArgs.RandomBreaks:
-            log.log(21, 'Determined Hi-C library size: ' + str(library_L))
             log.log(21, 'Removing "Random Breaks" ...')
             
             ini_N = mask.sum()
