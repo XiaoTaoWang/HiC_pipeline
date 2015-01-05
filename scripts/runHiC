@@ -683,14 +683,12 @@ def filtering(args, commands):
             for f in queue:
                 logging.log(21, 'Current file: %s', f)
                 core(f, args)
-                logging.log(21, 'Done!')
     else:
         if not Sources.endswith('-merged.hdf5'):
             logging.error('Invalid file name: suffix "-merged.hdf5" can not be found!')
             sys.exit(1)
         logging.log(21, 'Perform filtering process on %s ...', Sources)
         core(Sources, args)
-        logging.log(21, 'Done!')
 
 def binning(args, commands):
     # Necessary Modules
