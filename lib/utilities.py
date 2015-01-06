@@ -346,7 +346,7 @@ class cHiCdataset(HiCdataset):
                 label += cur2
                 maxLabel = self.genome.chrmLensBin[chrom] * \
                            self.genome.chrmLensBin[chrom2]
-                counts = np.bincount(label, minlength=maxLabel)
+                counts = np.bincount(label, minlength = maxLabel)
                 assert len(counts) == maxLabel
                 mymap = counts.reshape((self.genome.chrmLensBin[chrom], -1))
                 if chrom == chrom2:
@@ -360,7 +360,7 @@ class cHiCdataset(HiCdataset):
         return
     
     def saveHiResHeatmapWithOverlaps(self, filename, resolution = 10000,
-                                     countDiagonalReads = "Twice",
+                                     countDiagonalReads = "Once",
                                      maxBinSpawn=10, chromosomes = "all"):
         """
         Creates within-chromosome heatmaps at very high resolution,
@@ -413,7 +413,6 @@ class cHiCdataset(HiCdataset):
 
 
             code = """
-            #line 1045 "fragmentHiC.py"
             double vector1[100];
             double vector2[100];
 
@@ -470,7 +469,8 @@ class cHiCdataset(HiCdataset):
                         }
                     }
                 }
-        """
+                
+            """
             weave.inline(code,
                          ['low1', "high1", "low2", "high2",
                            "N", "heatmap", "maxBinSpawn",
@@ -486,6 +486,7 @@ class cHiCdataset(HiCdataset):
             for i in xrange(len(heatmap)):
                 heatmap[i, i:] += heatmap[i:, i]
                 heatmap[i:, i] = heatmap[i, i:]
+                
             if countDiagonalReads.lower() == "once":
                 diag = np.diag(heatmap).copy()
                 fillDiagonal(heatmap, diag / 2)
