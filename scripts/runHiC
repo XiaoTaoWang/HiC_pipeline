@@ -828,13 +828,10 @@ def correcting(args, commands):
         # Raw Data
         raw = h5dict.h5dict(f, mode = 'r')
         Keys = raw.keys()
+        resolution = int(raw['resolution'])
         if 'heatmap' in Keys: # Low resolution case
-            resolution = int(raw['resolution'])
             Lcore(f, resolution)
         else: # High resolution case
-            rlabel = os.path.basename(f).split('-')[-1].replace('.hm', '')
-            ends = rlabel[-1]
-            resolution = (int(rlabel[:-1]) * 1000) if (ends == 'K') else (int(rlabel[:-1]) * 1000000)
             try:
                 Hcore(f, resolution)
             except ValueError:
