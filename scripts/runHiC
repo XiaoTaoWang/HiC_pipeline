@@ -787,7 +787,7 @@ def correcting(args, commands):
         raw = h5dict.h5dict(f, mode = 'r')
         ## Perform ICE for each chsomosome
         keys = raw.keys()
-        cisKeys = [i for i in keys if len(set(i.split()))==1]
+        cisKeys = [i for i in keys if ((len(set(i.split()))==1) and (i != 'resolution'))]
         for i in cisKeys:
             # Extract Cis HeatMap
             rawHeatMap = raw[i]
