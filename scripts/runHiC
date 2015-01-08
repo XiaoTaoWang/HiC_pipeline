@@ -758,9 +758,11 @@ def correcting(args, commands):
         # Output file
         cFile = os.path.join(cFolder, os.path.basename(filename).replace('.hm', '_c.hm'))
         # Create a binnedData object, load the data.
+        logging.log(21, 'Loading Contact Matrix of the Whole Genome ...')
         BD = binnedData.binnedData(resolution, genome_db)
         name = '-'.join(os.path.basename(filename).split('-')[:3])
         BD.simpleLoad(filename, name)
+        logging.log(21, 'Done!')
         ## Perform ICE
         # Remove the contacts between loci located within the same bin.
         BD.removeDiagonal()
@@ -772,9 +774,13 @@ def correcting(args, commands):
         # Truncate top 0.05% of inter-chromosomal counts (possibly, PCR blowouts).
         BD.truncTrans(high = 0.0005)
         # Perform iterative correction.
+        logging.log(21, 'Perform ICE ...')
         BD.iterativeCorrectWithoutSS()
+        logging.log(21, 'Done!')
         # Save the iteratively corrected heatmap.
+        logging.log(21, 'Exporting Corrected Matrix ...')
         BD.export(name, cFile)
+        logging.log(21, 'Done!')
 
     def Hcore(filename, resolution):
         # Necessary Modules
@@ -784,16 +790,23 @@ def correcting(args, commands):
         # Create a hdf5 file manually
         mydict = h5dict.h5dict(cFile)
         # Raw HeatMap
-        raw = h5dict.h5dict(f, mode = 'r')
+        raw = h5dict.h5dict(filename, mode = 'r')
         ## Perform ICE for each chsomosome
         keys = raw.keys()
         cisKeys = [i for i in keys if ((len(set(i.split()))==1) and (i != 'resolution'))]
         for i in cisKeys:
+            logging.log(21, 'Current Chromosome ID: %s', i.split()[0])
+            logging.log(21, 'Loading Cis-HeatMap: "%s" from %s ...', i, filename)
             # Extract Cis HeatMap
             rawHeatMap = raw[i]
+            logging.log(21, 'Done!')
             # Only work for cis-heatmaps
+            logging.log(21, 'Correcting ...')
             cHeatMap, bias = completeIC(rawHeatMap, returnBias=True)
+            logging.log(21, 'Done!')
+            logging.log(21, 'Writing Corrected Matrix to %s ...', cFile)
             mydict[i] = cHeatMap
+            logging.log(21, 'Done!')
         mydict['resolution'] = resolution
         
     ## Validity of arguments
