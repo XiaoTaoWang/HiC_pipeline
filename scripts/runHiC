@@ -851,8 +851,6 @@ def correcting(args, commands):
                 logging.warning('Iterative correction will remove more than a half of the matrix')
                 logging.warning('Skipping ...')
                 continue
-    
-    logging.log(21, 'Done!')
             
 def pileup(args, commands):
     """
