@@ -579,7 +579,7 @@ def toSparse(source, idx2label, template, Format = 'NPZ'):
                 finally:
                     if fid:
                         fid.close()
-            log.log('Done!')
+            log.log(21, 'Done!')
     
     os.remove(tmpfile)
     
