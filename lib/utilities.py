@@ -506,7 +506,7 @@ class cHiCdataset(HiCdataset):
         tosave['resolution'] = resolution
 
 # Convert Matrix to Sparse Matrix
-def toSparse(source, idx2label, template, Format = 'HDF5'):
+def toSparse(source, idx2label, template, Format = 'NPZ'):
     """
     Convert intra-chromosomal contact matrices to sparse ones.
     
@@ -534,7 +534,7 @@ def toSparse(source, idx2label, template, Format = 'HDF5'):
     
     ## Create a Zip file in NPZ case
     if Format.upper() == 'NPZ':
-        output = source.replace('.hm', '-sparse')
+        output = source.replace('.hm', '-sparse.npz')
         Zip = zipfile.ZipFile(output, mode = 'w', allowZip64 = True)
         fd, tmpfile = tempfile.mkstemp(suffix = '-numpy.npy')
         os.close(fd)
@@ -543,8 +543,16 @@ def toSparse(source, idx2label, template, Format = 'HDF5'):
         output = source.replace('.hm', '-sparse.hm')
         odict = h5dict(output)
     
+    log.log(21, 'Sparse Matrices will be saved to %s', output)
+    log.log(21, 'Only intra-chromosomal matrices will be taken into account')
+    log.log(21, 'Coverting ...')
+    
     for i in lib:
-        if i != 'resolution':
+        if (i != 'resolution') and (len(set(i.split())) == 1):
+            # Used for the dict-like key
+            key = template + idx2label[int(i.split()[0])]
+            
+            log.log(21, 'Chromosome %s ...', key)
             # 2D-Matrix
             H = lib[i]
             # Sparse Matrix in Memory
@@ -554,8 +562,6 @@ def toSparse(source, idx2label, template, Format = 'HDF5'):
             sparse['bin1'] = x
             sparse['bin2'] = y
             sparse['IF'] = values
-            # Used for the dict-like key
-            key = template + idx2label[int(i.split()[0])]
             
             if Format.upper() == 'HDF5':
                 # Really Simple, just like a dictionary
@@ -573,6 +579,7 @@ def toSparse(source, idx2label, template, Format = 'HDF5'):
                 finally:
                     if fid:
                         fid.close()
+            log.log('Done!')
     
     os.remove(tmpfile)
     
