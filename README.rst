@@ -11,7 +11,7 @@ Links
 
 Installation
 -------------
-- Install required python packages:
+**Install required python packages**:
 
 We recommend using `conda <http://conda.pydata.org/miniconda.html>`_, an excellent Python package and
 environment manager.
@@ -31,7 +31,7 @@ and run install_linux.py contained in the unpacked folder, respectively.
 
 .. note:: According to our experiences, do not install mirnylib and hiclib through pip!
 
-- Non-python library (or software) dependencies:
+**Non-python library (or software) dependencies**:
 
 Install samtools:
 
@@ -40,14 +40,14 @@ directory::
 
     $ make
 
-Make **samtools** accessible to the system. (Via environment variable *PATH*)
+Make *samtools* accessible to the system. (Via environment variable *PATH*)
 
 Install Bowtie2:
 
 Download the `source code <http://sourceforge.net/projects/bowtie-bio/files/bowtie2/>`_, unzip it and
 add the path to the extracted directory to *PATH*.
 
-- Install runHiC:
+**Install runHiC**:
 
 Use easy_install::
 
@@ -60,7 +60,7 @@ runHiC is able to perform the entire analysis from sequencing data to corrected 
 runHiC separate the whole process into 5 stages and you can begin and end at any stage using certain
 subcommands.
 
-All 6 subcommands are listed below:
+7 subcommands are available:
 
 - *mapping*: Iteratively map pair-end sequencing reads to a supplied genome
 - *merge*: Merge alignment results corresponding to the same experiment together
@@ -68,23 +68,24 @@ All 6 subcommands are listed below:
 - *binning*: Bin filtered reads at certain resolution (original Heat Maps are generated)
 - *correcting*: Perform iterative corrections on the original Heat Maps
 - *pileup*: Streamline all 5 subcommands above from *mapping* to *correcting*.
+- *tosparse*: Convert intra-chromosomal contact matrices to sparse ones.
 
 Preparation
 -----------
 Before running this program, you need to carry out several other things to improve performance:
 
-- Re-organize your directory arrangements:
+**Re-organize your directory arrangements**
 
 Although not required, we recommend creating a data root directory separate from the working
 directory.
 
-- Place genome and sequencing data under the data root directory
+**Place genome and sequencing data under the data root directory**
 
 Genome sequences should be stored chromosome by chromosome in FASTA format under a subfolder named
 after corresponding genome name. Sequencing read-pairs should be stored in SRA or FASTQ format under
 another subfolder (any valid name).
 
-- Construct a metadata file describing your sequencing data under the working directory
+**Construct a metadata file describing your sequencing data under the working directory**
 
 Four columns are required: prefix of SRA file name, cell line name, biological replicate label, and
 restriction enzyme name. An example file is distributed along with this software, please check it.
