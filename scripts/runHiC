@@ -674,7 +674,7 @@ def filtering(args, commands):
         if args.cistotrans:
             fragments.filterExtreme(cutH=0.005, cutL=0)
         
-    Sources = [os.path.abspath(os.path.expanduser(i)) for i in args.mergedFolder]
+    Sources = [os.path.abspath(os.path.expanduser(i)) for i in args.mergedDir]
     
     # Output Folder
     filteredFolder = 'filtered-%s' % args.genomeName

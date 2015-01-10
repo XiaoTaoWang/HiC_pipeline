@@ -526,7 +526,7 @@ def toSparse(source, idx2label, template, Format = 'NPZ'):
         Output format. (Default: HDF5)
     
     """
-    lib = h5dict(source)
+    lib = h5dict(source, mode = 'r')
     
     ## Uniform numpy-structured-array format
     itype = np.dtype({'names':['bin1', 'bin2', 'IF'],
