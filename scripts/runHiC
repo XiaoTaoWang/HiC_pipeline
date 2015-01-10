@@ -233,7 +233,7 @@ def getargs():
     
      ## Parse the command-line arguments
     commands = sys.argv[1:]
-    if ((not commands) or ((commands[0] in ['mapping', 'merge', 'filtering', 'binning','correcting', 'pileup'])
+    if ((not commands) or ((commands[0] in ['mapping', 'merge', 'filtering', 'binning','correcting', 'pileup', 'tosparse'])
         and len(commands) == 1)):
         commands.append('-h')
     args = parser.parse_args(commands)
@@ -311,6 +311,9 @@ def run():
                             '# Remove cistotrans = True',
                             '# HeatMap Mode = %s' % args.mode,
                             '# HeatMap Resolution = %s' % args.resolution])
+        if commands[0] == 'tosparse':
+            arglist.extend(['# Source HeatMap = %s' % args.HeatMap,
+                            '# Output Format = %s' % args.Format])
         
         argtxt = '\n'.join(arglist)
         logging.log(21, '\n' + argtxt)
