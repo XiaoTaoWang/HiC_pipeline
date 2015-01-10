@@ -793,7 +793,7 @@ def correcting(args, commands):
         raw = h5dict.h5dict(filename, mode = 'r')
         ## Perform ICE for each chsomosome
         keys = raw.keys()
-        cisKeys = [i for i in keys if ((len(set(i.split()))==1) and (i != 'resolution'))]
+        cisKeys = [i for i in keys if ((len(set(i.split())) == 1) and (i != 'resolution'))]
         for i in cisKeys:
             logging.log(21, 'Current Chromosome ID: %s', i.split()[0])
             logging.log(21, 'Loading Cis-HeatMap: "%s" from %s ...', i, filename)
@@ -802,7 +802,7 @@ def correcting(args, commands):
             logging.log(21, 'Done!')
             # Only work for cis-heatmaps
             logging.log(21, 'Correcting ...')
-            cHeatMap, bias = completeIC(rawHeatMap, returnBias=True)
+            cHeatMap, bias = completeIC(rawHeatMap, returnBias = True)
             logging.log(21, 'Done!')
             logging.log(21, 'Writing Corrected Matrix to %s ...', cFile)
             mydict[i] = cHeatMap

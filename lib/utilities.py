@@ -3,8 +3,9 @@
 # Author: XiaoTao Wang
 # Organization: HuaZhong Agricultural University
 
-import logging
+import logging, zipfile, tempfile, os
 import numpy as np
+from numpy.lib.format import write_array
 from hiclib.fragmentHiC import HiCdataset
 from mirnylib.numutils import uniqueIndex, fillDiagonal
 from mirnylib.h5dict import h5dict
@@ -15,12 +16,12 @@ log = logging.getLogger(__name__)
 class cHiCdataset(HiCdataset):
     
     def parseInputData(self, dictLike, commandArgs, **kwargs):
-        '''
+        """
         Added Parameters
         ----------------
         commandArgs : NameSpace
             A NameSpace object defined by argparse.            
-        '''
+        """
         ## Necessary Modules
         import numexpr
         
@@ -503,3 +504,78 @@ class cHiCdataset(HiCdataset):
             gc.collect()
         
         tosave['resolution'] = resolution
+
+# Convert Matrix to Sparse Matrix
+def toSparse(source, idx2label, template, Format = 'HDF5'):
+    """
+    Convert intra-chromosomal contact matrices to sparse ones.
+    
+    Parameters
+    ----------
+    source : str
+         Hdf5 file name.
+    
+    idx2label : dict
+        A dictionary for conversion between zero-based indices and
+        string chromosome labels.
+    
+    template : str
+        Template for chromosome labels
+    
+    Format : {'NPZ', 'HDF5'}
+        Output format. (Default: HDF5)
+    
+    """
+    lib = h5dict(source)
+    
+    ## Uniform numpy-structured-array format
+    itype = np.dtype({'names':['bin1', 'bin2', 'IF'],
+                          'formats':[np.int, np.int, np.float]})
+    
+    ## Create a Zip file in NPZ case
+    if Format.upper() == 'NPZ':
+        output = source.replace('.hm', '-sparse')
+        Zip = zipfile.ZipFile(output, mode = 'w', allowZip64 = True)
+        fd, tmpfile = tempfile.mkstemp(suffix = '-numpy.npy')
+        os.close(fd)
+    
+    if Format.upper() == 'HDF5':
+        output = source.replace('.hm', '-sparse.hm')
+        odict = h5dict(output)
+    
+    for i in lib:
+        if i != 'resolution':
+            # 2D-Matrix
+            H = lib[i]
+            # Sparse Matrix in Memory
+            x, y = np.nonzero(H)
+            values = H[x, y]
+            sparse = np.zeros(values.size, dtype = itype)
+            sparse['bin1'] = x
+            sparse['bin2'] = y
+            sparse['IF'] = values
+            # Used for the dict-like key
+            key = template + idx2label[int(i.split()[0])]
+            
+            if Format.upper() == 'HDF5':
+                # Really Simple, just like a dictionary
+                odict[key] = sparse
+            if Format.upper() == 'NPZ':
+                # Much more complicated, but we need make a compatible
+                # file interface for other API
+                fname = key + '.npy'
+                fid = open(tmpfile, 'wb')
+                try:
+                    write_array(fid, np.asanyarray(sparse))
+                    fid.close()
+                    fid = None
+                    Zip.write(tmpfile, arcname = fname)
+                finally:
+                    if fid:
+                        fid.close()
+    
+    os.remove(tmpfile)
+    
+    Zip.close()
+        
+        
