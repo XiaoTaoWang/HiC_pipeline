@@ -815,6 +815,9 @@ def correcting(args, commands):
         cisKeys = [i for i in keys if ((len(set(i.split())) == 1) and (i != 'resolution'))]
         for i in cisKeys:
             logging.log(21, 'Current Chromosome ID: %s', i.split()[0])
+            if i in mydict.keys():
+                logging.log(21, '"%s" is already there, skipping ...', i)
+                continue
             logging.log(21, 'Loading Cis-HeatMap: "%s" from %s ...', i, filename)
             # Extract Cis HeatMap
             rawHeatMap = raw[i]
