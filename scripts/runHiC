@@ -881,8 +881,6 @@ def tosparse(args, commands):
     # Initialization
     dataLocation, genomeFolder, genome_db = initialize(args)
     
-    template = '.'.join(args.template.split('.')[:-1]).replace('%s', '')
-    
     Sources = [os.path.abspath(os.path.expanduser(i)) for i in args.HeatMap]
     
     for S in Sources:
@@ -910,8 +908,7 @@ def tosparse(args, commands):
                 logging.log(21, '%s is a whole-genome HeatMap', f)
                 logging.log(21, 'Skipping ...')
             else:
-                toSparse(source = f, idx2label = genome_db.idx2label, template = template,
-                         Format = args.Format)
+                toSparse(source = f, idx2label = genome_db.idx2label, Format = args.Format)
     
             
 def pileup(args, commands):

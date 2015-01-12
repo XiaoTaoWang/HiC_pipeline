@@ -506,7 +506,7 @@ class cHiCdataset(HiCdataset):
         tosave['resolution'] = resolution
 
 # Convert Matrix to Sparse Matrix
-def toSparse(source, idx2label, template, Format = 'NPZ'):
+def toSparse(source, idx2label, Format = 'NPZ'):
     """
     Convert intra-chromosomal contact matrices to sparse ones.
     
@@ -518,9 +518,6 @@ def toSparse(source, idx2label, template, Format = 'NPZ'):
     idx2label : dict
         A dictionary for conversion between zero-based indices and
         string chromosome labels.
-    
-    template : str
-        Template for chromosome labels
     
     Format : {'NPZ', 'HDF5'}
         Output format. (Default: HDF5)
@@ -550,7 +547,7 @@ def toSparse(source, idx2label, template, Format = 'NPZ'):
     for i in lib:
         if (i != 'resolution') and (len(set(i.split())) == 1):
             # Used for the dict-like key
-            key = template + idx2label[int(i.split()[0])]
+            key = idx2label[int(i.split()[0])]
             
             log.log(21, 'Chromosome %s ...', key)
             # 2D-Matrix
