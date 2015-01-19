@@ -552,9 +552,12 @@ def toSparse(source, idx2label, Format = 'NPZ'):
             log.log(21, 'Chromosome %s ...', key)
             # 2D-Matrix
             H = lib[i]
+            
+            # Triangle Array
+            Triu = np.triu(H)
             # Sparse Matrix in Memory
-            x, y = np.nonzero(H)
-            values = H[x, y]
+            x, y = np.nonzero(Triu)
+            values = Triu[x, y]
             sparse = np.zeros(values.size, dtype = itype)
             sparse['bin1'] = x
             sparse['bin2'] = y
