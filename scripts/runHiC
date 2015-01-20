@@ -178,6 +178,9 @@ def getargs():
                           help = '''Memory usage: withOverlaps > byChromosome > wholeGenome.
                           Resolution capacity (take human genome for example):
                           withOverlaps (10kb) > byChromosome (40kb) > wholeGenome (200kb).''')
+    binReads.add_argument('--includeTrans', action = 'store_true',
+                          help = '''Whether to include inter-chromosomal interactions in "byChromosome"
+                          mode.''')
     binReads.add_argument('-R', '--resolution', type = int, default = 200000,
                           help = 'Resolution of a heatmap. Unit: bp')
     binReads.set_defaults(func = binning)
@@ -757,7 +760,7 @@ def binning(args, commands):
             if args.mode == 'wholeGenome':
                 fragments.saveHeatmap(hFile, resolution = args.resolution)
             if args.mode == 'byChromosome':
-                fragments.saveByChromosomeHeatmap(hFile, resolution = args.resolution)
+                fragments.saveByChromosomeHeatmap(hFile, resolution = args.resolution, includeTrans = args.includeTrans)
             if args.mode == 'withOverlaps':
                 fragments.saveHiResHeatmapWithOverlaps(hFile, resolution = args.resolution)
     
