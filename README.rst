@@ -57,17 +57,16 @@ Design Concepts
 ---------------
 runHiC is able to perform the entire analysis from sequencing data to corrected HeatMaps.
 
-runHiC separate the whole process into 5 stages and you can begin and end at any stage using certain
+runHiC separate the whole process into 4 stages and you can begin and end at any stage using certain
 subcommands.
 
 7 subcommands are available:
 
 - *mapping*: Iteratively map pair-end sequencing reads to a supplied genome
-- *merge*: Merge alignment results corresponding to the same experiment together
 - *filtering*: Remove noises at the level of aligned read pairs and restriction fragments
 - *binning*: Bin filtered reads at certain resolution (original Heat Maps are generated)
 - *correcting*: Perform iterative corrections on the original Heat Maps
-- *pileup*: Streamline all 5 subcommands above from *mapping* to *correcting*.
+- *pileup*: Streamline all 4 subcommands above from *mapping* to *correcting*.
 - *tosparse*: Convert intra-chromosomal contact matrices to sparse ones.
 
 Preparation
