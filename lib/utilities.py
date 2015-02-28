@@ -5,6 +5,7 @@
 
 import logging, zipfile, tempfile, os
 import numpy as np
+from mirnylib.genome import Genome
 from numpy.lib.format import write_array
 from hiclib.fragmentHiC import HiCdataset
 from mirnylib.numutils import uniqueIndex, fillDiagonal
@@ -25,9 +26,35 @@ class cHiCdataset(HiCdataset):
         ## Necessary Modules
         import numexpr
         
-        # Simply load merged data
+        if not os.path.exists(dictLike):
+            raise IOError('File not found: %s' % dictLike)
+            
         log.log(21, 'Loading data ...')
-        self.merge([dictLike])
+        
+        dictLike = h5dict(dictLike, 'r')
+        self.chrms1 = dictLike['chrms1']
+        self.chrms2 = dictLike['chrms2']
+        self.cuts1 = dictLike['cuts1']
+        self.cuts2 = dictLike['cuts2']
+        self.strands1 = dictLike['strands1']
+        self.strands2 = dictLike['strands2']
+        self.dists1 = np.abs(dictLike['rsites1'] - self.cuts1)
+        self.dists2 = np.abs(dictLike['rsites2'] - self.cuts2)
+        self.mids1 = (dictLike['uprsites1'] + dictLike['downrsites1']) / 2
+        self.mids2 = (dictLike['uprsites2'] + dictLike['downrsites2']) / 2
+        self.fraglens1 = np.abs(
+            (dictLike['uprsites1'] - dictLike['downrsites1']))
+        self.fraglens2 = np.abs(
+            (dictLike['uprsites2'] - dictLike['downrsites2']))
+        self.fragids1 = self.mids1 + np.array(self.chrms1,
+                                              dtype='int64') * self.fragIDmult
+        self.fragids2 = self.mids2 + np.array(self.chrms2,
+                                              dtype='int64') * self.fragIDmult
+        distances = np.abs(self.mids1 - self.mids2)
+        distances[self.chrms1 != self.chrms2] = -1
+        self.distances = distances  # Distances between restriction fragments
+        del distances
+        
         log.log(21, 'Done!')
         
         log.log(21, 'Basic statistics on your data:')
@@ -38,6 +65,16 @@ class cHiCdataset(HiCdataset):
         log.log(21, self.trackLen)
         
         self.metadata["100_TotalReads"] = self.trackLen
+        
+        try:
+            dictLike['misc']['genome']['idx2label']
+            self.updateGenome(self.genome,
+                              oldGenome=dictLike["misc"]["genome"]["idx2label"],
+                              putMetadata=True)
+        except KeyError:
+            assumedGenome = Genome(self.genome.genomePath)
+            self.updateGenome(self.genome, oldGenome=assumedGenome, putMetadata=True)
+        
         self.metadata["152_removedUnusedChromosomes"] = self.trackLen - self.N
         self.metadata["150_ReadsWithoutUnusedChromosomes"] = self.N
         
