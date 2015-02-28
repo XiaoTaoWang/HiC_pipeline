@@ -34,7 +34,7 @@ def getargs():
                                     formatter_class = argparse.ArgumentDefaultsHelpFormatter)
     
     # Version
-    parser.add_argument('-v', '--version', action = 'version', version = '%(prog)s 0.3.4',
+    parser.add_argument('-v', '--version', action = 'version', version = '%(prog)s 0.3.5',
                         help = 'Print version number and exit')
     
     ## One for all
@@ -302,7 +302,7 @@ def run():
                             '# HeatMap Mode = %s' % args.mode,
                             '# HeatMap Resolution = %s' % args.resolution])
         if commands[0] == 'tosparse':
-            arglist.extend(['# Source HeatMap = %s' % args.HeatMap,
+            arglist.extend(['# Source HeatMap = %s' % args.cHeatMap,
                             '# Output Format = %s' % args.Format])
         
         argtxt = '\n'.join(arglist)
@@ -870,6 +870,10 @@ def pileup(args, commands):
     filtering(args, commands)
     binning(args, commands)
     correcting(args, commands)
+    if args.mode == 'wholeGenome':
+        logging.error('Only by-chromosome HeatMaps can be converted to sparse ones!')
+        logging.error('Exit ...')
+        sys.exit(1)
     tosparse(args, commands)
     
 
