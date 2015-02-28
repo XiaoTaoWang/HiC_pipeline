@@ -213,12 +213,12 @@ def getargs():
                                       command for Hi-C data processing.''',
                                       formatter_class = argparse.ArgumentDefaultsHelpFormatter,
                                       add_help = False)
-    streamline.add_argument('-M', '--mode', default = 'wholeGenome',
+    streamline.add_argument('-M', '--mode', default = 'byChromosome',
                             choices = ['wholeGenome', 'byChromosome', 'withOverlaps'],
                             help = '''Memory usage: withOverlaps > byChromosome > wholeGenome.
                             Resolution capacity (take human genome for example):
                             withOverlaps (10kb) > byChromosome (40kb) > wholeGenome (200kb).''')
-    streamline.add_argument('-R', '--resolution', type = int, default = 200000,
+    streamline.add_argument('-R', '--resolution', type = int, default = 40000,
                           help = 'Resolution of a heatmap. Unit: bp')
     streamline.set_defaults(func = pileup)
     
