@@ -61,10 +61,10 @@ class cHiCdataset(HiCdataset):
         
         log.log(21, 'Total Reads ...')
         # Total Reads
-        self.trackLen = len(self.chrms1)
-        log.log(21, self.trackLen)
+        self.N = len(self.chrms1)
+        log.log(21, self.N)
         
-        self.metadata["100_TotalReads"] = self.trackLen
+        self.metadata["100_TotalReads"] = self.N
         
         try:
             dictLike['misc']['genome']['idx2label']
@@ -74,9 +74,6 @@ class cHiCdataset(HiCdataset):
         except KeyError:
             assumedGenome = Genome(self.genome.genomePath)
             self.updateGenome(self.genome, oldGenome=assumedGenome, putMetadata=True)
-        
-        self.metadata["152_removedUnusedChromosomes"] = self.trackLen - self.N
-        self.metadata["150_ReadsWithoutUnusedChromosomes"] = self.N
         
         log.log(21, 'Total DS Reads ...')
         DSmask = (self.chrms1 >= 0) * (self.chrms2 >= 0)
