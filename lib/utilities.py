@@ -28,8 +28,6 @@ class cHiCdataset(HiCdataset):
         
         if not os.path.exists(dictLike):
             raise IOError('File not found: %s' % dictLike)
-            
-        log.log(21, 'Loading data ...')
         
         dictLike = h5dict(dictLike, 'r')
         self.chrms1 = dictLike['chrms1']
@@ -55,14 +53,8 @@ class cHiCdataset(HiCdataset):
         self.distances = distances  # Distances between restriction fragments
         del distances
         
-        log.log(21, 'Done!')
-        
-        log.log(21, 'Basic statistics on your data:')
-        
-        log.log(21, 'Total Reads ...')
         # Total Reads
         self.N = len(self.chrms1)
-        log.log(21, self.N)
         
         self.metadata["100_TotalReads"] = self.N
         
@@ -74,18 +66,14 @@ class cHiCdataset(HiCdataset):
         except KeyError:
             assumedGenome = Genome(self.genome.genomePath)
             self.updateGenome(self.genome, oldGenome=assumedGenome, putMetadata=True)
-        
-        log.log(21, 'Total DS Reads ...')
+            
         DSmask = (self.chrms1 >= 0) * (self.chrms2 >= 0)
         self.metadata["200_totalDSReads"] = DSmask.sum()
-        log.log(21, self.metadata["200_totalDSReads"])
         
         self.metadata["201_DS+SS"] = len(DSmask)
         self.metadata["202_SSReadsRemoved"] = len(DSmask) - DSmask.sum()
         
         mask = DSmask
-        
-        log.log(21, 'Determining Hi-C library size from dangling ends ...')
         
         ## Information based on restriction fragments
         sameFragMask = self.evaluate("a = (fragids1 == fragids2)",
@@ -107,8 +95,6 @@ class cHiCdataset(HiCdataset):
         library_L = int(np.ceil((np.percentile(Dangling_L, 95))))
         self.maximumMoleculeLength = library_L
         
-        log.log(21, library_L)
-        
         readsMolecules = self.evaluate(
             "a = numexpr.evaluate('(chrms1 == chrms2) & (strands1 != strands2) &  (dist >=0) &"
             " (dist <= maximumMoleculeLength)')",
@@ -117,7 +103,6 @@ class cHiCdataset(HiCdataset):
             constants={"maximumMoleculeLength": self.maximumMoleculeLength, "numexpr": numexpr})
         
         if commandArgs.sameFragments:
-            log.log(21, 'Removing read pairs located in the same restriction fragments ...')            
             mask *= (-sameFragMask)
             noSameFrag = mask.sum()
             self.metadata["210_sameFragmentReadsRemoved"] = sameFrag_N
@@ -127,19 +112,13 @@ class cHiCdataset(HiCdataset):
             mask *= (readsMolecules == False)
             extraDE = mask.sum()
             self.metadata["220_extraDandlingEndsRemoved"] = -extraDE + noSameFrag
-            log.log(21, 'Done!')
-            log.log(21, '%s reads are remained', extraDE)
             
         if commandArgs.RandomBreaks:
-            log.log(21, 'Removing "Random Breaks" ...')
             
             ini_N = extraDE
             mask *= ((self.dists1 + self.dists2) <= library_L)
             rb_N = ini_N - mask.sum()
             self.metadata["330_removeRandomBreaks"] = rb_N
-            
-            log.log(21, 'Done!')
-            log.log(21, '%s reads are remained', (ini_N - rb_N))
         
         if mask.sum() == 0:
             raise Exception(
@@ -154,7 +133,6 @@ class cHiCdataset(HiCdataset):
     
     def filterDuplicates(self):
         
-        log.log(21, 'Filtering duplicates in DS reads ...')
         Nds = self.N
 
         # an array to determine unique rows. Eats 16 bytes per DS record
@@ -180,9 +158,6 @@ class cHiCdataset(HiCdataset):
         self.metadata["320_duplicatesRemoved"] = len(stay) - Remained_N
         self.maskFilter(stay)
         assert len(self.ufragments) == uflen  # self-check
-        
-        log.log(21, 'Done!')
-        log.log(21, '%s reads are remained', Remained_N)
     
     def filterRsiteStart(self, offset = 5):
         """
@@ -195,7 +170,6 @@ class cHiCdataset(HiCdataset):
             Number of bp to exclude next to rsite, not including offset
 
         """
-        log.log(21, 'Filtering reads starting within 5 bp near the restriction site ...')
 
         expression = "mask = (np.abs(dists1 - fraglens1) >= offset) * "\
         "((np.abs(dists2 - fraglens2) >= offset) )"
@@ -207,9 +181,6 @@ class cHiCdataset(HiCdataset):
         Remained_N = mask.sum()
         self.metadata["310_startNearRsiteRemoved"] = len(mask) - Remained_N
         self.maskFilter(mask)
-        
-        log.log(21, 'Done!')
-        log.log(21, '%s reads are remained', Remained_N)
         
     def filterLarge(self, cutlarge = 100000, cutsmall = 100):
         """
@@ -224,17 +195,12 @@ class cHiCdataset(HiCdataset):
         """
         self._buildFragments()
         
-        log.log(21, 'Removing too large and too small fragments ...')
-        
         p = (self.ufragmentlen < (cutlarge)) * (self.ufragmentlen > cutsmall)
         N1 = self.N
         self.fragmentFilter(self.ufragments[p])
         N2 = self.N
         self.metadata["340_removedLargeSmallFragments"] = N1 - N2
         self._dumpMetadata()
-        
-        log.log(21, 'Done!')
-        log.log(21, '%s reads are remained', N2)
     
     def filterExtreme(self, cutH = 0.005, cutL = 0):
         """
@@ -250,8 +216,6 @@ class cHiCdataset(HiCdataset):
         """
         self._buildFragments()
         
-        log.log(21, 'Removing the top 0.5% fragments with the greatest number of reads ...')
-        
         s = self.fragmentSum()
         ss = np.sort(s)
 
@@ -261,9 +225,6 @@ class cHiCdataset(HiCdataset):
         self.fragmentFilter(self.ufragments[news])
         self.metadata["350_removedFromExtremeFragments"] = N1 - self.N
         self._dumpMetadata()
-
-        log.log(21, 'Done!')
-        log.log(21, '%s reads are remained', self.N)
     
     def maskFilter(self, mask):
         """
