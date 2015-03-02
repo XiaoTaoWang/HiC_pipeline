@@ -4,4 +4,4 @@
 # Organization: HuaZhong Agricultural University
 
 __author__ = 'XiaoTao Wang'
-__version__ = '0.3.5'
+__version__ = '0.3.6'

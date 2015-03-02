@@ -34,7 +34,7 @@ def getargs():
                                     formatter_class = argparse.ArgumentDefaultsHelpFormatter)
     
     # Version
-    parser.add_argument('-v', '--version', action = 'version', version = '%(prog)s 0.3.5',
+    parser.add_argument('-v', '--version', action = 'version', version = '%(prog)s 0.3.6',
                         help = 'Print version number and exit')
     
     ## One for all
@@ -868,6 +868,7 @@ def pileup(args, commands):
     args.extremeFragments = True
     args.RandomBreaks = args.cistotrans = True
     filtering(args, commands)
+    args.includeTrans = False
     binning(args, commands)
     correcting(args, commands)
     if args.mode == 'wholeGenome':
