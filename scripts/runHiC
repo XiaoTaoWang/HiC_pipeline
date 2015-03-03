@@ -34,7 +34,7 @@ def getargs():
                                     formatter_class = argparse.ArgumentDefaultsHelpFormatter)
     
     # Version
-    parser.add_argument('-v', '--version', action = 'version', version = '%(prog)s 0.3.6',
+    parser.add_argument('-v', '--version', action = 'version', version = '%(prog)s 0.3.7',
                         help = 'Print version number and exit')
     
     ## One for all
@@ -875,6 +875,7 @@ def pileup(args, commands):
         logging.error('Only by-chromosome HeatMaps can be converted to sparse ones!')
         logging.error('Exit ...')
         sys.exit(1)
+    args.Format = 'NPZ'
     tosparse(args, commands)
     
 
