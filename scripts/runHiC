@@ -34,7 +34,7 @@ def getargs():
                                     formatter_class = argparse.ArgumentDefaultsHelpFormatter)
     
     # Version
-    parser.add_argument('-v', '--version', action = 'version', version = '%(prog)s 0.3.7',
+    parser.add_argument('-v', '--version', action = 'version', version = '%(prog)s 0.3.8',
                         help = 'Print version number and exit')
     
     ## One for all
@@ -200,8 +200,8 @@ def getargs():
                          help = '''Source HeatMap files which was saved by chromosome. Wild cards are
                          allowed. If a folder name is provided, conversion will be performed on each
                          HeatMap file under that folder.''')
-    sMatrix.add_argument('-F', '--Format', default = 'NPZ', choices = ['HDF5', 'NPZ'],
-                         help = 'Output format.')
+    sMatrix.add_argument('-F', '--Format', default = 'csr', choices = ['csr', 'csc', 'coo', 'dok', 'lil', 'bsr', 'dia'],
+                         help = '''All sparse matrix formats supported by scipy.sparse are allowed.''')
     sMatrix.set_defaults(func = tosparse)
                     
     ## Pile Up
