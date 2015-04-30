@@ -500,7 +500,7 @@ class cHiCdataset(HiCdataset):
         tosave['resolution'] = resolution
 
 # Convert Matrix to Scipy Sparse Matrix
-def toSparse(source, idx2label, Format = 'csr'):
+def toSparse(source, idx2label):
     """
     Convert intra-chromosomal contact matrices to sparse ones.
     
@@ -513,20 +513,17 @@ def toSparse(source, idx2label, Format = 'csr'):
         A dictionary for conversion between zero-based indices and
         string chromosome labels.
     
-    Format : {'csr', 'csc', 'coo', 'dok', 'lil', 'bsr', 'dia'}
-        Sparse matrix format. (Default: 'csr')
-    
     """
     import zipfile, tempfile
     from scipy import sparse
-    from numpy.lib.format import write_array
+    from scipy.io import mmwrite
     
     lib = h5dict(source, mode = 'r')
     
     ## Create a Zip file first
-    output = source.replace('.hm', '-scipysparse.npz')
+    output = source.replace('.hm', '-scipysparse.zip')
     Zip = zipfile.ZipFile(output, mode = 'w', allowZip64 = True)
-    fd, tmpfile = tempfile.mkstemp(suffix = '-numpy.npy')
+    fd, tmpfile = tempfile.mkstemp(suffix = '-scipy.mtx')
     os.close(fd)
     
     
@@ -544,12 +541,12 @@ def toSparse(source, idx2label, Format = 'csr'):
             H = lib[i]
             
             # Triangle Array
-            Triu = sparse.triu(H, format = Format)
+            Triu = sparse.triu(H)
             
-            fname = key + '.npy'
+            fname = key + '.mtx'
             fid = open(tmpfile, 'wb')
             try:
-                write_array(fid, np.asanyarray(Triu))
+                mmwrite(fid, Triu)
                 fid.close()
                 fid = None
                 Zip.write(tmpfile, arcname = fname)

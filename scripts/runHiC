@@ -200,8 +200,6 @@ def getargs():
                          help = '''Source HeatMap files which was saved by chromosome. Wild cards are
                          allowed. If a folder name is provided, conversion will be performed on each
                          HeatMap file under that folder.''')
-    sMatrix.add_argument('-F', '--Format', default = 'csr', choices = ['csr', 'csc', 'coo', 'dok', 'lil', 'bsr', 'dia'],
-                         help = '''All sparse matrix formats supported by scipy.sparse are allowed.''')
     sMatrix.set_defaults(func = tosparse)
                     
     ## Pile Up
@@ -302,8 +300,7 @@ def run():
                             '# HeatMap Mode = %s' % args.mode,
                             '# HeatMap Resolution = %s' % args.resolution])
         if commands[0] == 'tosparse':
-            arglist.extend(['# Source HeatMap = %s' % args.cHeatMap,
-                            '# Output Format = %s' % args.Format])
+            arglist.extend(['# Source HeatMap = %s' % args.cHeatMap])
         
         argtxt = '\n'.join(arglist)
         logging.log(21, '\n' + argtxt)
@@ -854,7 +851,7 @@ def tosparse(args, commands):
                 logging.log(21, '%s is a whole-genome HeatMap', f)
                 logging.log(21, 'Skipping ...')
             else:
-                toSparse(source = f, idx2label = genome_db.idx2label, Format = args.Format)
+                toSparse(source = f, idx2label = genome_db.idx2label)
     
             
 def pileup(args, commands):
@@ -875,7 +872,6 @@ def pileup(args, commands):
         logging.error('Only by-chromosome HeatMaps can be converted to sparse ones!')
         logging.error('Exit ...')
         sys.exit(1)
-    args.Format = 'NPZ'
     tosparse(args, commands)
     
 
