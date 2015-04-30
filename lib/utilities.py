@@ -516,14 +516,14 @@ def toSparse(source, idx2label):
     """
     import zipfile, tempfile
     from scipy import sparse
-    from scipy.io import mmwrite
+    from numpy.lib.format import write_array
     
     lib = h5dict(source, mode = 'r')
     
     ## Create a Zip file first
-    output = source.replace('.hm', '-scipysparse.zip')
+    output = source.replace('.hm', '-scipysparse.npz')
     Zip = zipfile.ZipFile(output, mode = 'w', allowZip64 = True)
-    fd, tmpfile = tempfile.mkstemp(suffix = '-scipy.mtx')
+    fd, tmpfile = tempfile.mkstemp(suffix = '-numpy.npy')
     os.close(fd)
     
     
@@ -543,10 +543,10 @@ def toSparse(source, idx2label):
             # Triangle Array
             Triu = sparse.triu(H)
             
-            fname = key + '.mtx'
+            fname = key + '.npy'
             fid = open(tmpfile, 'wb')
             try:
-                mmwrite(fid, Triu)
+                write_array(fid, np.asanyarray(Triu))
                 fid.close()
                 fid = None
                 Zip.write(tmpfile, arcname = fname)
