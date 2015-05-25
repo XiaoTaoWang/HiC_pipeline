@@ -3,502 +3,337 @@
 # Author: XiaoTao Wang
 # Organization: HuaZhong Agricultural University
 
-import logging, os
+import logging, os, subprocess
 import numpy as np
-from mirnylib.genome import Genome
-from hiclib.fragmentHiC import HiCdataset
-from mirnylib.numutils import uniqueIndex, fillDiagonal
 from mirnylib.h5dict import h5dict
 
 log = logging.getLogger(__name__)
 
-# A customized HiCdataset class, which makes filtering processes more flexible
-class cHiCdataset(HiCdataset):
+def juncSeqCountSRA(fastqPath, bash_reader, enzyme):
+    """
+    Scan each read to match so-called junction sequence.
     
-    def parseInputData(self, dictLike, commandArgs, **kwargs):
-        """
-        Added Parameters
-        ----------------
-        commandArgs : NameSpace
-            A NameSpace object defined by argparse.            
-        """
-        ## Necessary Modules
-        import numexpr
-        
-        if not os.path.exists(dictLike):
-            raise IOError('File not found: %s' % dictLike)
-        
-        dictLike = h5dict(dictLike, 'r')
-        self.chrms1 = dictLike['chrms1']
-        self.chrms2 = dictLike['chrms2']
-        self.cuts1 = dictLike['cuts1']
-        self.cuts2 = dictLike['cuts2']
-        self.strands1 = dictLike['strands1']
-        self.strands2 = dictLike['strands2']
-        self.dists1 = np.abs(dictLike['rsites1'] - self.cuts1)
-        self.dists2 = np.abs(dictLike['rsites2'] - self.cuts2)
-        self.mids1 = (dictLike['uprsites1'] + dictLike['downrsites1']) / 2
-        self.mids2 = (dictLike['uprsites2'] + dictLike['downrsites2']) / 2
-        self.fraglens1 = np.abs(
-            (dictLike['uprsites1'] - dictLike['downrsites1']))
-        self.fraglens2 = np.abs(
-            (dictLike['uprsites2'] - dictLike['downrsites2']))
-        self.fragids1 = self.mids1 + np.array(self.chrms1,
-                                              dtype='int64') * self.fragIDmult
-        self.fragids2 = self.mids2 + np.array(self.chrms2,
-                                              dtype='int64') * self.fragIDmult
-        distances = np.abs(self.mids1 - self.mids2)
-        distances[self.chrms1 != self.chrms2] = -1
-        self.distances = distances  # Distances between restriction fragments
-        del distances
-        
-        # Total Reads
-        self.N = len(self.chrms1)
-        
-        self.metadata["100_TotalReads"] = self.N
+    A paucity of ligation junctions in a Hi-C library suggests that the
+    ligation failed.
+    
+    """
+    from hiclib.mapping import sleep
+    import Bio.Restriction
+    
+    enzyme_site = eval('Bio.Restriction.%s.site' % enzyme)
+    cutsite = eval('Bio.Restriction.%s.charac' % enzyme)[:2]
+    
+    Dict = {'A':'T', 'C':'G', 'G':'C', 'T':'A'}
+    reverse = ''.join([Dict[i] for i in enzyme_site])
+    
+    if cutsite[-1]:
+        jplus = enzyme_site[:cutsite[-1]] + enzyme_site[cutsite[0]:]
+        jminus = reverse[:cutsite[-1]] + reverse[cutsite[0]:]
+        jminus = jminus[::-1]
+    else:
+        jplus = enzyme_site[:None] + enzyme_site[cutsite[0]:]
+        jminus = reverse[:None] + reverse[cutsite[0]:]
+        jminus = jminus[::-1]
+    
+    
+    reading_command = bash_reader.split() + [fastqPath,]
+    reading_process = subprocess.Popen(reading_command,
+                                       stdout = subprocess.PIPE,
+                                       bufsize = -1)
+    
+    Len = 0
+    Count = 0
+    lineNum = 0
+    
+    if jplus == jminus:
+        for line in reading_process.stdout:
+            if (lineNum % 8 == 1): 
+                Len += 1
+                check_1 = (jplus in line)
+            if (lineNum % 8 == 5):
+                check_2 = (jplus in line)
+                check = check_1 or check_2
+                if check:
+                    Count += 1
+            lineNum += 1
+    else:
+        for line in reading_process.stdout:
+            if (lineNum % 8 == 1): 
+                Len += 1
+                check_1 = (jplus in line) or (jminus in line)
+            if (lineNum % 8 == 5):
+                check_2 = (jplus in line) or (jminus in line)
+                check = check_1 or check_2
+                if check:
+                    Count += 1
+            lineNum += 1
+    
+    sleep()
+    
+    return Len, Count
+
+def juncSeqCountFASTQ(Fastq_1, Fastq_2, enzyme):
+    """
+    Scan each read to match so-called junction sequence.
+    
+    A paucity of ligation junctions in a Hi-C library suggests that the
+    ligation failed.
+    
+    """
+    from hiclib.mapping import sleep
+    import Bio.Restriction
+    
+    enzyme_site = eval('Bio.Restriction.%s.site' % enzyme)
+    cutsite = eval('Bio.Restriction.%s.charac' % enzyme)[:2]
+    
+    Dict = {'A':'T', 'C':'G', 'G':'C', 'T':'A'}
+    reverse = ''.join([Dict[i] for i in enzyme_site])
+    
+    if cutsite[-1]:
+        jplus = enzyme_site[:cutsite[-1]] + enzyme_site[cutsite[0]:]
+        jminus = reverse[:cutsite[-1]] + reverse[cutsite[0]:]
+        jminus = jminus[::-1]
+    else:
+        jplus = enzyme_site[:None] + enzyme_site[cutsite[0]:]
+        jminus = reverse[:None] + reverse[cutsite[0]:]
+        jminus = jminus[::-1]
+    
+    if Fastq_1.endswith('.fastq.gz'):
+        pread_1 = subprocess.Popen(['gunzip', Fastq_1, '-c'],
+                                    stdout = subprocess.PIPE, bufsize = -1)
+    else:
+        pread_1 = subprocess.Popen(['cat', Fastq_1],
+                                    stdout = subprocess.PIPE, bufsize = -1)
+    
+    if Fastq_2.endswith('.fastq.gz'):
+        pread_2 = subprocess.Popen(['gunzip', Fastq_2, '-c'],
+                                    stdout = subprocess.PIPE, bufsize = -1)
+    else:
+        pread_2 = subprocess.Popen(['cat', Fastq_2],
+                                    stdout = subprocess.PIPE, bufsize = -1)
+                                  
+    inStream_1 = pread_1.stdout
+    inStream_2 = pread_2.stdout
+    
+    Len = 0
+    Count = 0
+    
+    if jplus == jminus:
+        while True:
+            line = inStream_1.readline()
+            
+            try:
+                assert line[0] == '@'
+            except IndexError:
+                break
+            
+            Block_1 = [line, inStream_1.readline(), inStream_1.readline(),
+                       inStream_1.readline()]
+            
+            Block_2 = [inStream_2.readline(), inStream_2.readline(),
+                       inStream_2.readline(), inStream_2.readline()]
+            
+            check_1 = (jplus in Block_1[1])
+            check_2 = (jplus in Block_2[1])
+            
+            Len += 1
+            if check_1 or check_2:
+                Count += 1
+    else:
+        while True:
+            line = inStream_1.readline()
+            
+            try:
+                assert line[0] == '@'
+                
+            except IndexError:
+                break
+            
+            Block_1 = [line, inStream_1.readline(), inStream_1.readline(),
+                       inStream_1.readline()]
+            
+            Block_2 = [inStream_2.readline(), inStream_2.readline(),
+                       inStream_2.readline(), inStream_2.readline()]
+            
+            check_1 = (jplus in Block_1[1]) or (jminus in Block_1[1])
+            check_2 = (jplus in Block_2[1]) or (jminus in Block_2[1])
+            
+            Len += 1
+            if check_1 or check_2:
+                Count += 1
+    
+    sleep()
+    
+    return Len, Count
+
+def commandExists(command):
+    "Check if the bash command exists"
+    command = command.split()[0]
+    if subprocess.call(['which', command]) != 0:
+        return False
+    return True
+
+def gzipWriter(filename):
+    """
+    Create a writing process with gzip or parallel gzip (pigz) attached to
+    it.
+    
+    """
+    filename = os.path.abspath(filename)
+    
+    with open(filename, 'wb') as outFile:
+        if commandExists("pigz"):
+            writer = ["pigz", "-c", "-4"]
+        else:
+            writer = ["gzip", "-c", "-1"]
+
+        pwrite = subprocess.Popen(writer, stdin = subprocess.PIPE,
+                                  stdout = outFile, shell = False,
+                                  bufsize = -1)
+    return pwrite
+
+def uncompressSRA(filename, folder):
+    
+    if not commandExists('fastq-dump'):
+        raise ValueError('Please install fastq-dump first!')
+    
+    inFile = os.path.abspath(filename)
+    
+    pread = subprocess.Popen(['fastq-dump', inFile, "-Z", "--split-files"],
+                              stdout = subprocess.PIPE, bufsize = -1)
+    
+    inStream = pread.stdout
+    
+    outFile = filename.replace('.sra', '') + '_{1}.fastq.gz'
+    outProc1 = gzipWriter(os.path.join(folder, outFile).format(1))
+    outProc2 = gzipWriter(os.path.join(folder, outFile).format(2))
+    outStream1 = outProc1.stdin
+    outStream2 = outProc2.stdin
+    
+    count = 0
+    while True:
+        line = inStream.readline()
         
         try:
-            dictLike['misc']['genome']['idx2label']
-            self.updateGenome(self.genome,
-                              oldGenome=dictLike["misc"]["genome"]["idx2label"],
-                              putMetadata=True)
-        except KeyError:
-            assumedGenome = Genome(self.genome.genomePath)
-            self.updateGenome(self.genome, oldGenome=assumedGenome, putMetadata=True)
-            
-        DSmask = (self.chrms1 >= 0) * (self.chrms2 >= 0)
-        self.metadata["200_totalDSReads"] = DSmask.sum()
+            assert line[0] == '@'
+        except AssertionError:
+            raise IOError('{0} is an invalid fastq file'.format(filename))
+        except IndexError:
+            break
         
-        self.metadata["201_DS+SS"] = len(DSmask)
-        self.metadata["202_SSReadsRemoved"] = len(DSmask) - DSmask.sum()
+        fastq_entry_1 = (line, inStream.readline(),
+                         inStream.readline(), inStream.readline())
+        outStream1.writelines(fastq_entry_1)
         
-        mask = DSmask
+        fastq_entry_2 = (inStream.readline(), inStream.readline(),
+                         inStream.readline(), inStream.readline())
+        outStream2.writelines(fastq_entry_2)
         
-        ## Information based on restriction fragments
-        sameFragMask = self.evaluate("a = (fragids1 == fragids2)",
-                                     ["fragids1", "fragids2"]) * DSmask
-        cutDifs = self.cuts2[sameFragMask] > self.cuts1[sameFragMask]
-        s1 = self.strands1[sameFragMask]
-        s2 = self.strands2[sameFragMask]
-        SSDE = (s1 != s2)
-        SS = SSDE * (cutDifs == s2)
-        Dangling = SSDE & (~SS)
-        SS_N = SS.sum()
-        SSDE_N = SSDE.sum()
-        sameFrag_N = sameFragMask.sum()
-        
-        dist = self.evaluate("a = - cuts1 * (2 * strands1 -1) - "
-                             "cuts2 * (2 * strands2 - 1)",
-                             ["cuts1", "cuts2", "strands1", "strands2"])
-        Dangling_L = dist[sameFragMask][Dangling]
-        library_L = int(np.ceil((np.percentile(Dangling_L, 95))))
-        self.maximumMoleculeLength = library_L
-        
-        readsMolecules = self.evaluate(
-            "a = numexpr.evaluate('(chrms1 == chrms2) & (strands1 != strands2) &  (dist >=0) &"
-            " (dist <= maximumMoleculeLength)')",
-            internalVariables=["chrms1", "chrms2", "strands1", "strands2"],
-            externalVariables={"dist": dist},
-            constants={"maximumMoleculeLength": self.maximumMoleculeLength, "numexpr": numexpr})
-        
-        if commandArgs.sameFragments:
-            mask *= (-sameFragMask)
-            noSameFrag = mask.sum()
-            self.metadata["210_sameFragmentReadsRemoved"] = sameFrag_N
-            self.metadata["212_Self-Circles"] = SS_N
-            self.metadata["214_DandlingEnds"] = SSDE_N - SS_N
-            self.metadata["216_error"] = sameFrag_N - SSDE_N
-            mask *= (readsMolecules == False)
-            extraDE = mask.sum()
-            self.metadata["220_extraDandlingEndsRemoved"] = -extraDE + noSameFrag
-            
-        if commandArgs.RandomBreaks:
-            
-            ini_N = extraDE
-            mask *= ((self.dists1 + self.dists2) <= library_L)
-            rb_N = ini_N - mask.sum()
-            self.metadata["330_removeRandomBreaks"] = rb_N
-        
-        if mask.sum() == 0:
-            raise Exception(
-                'No reads left after filtering. Please, check the input data')
-            
-        del DSmask, sameFragMask
-        del dist, readsMolecules
-        
-        self.metadata["300_ValidPairs"] = self.N
-        
-        self.maskFilter(mask)
+        count += 1
     
-    def filterDuplicates(self):
-        
-        Nds = self.N
+    outProc1.communicate()
+    outProc2.communicate()
 
-        # an array to determine unique rows. Eats 16 bytes per DS record
-        dups = np.zeros((Nds, 2), dtype="int64", order="C")
-
-        dups[:, 0] = self.chrms1
-        dups[:, 0] *= self.fragIDmult
-        dups[:, 0] += self.cuts1
-        dups[:, 1] = self.chrms2
-        dups[:, 1] *= self.fragIDmult
-        dups[:, 1] += self.cuts2
-        dups.sort(axis=1)
-        dups.shape = (Nds * 2)
-        strings = dups.view("|S16")
-        # Converting two indices to a single string to run unique
-        uids = uniqueIndex(strings)
-        del strings, dups
-        stay = np.zeros(Nds, bool)
-        stay[uids] = True  # indexes of unique DS elements
-        del uids
-        uflen = len(self.ufragments)
-        Remained_N = stay.sum()
-        self.metadata["320_duplicatesRemoved"] = len(stay) - Remained_N
-        self.maskFilter(stay)
-        assert len(self.ufragments) == uflen  # self-check
+def splitSRA(filename, folder, splitBy = 4000000):
     
-    def filterRsiteStart(self, offset = 5):
-        """
-        Removes reads that start within x bp near rsite
+    if not commandExists('fastq-dump'):
+        raise ValueError('Please install fastq-dump first!')
 
-        Parameters
-        ----------
+    inFile = os.path.abspath(filename)
+    outFile = os.path.split(inFile)[1].replace('.sra', '') + '_chunk{0}_{1}.fastq.gz'
+    pread = subprocess.Popen(['fastq-dump', inFile, "-Z", "--split-files"],
+                              stdout = subprocess.PIPE, bufsize = -1)
+    inStream = pread.stdout
 
-        offset : int
-            Number of bp to exclude next to rsite, not including offset
+    halted = False
+    counters = []
+    for counter in xrange(1000000):
 
-        """
+        outProc1 = gzipWriter(os.path.join(folder, outFile).format(counter, 1))
+        outProc2 = gzipWriter(os.path.join(folder, outFile).format(counter, 2))
+        outStream1 = outProc1.stdin
+        outStream2 = outProc2.stdin
 
-        expression = "mask = (np.abs(dists1 - fraglens1) >= offset) * "\
-        "((np.abs(dists2 - fraglens2) >= offset) )"
-        mask = self.evaluate(expression,
-                             internalVariables=["dists1", "fraglens1",
-                                                "dists2", "fraglens2"],
-                             constants={"offset": offset, "np": np},
-                             outVariable=("mask", np.zeros(self.N, bool)))
-        Remained_N = mask.sum()
-        self.metadata["310_startNearRsiteRemoved"] = len(mask) - Remained_N
-        self.maskFilter(mask)
-        
-    def filterLarge(self, cutlarge = 100000, cutsmall = 100):
-        """
-        Removes very large and small fragments.
+        for j in xrange(splitBy):
 
-        Parameters
-        ----------
-        cutlarge : int
-            Remove fragments larger than it
-        cutsmall : int
-            Remove fragments smaller than it
-        """
-        self._buildFragments()
-        
-        p = (self.ufragmentlen < (cutlarge)) * (self.ufragmentlen > cutsmall)
-        N1 = self.N
-        self.fragmentFilter(self.ufragments[p])
-        N2 = self.N
-        self.metadata["340_removedLargeSmallFragments"] = N1 - N2
-        self._dumpMetadata()
+            line = inStream.readline()
+
+            try:
+                assert line[0] == '@'
+            except AssertionError:
+                raise IOError('{0} is an invalid fastq file'.format(filename))
+            except IndexError:
+                halted = True
+                counters.append(j)
+                break
+
+
+            fastq_entry = (line, inStream.readline(),
+                           inStream.readline(), inStream.readline())
+
+            outStream1.writelines(fastq_entry)
+            outStream2.writelines((inStream.readline(), inStream.readline(),
+                       inStream.readline(), inStream.readline()))
+
+        outProc1.communicate()
+        outProc2.communicate()
+        if halted:
+            return counters
+        counters.append(splitBy)
+    return counters
+
+
+def splitSingleFastq(filename, folder, splitBy = 4000000):
+
+    inFile = os.path.abspath(filename)
     
-    def filterExtreme(self, cutH = 0.005, cutL = 0):
-        """
-        Removes fragments with most and/or least # counts
-
-        Parameters
-        ----------
-        cutH : float, 0<=cutH < 1, optional
-            Fraction of the most-counts fragments to be removed
-            
-        cutL : float, 0<=cutL<1, optional
-            Fraction of the least-counts fragments to be removed
-        """
-        self._buildFragments()
-        
-        s = self.fragmentSum()
-        ss = np.sort(s)
-
-        valueL, valueH = np.percentile(ss, [100. * cutL, 100 * (1. - cutH)])
-        news = (s >= valueL) * (s <= valueH)
-        N1 = self.N
-        self.fragmentFilter(self.ufragments[news])
-        self.metadata["350_removedFromExtremeFragments"] = N1 - self.N
-        self._dumpMetadata()
+    parse = os.path.split(inFile)[1].split('.')[0].split('_')
+    outFile = parse[0] + '_chunk{0}_{1}.fastq.gz'
     
-    def maskFilter(self, mask):
-        """
-        Use numpy's internal mask mechanism instead.
+    if inFile.endswith('.fastq.gz'):
+        pread = subprocess.Popen(['gunzip', inFile, '-c'],
+                                  stdout = subprocess.PIPE, bufsize = -1)
+    else:
+        pread = subprocess.Popen(['cat', inFile],
+                                  stdout = subprocess.PIPE, bufsize = -1)
+                                  
+    inStream = pread.stdout
 
-        Parameters
-        ----------
-        mask : array of bools
-            Indexes of reads to keep
-            
-        """
-        # Uses 16 bytes per read
-        length = 0
-        ms = mask.sum()
+    halted = False
+    counters = []
+    for counter in xrange(1000000):
+
+        outProc1 = gzipWriter(os.path.join(folder, outFile).format(counter, parse[1]))
+        outStream1 = outProc1.stdin
+
+        for j in xrange(splitBy):
+
+            line = inStream.readline()
+
+            try:
+                assert line[0] == '@'
+            except AssertionError:
+                raise IOError('{0} is not a fastq file'.format(filename))
+            except IndexError:
+                halted = True
+                counters.append(j)
+                break
+
+
+            fastq_entry = (line, inStream.readline(), inStream.readline(),
+                           inStream.readline())
+
+            outStream1.writelines(fastq_entry)
+
+        outProc1.communicate()
+        counters.append(splitBy)
         
-        assert mask.dtype == np.bool
+        if halted:
+            return counters
+        counters.append(splitBy)
         
-        self.N = ms
-        self.DSnum = self.N
-        
-        if hasattr(self, "ufragments"):
-            del self.ufragmentlen, self.ufragments
-            
-        for name in self.vectors:
-            data = self._getData(name)
-            ld = len(data)
-            if length == 0:
-                length = ld
-            else:
-                if ld != length:
-                    self.delete()
-            
-            newdata = data[mask]
-                
-            del data
-            
-            self._setData(name, newdata)
-            
-            del newdata
-            
-        del mask
-        
-        self.rebuildFragments()
+    return counters
     
-    def saveByChromosomeHeatmap(self, filename, resolution = 40000,
-                                includeTrans = False,
-                                countDiagonalReads = "Once"):
-        """
-        Saves chromosome by chromosome heatmaps to h5dict.
-        
-        This method is not as memory demanding as saving all x all heatmap.
-
-        Keys of the h5dict are of the format ["1 1"], where chromosomes are
-        zero-based, and there is one space between numbers.
-
-        Parameters
-        ----------
-        filename : str
-            Filename of the h5dict with the output
-            
-        resolution : int
-            Resolution to save heatmaps
-            
-        includeTrans : bool, optional
-            Build inter-chromosomal heatmaps (default: False)
-            
-        countDiagonalReads : "once" or "twice"
-            How many times to count reads in the diagonal bin
-
-        """
-        if countDiagonalReads.lower() not in ["once", "twice"]:
-            raise ValueError("Bad value for countDiagonalReads")
-            
-        self.genome.setResolution(resolution)
-        
-        pos1 = self.evaluate("a = np.array(mids1 / {res}, dtype = 'int32')"
-                             .format(res=resolution), "mids1")
-        pos2 = self.evaluate("a = np.array(mids2 / {res}, dtype = 'int32')"
-                             .format(res=resolution), "mids2")
-                             
-        chr1 = self.chrms1
-        chr2 = self.chrms2
-        
-        # DS = self.DS  # 13 bytes per read up to now, 16 total
-        mydict = h5dict(filename)
-
-        for chrom in xrange(self.genome.chrmCount):
-            if includeTrans == True:
-                mask = ((chr1 == chrom) + (chr2 == chrom))
-            else:
-                mask = ((chr1 == chrom) * (chr2 == chrom))
-            # Located chromosomes and positions of chromosomes
-            c1, c2, p1, p2 = chr1[mask], chr2[mask], pos1[mask], pos2[mask]
-            if includeTrans == True:
-                # moving different chromosomes to c2
-                # c1 == chrom now
-                mask = (c2 == chrom) * (c1 != chrom)
-                c1[mask], c2[mask], p1[mask], p2[mask] = c2[mask].copy(), c1[
-                    mask].copy(), p2[mask].copy(), p1[mask].copy()
-                del c1  # ignore c1
-                args = np.argsort(c2)
-                c2 = c2[args]
-                p1 = p1[args]
-                p2 = p2[args]
-
-            for chrom2 in xrange(chrom, self.genome.chrmCount):
-                if (includeTrans == False) and (chrom2 != chrom):
-                    continue
-                start = np.searchsorted(c2, chrom2, "left")
-                end = np.searchsorted(c2, chrom2, "right")
-                cur1 = p1[start:end]
-                cur2 = p2[start:end]
-                label = np.asarray(cur1, "int64")
-                label *= self.genome.chrmLensBin[chrom2]
-                label += cur2
-                maxLabel = self.genome.chrmLensBin[chrom] * \
-                           self.genome.chrmLensBin[chrom2]
-                counts = np.bincount(label, minlength = maxLabel)
-                assert len(counts) == maxLabel
-                mymap = counts.reshape((self.genome.chrmLensBin[chrom], -1))
-                if chrom == chrom2:
-                    mymap = mymap + mymap.T
-                    if countDiagonalReads.lower() == "once":
-                        fillDiagonal(mymap, np.diag(mymap).copy() / 2)
-                mydict["%d %d" % (chrom, chrom2)] = mymap
-        
-        mydict['resolution'] = resolution
-
-        return
-    
-    def saveHiResHeatmapWithOverlaps(self, filename, resolution = 10000,
-                                     countDiagonalReads = "Once",
-                                     maxBinSpawn=10, chromosomes = "all"):
-        """
-        Creates within-chromosome heatmaps at very high resolution,
-        assigning each fragment to all the bins it overlaps with,
-        proportional to the area of overlaps.
-
-        Parameters
-        ----------
-        resolution : int or str
-            Resolution of a heatmap.
-            
-        countDiagonalReads : "once" or "twice"
-            How many times to count reads in the diagonal bin
-            
-        maxBinSpawn : int, optional, not more than 10
-            Discard read if it spawns more than maxBinSpawn bins
-
-        """
-        from scipy import weave
-
-        tosave = h5dict(filename)
-        
-        self.genome.setResolution(resolution)
-        
-        if chromosomes == "all":
-            chromosomes = range(self.genome.chrmCount)
-            
-        for chrom in chromosomes:
-            mask = (self.chrms1 == chrom) * (self.chrms2 == chrom)
-
-            if mask.sum() == 0:
-                continue
-
-            low1 = (self.mids1[mask] - self.fraglens1[mask] / 2) / float(resolution)
-
-            high1 = (self.mids1[mask] + self.fraglens1[mask] / 2) / float(resolution)
-
-            low2 = (self.mids2[mask] - self.fraglens2[mask] / 2) / float(resolution)
-
-            high2 = (self.mids2[mask] + self.fraglens2[mask] / 2) / float(resolution)
-
-            del mask
-
-            N = len(low1)
-
-            heatmapSize = int(self.genome.chrmLensBin[chrom])
-
-            heatmap = np.zeros((heatmapSize, heatmapSize),
-                               dtype="float64", order="C")
-
-
-            code = """
-            double vector1[100];
-            double vector2[100];
-
-            for (int readNum = 0;  readNum < N; readNum++)
-            {
-                for (int i=0; i<10; i++)
-                {
-                    vector1[i] = 0;
-                    vector2[i] = 0;
-                }
-
-                double l1 = low1[readNum];
-                double l2 = low2[readNum];
-                double h1 = high1[readNum];
-                double h2 = high2[readNum];
-
-
-                if ((h1 - l1) > maxBinSpawn) continue;
-                if ((h2 - l2) > maxBinSpawn) continue;
-
-                int binNum1 = ceil(h1) - floor(l1);
-                int binNum2 = ceil(h2) - floor(l2);
-                double binLen1 = h1 - l1;
-                double binLen2 = h2 - l2;
-
-                int b1 = floor(l1);
-                int b2 = floor(l2);
-
-                if (binNum1 == 1)
-                    vector1[0] = 1.;
-                else
-                    {
-                    vector1[0] = (ceil(l1 + 0.00001) - l1) / binLen1;
-                    for (int t = 1; t< binNum1 - 1; t++)
-                        {vector1[t] = 1. / binLen1;}
-                    vector1[binNum1 - 1] = (h1 - floor(h1)) / binLen1;
-                    }
-
-                if (binNum2 == 1) vector2[0] = 1.;
-
-                else
-                    {
-                    vector2[0] = (ceil(l2 + 0.0001) - l2) / binLen2;
-                    for (int t = 1; t< binNum2 - 1; t++)
-                        {vector2[t] = 1. / binLen2;}
-                    vector2[binNum2 - 1] = (h2 - floor(h2)) / binLen2;
-                    }
-
-                for (int i = 0; i< binNum1; i++)
-                    {
-                    for (int j = 0; j < binNum2; j++)
-                        {
-                        heatmap[(b1 + i) * heatmapSize +  b2 + j] += vector1[i] * vector2[j];
-                        }
-                    }
-                }
-                
-            """
-            weave.inline(code,
-                         ['low1', "high1", "low2", "high2",
-                           "N", "heatmap", "maxBinSpawn",
-                          "heatmapSize",
-                           ],
-                         extra_compile_args=['-march=native  -O3 '],
-                         support_code=r"""
-                        #include <stdio.h>
-                        #include <math.h>""")
-            del high1, low1, high2, low2
-
-
-            for i in xrange(len(heatmap)):
-                heatmap[i, i:] += heatmap[i:, i]
-                heatmap[i:, i] = heatmap[i, i:]
-                
-            if countDiagonalReads.lower() == "once":
-                diag = np.diag(heatmap).copy()
-                fillDiagonal(heatmap, diag / 2)
-                del diag
-            elif countDiagonalReads.lower() == "twice":
-                pass
-            else:
-                raise ValueError("Bad value for countDiagonalReads")
-            tosave["{0} {0}".format(chrom)] = heatmap
-            tosave.flush()
-            del heatmap
-            weave.inline("")  # to release all buffers of weave.inline
-            import gc
-            gc.collect()
-        
-        tosave['resolution'] = resolution
-
 # Convert Matrix to Scipy Sparse Matrix
 def toSparse(source, idx2label):
     """
@@ -541,7 +376,7 @@ def toSparse(source, idx2label):
             H = lib[i]
             
             # Triangle Array
-            Triu = sparse.triu(H)
+            Triu = sparse.triu(H, format = 'csr')
             
             fname = key + '.npy'
             fid = open(tmpfile, 'wb')
