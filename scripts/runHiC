@@ -202,6 +202,8 @@ def getargs():
                                       command for Hi-C data processing.''',
                                       formatter_class = argparse.ArgumentDefaultsHelpFormatter,
                                       add_help = False)
+    streamline.add_argument('--libSize', type = int, default = 500,
+                             help = '''Maximum length of molecules in your Hi-C library.''')
     streamline.add_argument('-M', '--mode', default = 'wholeGenome', choices = ['wholeGenome', 'byChromosome'],
                             help = '''Mode for building Heat Maps.''')
     streamline.add_argument('-R', '--resolution', type = int, default = 200000,
