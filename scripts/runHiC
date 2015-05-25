@@ -258,11 +258,13 @@ def run():
                             '# Bowtie2 Path = %s' % args.bowtiePath,
                             '# Bowtie2 Threads = %s' % args.threads,
                             '# MetaData = %s' % args.metadata,
-                            '# Maximum Chunk Size = %d' % args.chunkSize,
                             '# Remove Intermediate Results = %s' % args.removeInters
                             ])
             if '--bowtieIndex' in commands:
                 arglist.extend(['# Bowtie2 Genome Index = %s' % args.bowtieIndex])
+            if args.chunkSize != None:
+                arglist.extend(['# Maximum Chunk Size = %d' % args.chunkSize])
+                
             arglist.extend(['# Cache Folder = %s' % args.cache])
         if commands[0] == 'filtering':
             arglist.extend(['# Source Files = %s' % args.HDF5,
