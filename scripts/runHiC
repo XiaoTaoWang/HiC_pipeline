@@ -640,7 +640,7 @@ def filtering(args, commands):
     
     logging.log(21, 'Filtering data at SRA level ...')
     for SRR in database:
-        logging.log(21, 'Current SRR ...')
+        logging.log(21, 'Current SRR: %s ...', SRR)
         subHDF5 = os.path.join(Sources, SRR)
         if not os.path.exists(os.path.join(subHDF5, '%s.completed' % SRR)):
             logging.log(21, '%s is still in mapping stage, skipping ...', SRR)
@@ -746,10 +746,6 @@ def filtering(args, commands):
         fragments.h5dict['InnerType'] = binCount_I
         fragments.h5dict['OuterType'] = binCount_O
         
-        if not args.InterResults:
-            for tempFile in outFiles:
-                cleanFile(tempFile)
-        
         completed = open(Indicator, 'wb')
         completed.close()
                     
@@ -763,9 +759,9 @@ def filtering(args, commands):
     logging.log(21, 'Merging data from the same biological replicates ...')
     for rep in bioReps:
         logging.log(21, 'Current work ID: %s-%s-%s', rep)
-        checkComplete = [os.path.exists(os.path.join(filteredFolder, i[0], '%s.completed' % i[0])) for i in metadata
+        checkComplete = [os.path.join(filteredFolder, i[0], '%s.completed' % i[0]) for i in metadata
                          if ((i[1], i[3], i[2]) == rep)]
-        if not all(checkComplete):
+        if not all([os.path.exists(i) for i in checkComplete]):
             logging.log(21, 'Filtering for some SRR hasn\'t been completed, skipping ...')
             continue
         
@@ -802,7 +798,7 @@ def filtering(args, commands):
         if not args.InterResults:
             for tempFile in filenames:
                 parsePath = os.path.split(tempFile)
-                cleanFile(tempFile)
+                cleanDirectory(tempFile)
                 os.rmdir(parsePath[0])
         
         completed = open(Indicator, 'wb')
