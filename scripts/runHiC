@@ -798,7 +798,7 @@ def filtering(args, commands):
         if not args.InterResults:
             for tempFile in filenames:
                 parsePath = os.path.split(tempFile)
-                cleanDirectory(tempFile)
+                cleanDirectory(parsePath[0])
                 os.rmdir(parsePath[0])
         
         completed = open(Indicator, 'wb')
