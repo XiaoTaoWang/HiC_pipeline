@@ -625,8 +625,6 @@ def filtering(args, commands):
         logging.error('Exit ...')
         sys.exit(1)
     
-    logging.log(21, 'According to %s, perform filtering and merging processes on hdf5 files under %s',
-                args.metadata, Sources)
     # Output Folder
     filteredFolder = 'filtered-%s' % args.genomeName
     if not os.path.exists(filteredFolder):
@@ -637,6 +635,16 @@ def filtering(args, commands):
     
     metadata = [l.rstrip().split() for l in open(mFile)]
     database = dict([(i[0], i[-1]) for i in metadata])
+    ## Hierarchical merging structures
+    bioReps = set((i[1], i[3], i[2]) for i in metadata)
+    cellLines = set((i[1], i[3]) for i in metadata)
+    
+    preList1 = [i[0] for i in metadata if os.path.exists(os.path.join(filteredFolder, '%s-%s-%s.completed' % (i[1], i[3], i[2])))]
+    preList2 = [i[0] for i in metadata if os.path.exists(os.path.join(filteredFolder, '%s-%s-allReps.completed' % (i[1], i[3])))]
+    preSet = set(preList1) | set(preList2)
+    for ps in preSet:
+        if ps in database:
+            del database[ps]
     
     logging.log(21, 'Filtering data at SRA level ...')
     for SRR in database:
@@ -750,10 +758,6 @@ def filtering(args, commands):
         completed.close()
                     
         os.remove(lockFile)
-        
-    ## Hierarchical merging structures
-    bioReps = set((i[1], i[3], i[2]) for i in metadata)
-    cellLines = set((i[1], i[3]) for i in metadata)
     
     ## The First level, biological replicates
     logging.log(21, 'Merging data from the same biological replicates ...')
