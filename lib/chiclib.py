@@ -15,7 +15,7 @@ log = logging.getLogger(__name__)
 # A Customized HiCdataset Class
 class cHiCdataset(HiCdataset):
     
-    def parseInputData(self, dictLike, zeroBaseChrom=True, **kwargs):
+    def parseInputData(self, dictLike, **kwargs):
         
         import numexpr
         
@@ -24,26 +24,28 @@ class cHiCdataset(HiCdataset):
         
         dictLike = h5dict(dictLike, 'r')
         
-        a = dictLike["chrms1"]
-        self.trackLen = len(a)
-
-        if zeroBaseChrom == True:
-            self.chrms1 = a
-            self.chrms2 = dictLike["chrms2"]
-        else:
-            self.chrms1 = a - 1
-            self.chrms2 = dictLike["chrms2"] - 1
-        self.N = len(self.chrms1)
-
-        del a
-
+        self.chrms1 = dictLike['chrms1']
+        self.chrms2 = dictLike['chrms2']
         self.cuts1 = dictLike['cuts1']
         self.cuts2 = dictLike['cuts2']
+        self.strands1 = dictLike['strands1']
+        self.strands2 = dictLike['strands2']
+        self.dists1 = np.abs(dictLike['rsites1'] - self.cuts1)
+        self.dists2 = np.abs(dictLike['rsites2'] - self.cuts2)
+        self.mids1 = (dictLike['uprsites1'] + dictLike['downrsites1']) / 2
+        self.mids2 = (dictLike['uprsites2'] + dictLike['downrsites2']) / 2
+        self.fraglens1 = np.abs(
+            (dictLike['uprsites1'] - dictLike['downrsites1']))
+        self.fraglens2 = np.abs(
+            (dictLike['uprsites2'] - dictLike['downrsites2']))
+        self.fragids1 = self.mids1 + np.array(self.chrms1,
+                                              dtype='int64') * self.fragIDmult
+        self.fragids2 = self.mids2 + np.array(self.chrms2,
+                                              dtype='int64') * self.fragIDmult
         
-        self.strands1 = dictLike["strands1"]
-        self.strands2 = dictLike["strands2"]
+        self.N = len(self.chrms1)
 
-        self.metadata['010_CheckConsistency'] = self.trackLen
+        self.metadata['010_CheckConsistency'] = self.N
 
         try:
             dictLike['misc']['genome']['idx2label']

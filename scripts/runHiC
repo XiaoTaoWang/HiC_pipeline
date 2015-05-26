@@ -575,7 +575,7 @@ def mapping(args, commands):
                             enzyme_name = database[i],
                             save_seqs = False)
                                 
-            uniquely_mapped += lib['chrms1']
+            uniquely_mapped += lib['chrms1'].size
         
         logging.log(21, 'Done!')
         
