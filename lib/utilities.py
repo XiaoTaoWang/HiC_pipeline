@@ -204,7 +204,7 @@ def uncompressSRA(filename, folder):
     
     inStream = pread.stdout
     
-    outFile = filename.replace('.sra', '') + '_{1}.fastq.gz'
+    outFile = os.path.split(filename)[1].replace('.sra', '') + '_{0}.fastq.gz'
     outProc1 = gzipWriter(os.path.join(folder, outFile).format(1))
     outProc2 = gzipWriter(os.path.join(folder, outFile).format(2))
     outStream1 = outProc1.stdin

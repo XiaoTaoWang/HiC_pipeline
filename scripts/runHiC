@@ -537,7 +537,7 @@ def mapping(args, commands):
         ReadFiles = [os.path.join(chunkFolder, f) for f in os.listdir(chunkFolder)]
         Read_1 = sorted([f for f in ReadFiles if f.endswith('_1.fastq.gz')])
         Read_2 = sorted([f for f in ReadFiles if f.endswith('_2.fastq.gz')])
-        OutFiles = [os.path.join(subhdf5F, f.replace('_1.fastq.gz', '.hdf5')) for f in Read_1]
+        OutFiles = [os.path.join(subhdf5F, os.path.split(f)[1].replace('_1.fastq.gz', '.hdf5')) for f in Read_1]
             
         Assignments = zip(Read_1, Read_2, OutFiles)
             
@@ -551,7 +551,7 @@ def mapping(args, commands):
             length = len(temp.readline()) - 1
             minlen, step = calculateStep(length, 25)
             iterM.iterative_mapping(fastq_path = r1,
-                                    out_sam_path = os.path.join(subbamFolder, r1.replace('.fastq.gz', '.bam')),
+                                    out_sam_path = os.path.join(subbamFolder, os.path.split(r1)[1].replace('.fastq.gz', '.bam')),
                                     min_seq_len = minlen,
                                     len_step = step,
                                     **Parameters)
@@ -561,21 +561,23 @@ def mapping(args, commands):
             length = len(temp.readline()) - 1
             minlen, step = calculateStep(length, 25)
             iterM.iterative_mapping(fastq_path = r2,
-                                    out_sam_path = os.path.join(subbamFolder, r2.replace('.fastq.gz', '.bam')),
+                                    out_sam_path = os.path.join(subbamFolder, os.path.split(r2)[1].replace('.fastq.gz', '.bam')),
                                     min_seq_len = minlen,
                                     len_step = step,
                                     **Parameters)
             ## Parse the mapped sequences into a Python data structure
             ## Assign the ultra-sonic fragments to restriction fragments
             lib = h5dict.h5dict(out)
-            iterM.parse_sam(sam_basename1 = os.path.join(subbamFolder, r1.replace('.fastq.gz', '.bam')),
-                            sam_basename2 = os.path.join(subbamFolder, r2.replace('.fastq.gz', '.bam')),
+            iterM.parse_sam(sam_basename1 = os.path.join(subbamFolder, os.path.split(r1)[1].replace('.fastq.gz', '.bam')),
+                            sam_basename2 = os.path.join(subbamFolder, os.path.split(r2)[1].replace('.fastq.gz', '.bam')),
                             out_dict = lib,
                             genome_db = genome_db,
                             enzyme_name = database[i],
                             save_seqs = False)
                                 
             uniquely_mapped += lib['chrms1']
+        
+        logging.log(21, 'Done!')
         
         Read_level['Unique-Reads'] = uniquely_mapped
             
