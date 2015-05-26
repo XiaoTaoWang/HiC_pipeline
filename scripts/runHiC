@@ -348,10 +348,12 @@ def mapping(args, commands):
         Build bowtie2 index files under the provided genome folder.
         
         """
-        lock = open(os.path.join(genomeFolder,
-                                 '.'.join([args.genomeName, 'lock'])), 'wb')
+        lockFile = os.path.join(genomeFolder, '.'.join([args.genomeName, 'lock']))
+        
+        lock = open(lockFile, 'wb')
         lock.close()
         
+        atexit.register(cleanFile, lockFile)
         
         fastaNames = [os.path.join(genomeFolder, i)
                       for i in glob.glob(os.path.join(
@@ -699,8 +701,8 @@ def filtering(args, commands):
         fragments.metadata['000_SequencedReads'] = oriStats['Sequenced-Reads']
         fragments.metadata['010_UniqueMappedReads'] = oriStats['Unique-Reads']
         fragments.metadata['020_LigationCounts'] = oriStats['Ligation-Counts']
-        fragments.metadata['110_AfterFilteringReads'] = len(fragments.N)
-        fragments.metadata['400_TotalContacts'] = len(fragments.N)
+        fragments.metadata['110_AfterFilteringReads'] = fragments.N
+        fragments.metadata['400_TotalContacts'] = fragments.N
         sameChrom = (fragments.chrms1 == fragments.chrms2)
         sameChromNum = sameChrom.sum()
         fragments.metadata['410_IntraChromosomalReads'] = sameChromNum
@@ -721,11 +723,11 @@ def filtering(args, commands):
         fragments.h5dict['metadata'] = fragments.metadata
         
         ## Read pair types
-        genomeDis = np.abs(fragments['mids1'][sameChrom] - fragments['mids'][sameChrom])
-        cuts1 = fragments['cuts1'][sameChrom]
-        cuts2 = fragments['cuts2'][sameChrom]
-        strands1 = fragments['strands1'][sameChrom]
-        strands2 = fragments['strands2'][sameChrom]
+        genomeDis = np.abs(fragments.mids1[sameChrom] - fragments.mids2[sameChrom])
+        cuts1 = fragments.cuts1[sameChrom]
+        cuts2 = fragments.cuts2[sameChrom]
+        strands1 = fragments.strands1[sameChrom]
+        strands2 = fragments.strands2[sameChrom]
         RightType = (strands1 == 1) & (strands2 == 1)
         LeftType = (strands1 == 0) & (strands2 == 0)
         InnerType = np.logical_or((strands1 > strands2) & (cuts1 > cuts2),
