@@ -366,6 +366,7 @@ def toSparse(source, idx2label):
     log.log(21, 'Only intra-chromosomal matrices will be taken into account')
     log.log(21, 'Coverting ...')
     
+    count = 0
     for i in lib:
         if (i != 'resolution') and (len(set(i.split())) == 1):
             # Used for the dict-like key
@@ -390,8 +391,12 @@ def toSparse(source, idx2label):
                     fid.close()
             
             log.log(21, 'Done!')
+            
+            count += 1
+    
+    if count == 0:
+        log.log(21, 'Empty source file!')
     
     os.remove(tmpfile)
     
     Zip.close()
-    

@@ -758,7 +758,7 @@ def filtering(args, commands):
     ## The First level, biological replicates
     logging.log(21, 'Merging data from the same biological replicates ...')
     for rep in bioReps:
-        logging.log(21, 'Current work ID: %s-%s-%s', rep)
+        logging.log(21, 'Current work ID: %s-%s-%s' % rep)
         checkComplete = [os.path.join(filteredFolder, i[0], '%s.completed' % i[0]) for i in metadata
                          if ((i[1], i[3], i[2]) == rep)]
         if not all([os.path.exists(i) for i in checkComplete]):
@@ -793,17 +793,16 @@ def filtering(args, commands):
         fragments = cHiCdataset(filename = outfile, genome = genome_db,
                                 mode = 'w', inMemory = False)
         fragments.merge(filenames)
-            
+        
+        completed = open(Indicator, 'wb')
+        completed.close()
         ## Clean up SRA-level Files
         if not args.InterResults:
             for tempFile in filenames:
                 parsePath = os.path.split(tempFile)
                 cleanDirectory(parsePath[0])
                 os.rmdir(parsePath[0])
-        
-        completed = open(Indicator, 'wb')
-        completed.close()
-                    
+               
         os.remove(lockFile)
         
     logging.log(21, 'Done!')
@@ -814,14 +813,14 @@ def filtering(args, commands):
         
         queueL2 = []
         for cell in cellLines:
-            logging.log(21, 'Current work ID: %s-%s', cell)
+            logging.log(21, 'Current work ID: %s-%s' % cell)
             checkComplete = [os.path.exists(os.path.join(filteredFolder, '%s-%s-%s.completed' % i)) for i in bioReps
                              if ((i[0], i[1]) == cell)]
             if not all(checkComplete):
                 logging.log(21, 'Corresponding rep filtering hasn\'t been completed, skipping ...')
                 continue
             
-            Indicator = os.path.join(filteredFolder, '%s-%s.completed' % cell)
+            Indicator = os.path.join(filteredFolder, '%s-%s-allReps.completed' % cell)
             lockFile = os.path.join(filteredFolder, '%s-%s.lock' % cell)
             
             if os.path.exists(Indicator) and not os.path.exists(lockFile):
@@ -894,6 +893,7 @@ def binning(args, commands):
             completeFile = f.replace('-filtered.hdf5', '.completed')
             if not os.path.exists(completeFile):
                 logging.log(21, 'Incompleted HDF5 source, skipping ...')
+                continue
             
             Indicator = os.path.join(hFolder, os.path.basename(f).replace('.hdf5', '-%s.completed' % nLabel))
             lockFile = os.path.join(hFolder, os.path.basename(f).replace('.hdf5', '-%s.lock' % nLabel))
@@ -1027,6 +1027,7 @@ def correcting(args, commands):
             completeFile = f[:-3] + '.completed'
             if not os.path.exists(completeFile):
                 logging.log(21, 'Incompleted Raw HeatMap, skipping ...')
+                continue
             
             Indicator = os.path.join(cFolder, os.path.basename(f)[:-3] + '_c.completed')
             lockFile = os.path.join(cFolder, os.path.basename(f)[:-3] + '_c.lock')
@@ -1095,6 +1096,7 @@ def tosparse(args, commands):
             completeFile = f[:-3] + '.completed'
             if not os.path.exists(completeFile):
                 logging.log(21, 'Incompleted HeatMap Source, skipping ...')
+                continue
             
             Indicator = f[:-3] + '-sparse.completed'
             lockFile = f[:-3] + '-sparse.lock'
