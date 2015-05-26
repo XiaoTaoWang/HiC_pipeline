@@ -269,7 +269,7 @@ def run():
         if commands[0] == 'filtering':
             arglist.extend(['# Source Files = %s' % args.HDF5,
                             '# MetaData = %s' % args.metadata,
-                            '# Library Size = %s' % args.libSize,
+                            '# Library Size = %d' % args.libSize,
                             '# Remove PCR Duplicates = %s' % args.duplicates,
                             '# Remove startNearRsite = %s' % args.startNearRsite,
                             '# Retain Intermediate Results = %s' % args.InterResults,
@@ -283,7 +283,7 @@ def run():
         
         if commands[0] == 'pileup':
             arglist.extend(['# Merging Level = 2',
-                            '# Library Size = 500',
+                            '# Library Size = %d' % args.libSize,
                             '# Remove PCR Duplicates = True',
                             '# Remove startNearRsite = True',
                             '# HeatMap Mode = %s' % args.mode,
@@ -541,7 +541,7 @@ def mapping(args, commands):
             
         Assignments = zip(Read_1, Read_2, OutFiles)
             
-        logging.log(21, 'Mapping each chunk to reference genome separately ...')
+        logging.log(21, 'Mapping ...')
         Read_level = {}
         uniquely_mapped = 0
         for r1, r2, out in Assignments:
@@ -695,7 +695,7 @@ def filtering(args, commands):
             fragments.filterDuplicates()
         
         ## Other Stats
-        oriStats = cPickle.load(open(os.path.join(subHDF5,'Read-Level-Stats'),'rb'))
+        oriStats = cPickle.load(open(os.path.join(subHDF5, 'Read-Level-Stats'),'rb'))
         fragments.metadata['000_SequencedReads'] = oriStats['Sequenced-Reads']
         fragments.metadata['010_UniqueMappedReads'] = oriStats['Unique-Reads']
         fragments.metadata['020_LigationCounts'] = oriStats['Ligation-Counts']
@@ -1143,7 +1143,6 @@ def pileup(args, commands):
     """
     mapping(args, commands)
     args.level = 2
-    args.libSize = 500
     args.InterResults = False
     args.duplicates = args.startNearRsite = True
     filtering(args, commands)

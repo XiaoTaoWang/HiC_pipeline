@@ -43,6 +43,11 @@ class cHiCdataset(HiCdataset):
         self.fragids2 = self.mids2 + np.array(self.chrms2,
                                               dtype='int64') * self.fragIDmult
         
+        distances = np.abs(self.mids1 - self.mids2)
+        distances[self.chrms1 != self.chrms2] = -1
+        self.distances = distances  # Distances between restriction fragments
+        del distances
+        
         self.N = len(self.chrms1)
 
         self.metadata['010_CheckConsistency'] = self.N
@@ -104,6 +109,36 @@ class cHiCdataset(HiCdataset):
         del dist, readsMolecules
         
         del dictLike
+    
+    def updateGenome(self, newGenome, oldGenome = 'current', putMetadata = False):
+
+        assert isinstance(newGenome, Genome)
+        
+        newN = newGenome.chrmCount
+        if oldGenome == "current":
+            oldGenome = self.genome
+        upgrade = newGenome.upgradeMatrix(oldGenome)
+        if isinstance(oldGenome, Genome):
+            if oldGenome.hasEnzyme():
+                newGenome.setEnzyme(oldGenome.enzymeName)
+            oldGenome = oldGenome.idx2label
+        
+        chrms1 = np.array(self.chrms1, int)
+        chrms2 = np.array(self.chrms2, int)
+
+        if upgrade is not None:
+            upgrade[upgrade == -1] = 9999  # to tell old SS reads from new SS reads
+
+            chrms1 = upgrade[chrms1]
+            self.chrms1 = chrms1
+            del chrms1
+
+            chrms2 = upgrade[chrms2]
+            self.chrms2 = chrms2
+            
+        mask = ((self.chrms1 < newN) * (self.chrms2 < newN))
+        self.genome = newGenome
+        self.maskFilter(mask)
     
     def filterDuplicates(self):
 
@@ -175,20 +210,23 @@ class cHiCdataset(HiCdataset):
             self.h5dict.flush()
             time.sleep(0.2)  # allow buffers to flush
         
-        LeftType = np.zeros(50, dtype = int)
-        RightType = np.zeros(50, dtype = int)
-        InnerType = np.zeros(50, dtype = int)
-        OuterType = np.zeros(50, dtype = int)
-        for mydict in h5dicts:
-            LeftType += mydict['LeftType']
-            RightType += mydict['RightType']
-            InnerType += mydict['InnerType']
-            OuterType += mydict['OuterType']
+        Types = ['LeftType', 'RightType', 'InnerType', 'OuterType']
+        check = all([(i in j) for i in Types for j in h5dicts])
+        if check:
+            LeftType = np.zeros(50, dtype = int)
+            RightType = np.zeros(50, dtype = int)
+            InnerType = np.zeros(50, dtype = int)
+            OuterType = np.zeros(50, dtype = int)
+            for mydict in h5dicts:
+                LeftType += mydict['LeftType']
+                RightType += mydict['RightType']
+                InnerType += mydict['InnerType']
+                OuterType += mydict['OuterType']
         
-        self.h5dict['LeftType'] = LeftType
-        self.h5dict['RightType'] = RightType
-        self.h5dict['InnerType'] = InnerType
-        self.h5dict['OuterType'] = OuterType
+            self.h5dict['LeftType'] = LeftType
+            self.h5dict['RightType'] = RightType
+            self.h5dict['InnerType'] = InnerType
+            self.h5dict['OuterType'] = OuterType
         
         self.rebuildFragments()
     
