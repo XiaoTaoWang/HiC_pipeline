@@ -6,8 +6,17 @@
 import logging, os, subprocess
 import numpy as np
 from mirnylib.h5dict import h5dict
+import time, gc
 
 log = logging.getLogger(__name__)
+
+def sleep():
+    
+    for _ in range(3):
+        time.sleep(0.1)
+    gc.collect()
+    for _ in range(3):
+        time.sleep(0.1)
 
 def juncSeqCountSRA(fastqPath, bash_reader, enzyme):
     """

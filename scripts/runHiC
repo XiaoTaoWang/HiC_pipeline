@@ -337,7 +337,7 @@ def mapping(args, commands):
     import hiclib.mapping as iterM
     from mirnylib import h5dict
     from runHiC.utilities import juncSeqCountSRA, splitSRA, splitSingleFastq, \
-        uncompressSRA, juncSeqCountFASTQ
+        uncompressSRA, juncSeqCountFASTQ, sleep
     
      # Initialization
     dataLocation, genomeFolder, genome_db = initialize(args)
@@ -601,6 +601,7 @@ def mapping(args, commands):
         if args.removeInters:
             for folder in [chunkFolder, subbamFolder]:
                 cleanDirectory(folder)
+                sleep()
                 os.rmdir(folder)
         
         completed = open(Indicator, 'wb')
@@ -611,6 +612,7 @@ def mapping(args, commands):
 def filtering(args, commands):
     # Necessary Modules
     from runHiC.chiclib import cHiCdataset
+    from runHiC.utilities import sleep
     import cPickle
     
     ## Validity of arguments
@@ -813,6 +815,7 @@ def filtering(args, commands):
             for tempFile in filenames:
                 parsePath = os.path.split(tempFile)
                 cleanDirectory(parsePath[0])
+                sleep()
                 os.rmdir(parsePath[0])
                
         os.remove(lockFile)
