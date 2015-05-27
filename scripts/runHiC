@@ -629,15 +629,14 @@ def filtering(args, commands):
     filteredFolder = 'filtered-%s' % args.genomeName
     if not os.path.exists(filteredFolder):
         os.mkdir(filteredFolder)
-    args.filteredDir = [] # To communicate with next processing step (binning)
     
     logging.log(21, 'Filtered files will be saved under %s', filteredFolder)
     
     metadata = [l.rstrip().split() for l in open(mFile)]
     database = dict([(i[0], i[-1]) for i in metadata])
     ## Hierarchical merging structures
-    bioReps = set((i[1], i[3], i[2]) for i in metadata)
-    cellLines = set((i[1], i[3]) for i in metadata)
+    bioReps = set((i[1], i[3], i[2]) for i in metadata if not os.path.exists(os.path.join(filteredFolder, '%s-%s-%s.completed' % (i[1], i[3], i[2]))))
+    cellLines = set((i[1], i[3]) for i in metadata if not os.path.exists(os.path.join(filteredFolder, '%s-%s-allReps.completed' % (i[1], i[3]))))
     
     preList1 = [i[0] for i in metadata if os.path.exists(os.path.join(filteredFolder, '%s-%s-%s.completed' % (i[1], i[3], i[2])))]
     preList2 = [i[0] for i in metadata if os.path.exists(os.path.join(filteredFolder, '%s-%s-allReps.completed' % (i[1], i[3])))]
@@ -645,6 +644,13 @@ def filtering(args, commands):
     for ps in preSet:
         if ps in database:
             del database[ps]
+    
+    # To communicate with next processing step (binning)
+    args.filteredDir = []
+    args.filteredDir.extend([os.path.join(filteredFolder, '%s-%s-%s-filtered.hdf5' % (i[1], i[3], i[2]))
+                             for i in metadata if os.path.exists(os.path.join(filteredFolder, '%s-%s-%s.completed' % (i[1], i[3], i[2])))])
+    args.filteredDir.extend([os.path.join(filteredFolder, '%s-%s-allReps.hdf5' % (i[1], i[3]))
+                             for i in metadata if os.path.exists(os.path.join(filteredFolder, '%s-%s-allReps.completed' % (i[1], i[3])))])
     
     logging.log(21, 'Filtering data at SRA level ...')
     for SRR in database:
