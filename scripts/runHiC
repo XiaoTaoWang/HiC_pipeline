@@ -647,10 +647,9 @@ def filtering(args, commands):
     
     # To communicate with next processing step (binning)
     args.filteredDir = []
-    args.filteredDir.extend([os.path.join(filteredFolder, '%s-%s-%s-filtered.hdf5' % (i[1], i[3], i[2]))
-                             for i in metadata if os.path.exists(os.path.join(filteredFolder, '%s-%s-%s.completed' % (i[1], i[3], i[2])))])
-    args.filteredDir.extend([os.path.join(filteredFolder, '%s-%s-allReps.hdf5' % (i[1], i[3]))
-                             for i in metadata if os.path.exists(os.path.join(filteredFolder, '%s-%s-allReps.completed' % (i[1], i[3])))])
+    for i in glob.glob(os.path.join(filteredFolder, '*.completed')):
+        corHDF5 = os.path.join(filteredFolder, i.replace('.completed', '-filtered.hdf5'))
+        args.filteredDir.append(corHDF5)
     
     logging.log(21, 'Filtering data at SRA level ...')
     for SRR in database:
@@ -896,7 +895,7 @@ def binning(args, commands):
         nLabel = str(args.resolution / denominator) + unit
         
         if len(queue) == 0:
-            logging.warning(21, 'No matched file under %s, suffix "-filtered.hdf5" is required!', sFolder)
+            logging.warning('No matched file under %s, suffix "-filtered.hdf5" is required!', sFolder)
             
         for f in queue:
             logging.log(21, 'Current source file: %s', f)
@@ -940,7 +939,7 @@ def binning(args, commands):
                     
             os.remove(lockFile)
     
-    logging.log(21, 'Done!')
+            logging.log(21, 'Done!')
 
 def correcting(args, commands):
     ## Necessary Modules
