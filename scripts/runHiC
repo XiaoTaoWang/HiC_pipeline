@@ -648,7 +648,7 @@ def filtering(args, commands):
     # To communicate with next processing step (binning)
     args.filteredDir = []
     for i in glob.glob(os.path.join(filteredFolder, '*.completed')):
-        corHDF5 = os.path.join(filteredFolder, i.replace('.completed', '-filtered.hdf5'))
+        corHDF5 = i.replace('.completed', '-filtered.hdf5')
         args.filteredDir.append(corHDF5)
     
     logging.log(21, 'Filtering data at SRA level ...')
@@ -1095,7 +1095,7 @@ def tosparse(args, commands):
             sFolder = parse[0]
             queue = [os.path.join(sFolder, i) for i in glob.glob(S) if i.endswith('.hm')]
         
-        logging.log(21, 'Converting all matched HeatMaps under %s ...', sFolder)
+        logging.log(21, 'Converting matched HeatMaps into sparse ones ...')
         if len(queue) == 0:
             logging.warning('No matched file under %s, suffix ".hm" is required!', sFolder)
         
