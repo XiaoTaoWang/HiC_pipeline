@@ -682,6 +682,7 @@ def filtering(args, commands):
         
         atexit.register(cleanFile, lockFile)
         
+        logging.log(21, 'Filtering ...')
         inFiles = glob.glob(os.path.join(subHDF5, SRR + '*.hdf5'))
         outFiles = []
         for infile in inFiles:
@@ -759,6 +760,8 @@ def filtering(args, commands):
         fragments.h5dict['InnerType'] = binCount_I
         fragments.h5dict['OuterType'] = binCount_O
         
+        logging.log(21, 'Done!')
+        
         completed = open(Indicator, 'wb')
         completed.close()
                     
@@ -814,7 +817,7 @@ def filtering(args, commands):
                
         os.remove(lockFile)
         
-    logging.log(21, 'Done!')
+        logging.log(21, 'Done!')
     
     if args.level == 2:
         ## The Second level, cell lines, optional
@@ -863,7 +866,7 @@ def filtering(args, commands):
                     
             os.remove(lockFile)
             
-        logging.log(21, 'Done!')
+            logging.log(21, 'Done!')
 
 def binning(args, commands):
     # Necessary Modules
@@ -919,6 +922,8 @@ def binning(args, commands):
             lock.close()
             
             atexit.register(cleanFile, lockFile)
+            
+            logging.log(21, 'Constructing ...')
             
             hFile = os.path.join(hFolder, os.path.basename(f).replace('.hdf5', '-%s.hm' % nLabel))
             args.HeatMap.append(hFile)
