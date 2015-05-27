@@ -461,10 +461,6 @@ def mapping(args, commands):
         subbamFolder = os.path.join(bamFolder, i)
         subhdf5F = os.path.join(hdf5F, i)
         
-        for folder in [chunkFolder, subbamFolder, subhdf5F]:
-            if not os.path.exists(folder):
-                os.makedirs(folder)
-        
         Indicator = os.path.join(subhdf5F, '%s.completed' % i)
         lockFile = os.path.join(subhdf5F, '%s.lock' % i)
         
@@ -475,6 +471,10 @@ def mapping(args, commands):
         if os.path.exists(lockFile):
             logging.log(21, 'Someone is working on %s, skipping', i)
             continue
+        
+        for folder in [chunkFolder, subbamFolder, subhdf5F]:
+            if not os.path.exists(folder):
+                os.makedirs(folder)
             
         for folder in [chunkFolder, subbamFolder]:
             cleanDirectory(folder)
@@ -661,9 +661,6 @@ def filtering(args, commands):
         
         subFilter = os.path.join(filteredFolder, SRR)
         
-        if not os.path.exists(subFilter):
-            os.makedirs(subFilter)
-        
         Indicator = os.path.join(subFilter, '%s.completed' % SRR)
         lockFile = os.path.join(subFilter, '%s.lock' % SRR)
         
@@ -674,6 +671,9 @@ def filtering(args, commands):
         if os.path.exists(lockFile):
             logging.log(21, 'Someone is working on %s, skipping', SRR)
             continue
+        
+        if not os.path.exists(subFilter):
+            os.makedirs(subFilter)
         
         cleanDirectory(subFilter)
         
