@@ -337,7 +337,7 @@ def mapping(args, commands):
     import hiclib.mapping as iterM
     from mirnylib import h5dict
     from runHiC.utilities import juncSeqCountSRA, splitSRA, splitSingleFastq, \
-        uncompressSRA, juncSeqCountFASTQ, sleep
+        uncompressSRA, juncSeqCountFASTQ
     
      # Initialization
     dataLocation, genomeFolder, genome_db = initialize(args)
@@ -600,9 +600,8 @@ def mapping(args, commands):
             
         if args.removeInters:
             for folder in [chunkFolder, subbamFolder]:
-                cleanDirectory(folder)
-                sleep()
-                os.rmdir(folder)
+                rmcommand = ['rm', '-rf', folder]
+                os.system(' '.join(rmcommand))
         
         completed = open(Indicator, 'wb')
         completed.close()
@@ -612,7 +611,6 @@ def mapping(args, commands):
 def filtering(args, commands):
     # Necessary Modules
     from runHiC.chiclib import cHiCdataset
-    from runHiC.utilities import sleep
     import cPickle
     
     ## Validity of arguments
@@ -814,9 +812,8 @@ def filtering(args, commands):
         if not args.InterResults:
             for tempFile in filenames:
                 parsePath = os.path.split(tempFile)
-                cleanDirectory(parsePath[0])
-                sleep()
-                os.rmdir(parsePath[0])
+                rmcommand = ['rm', '-rf', parsePath[0]]
+                os.system(' '.join(rmcommand))
                
         os.remove(lockFile)
         
@@ -826,10 +823,11 @@ def filtering(args, commands):
         ## The Second level, cell lines, optional
         logging.log(21, 'Merging data of the same cell line using the same restriction enzyme ...')
         
-        queueL2 = []
+        bioList = set((i[1], i[3], i[2]) for i in metadata)
+        
         for cell in cellLines:
             logging.log(21, 'Current work ID: %s-%s' % cell)
-            checkComplete = [os.path.exists(os.path.join(filteredFolder, '%s-%s-%s.completed' % i)) for i in bioReps
+            checkComplete = [os.path.exists(os.path.join(filteredFolder, '%s-%s-%s.completed' % i)) for i in bioList
                              if ((i[0], i[1]) == cell)]
             if not all(checkComplete):
                 logging.log(21, 'Corresponding rep filtering hasn\'t been completed, skipping ...')
@@ -851,12 +849,11 @@ def filtering(args, commands):
             
             atexit.register(cleanFile, lockFile)
             
-            filenames = [os.path.join(filteredFolder, '%s-%s-%s-filtered.hdf5' % i) for i in bioReps
+            filenames = [os.path.join(filteredFolder, '%s-%s-%s-filtered.hdf5' % i) for i in bioList
                          if ((i[0], i[1]) == cell)]
             outfile = os.path.join(filteredFolder, '%s-%s-allReps-filtered.hdf5' % cell)
             args.filteredDir.append(outfile)
             enzyme = cell[-1]
-            queueL2.append((filenames, outfile, enzyme))
             
             dataLocation, genomeFolder, genome_db = initialize(args)
             genome_db.setEnzyme(enzyme)
@@ -1094,6 +1091,8 @@ def tosparse(args, commands):
     
     Sources = [os.path.abspath(os.path.expanduser(i)) for i in args.cHeatMap]
     
+    logging.log(21, 'Converting matched HeatMaps into sparse ones ...')
+    
     for S in Sources:
         if os.path.isdir(S):
             queue = [os.path.join(S, i) for i in glob.glob(os.path.join(S, '*.hm'))]
@@ -1103,7 +1102,6 @@ def tosparse(args, commands):
             sFolder = parse[0]
             queue = [os.path.join(sFolder, i) for i in glob.glob(S) if i.endswith('.hm')]
         
-        logging.log(21, 'Converting matched HeatMaps into sparse ones ...')
         if len(queue) == 0:
             logging.warning('No matched file under %s, suffix ".hm" is required!', sFolder)
         

@@ -26,7 +26,6 @@ def juncSeqCountSRA(fastqPath, bash_reader, enzyme):
     ligation failed.
     
     """
-    from hiclib.mapping import sleep
     import Bio.Restriction
     
     enzyme_site = eval('Bio.Restriction.%s.site' % enzyme)
@@ -89,7 +88,6 @@ def juncSeqCountFASTQ(Fastq_1, Fastq_2, enzyme):
     ligation failed.
     
     """
-    from hiclib.mapping import sleep
     import Bio.Restriction
     
     enzyme_site = eval('Bio.Restriction.%s.site' % enzyme)
