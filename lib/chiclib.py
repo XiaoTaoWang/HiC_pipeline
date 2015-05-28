@@ -7,7 +7,7 @@ import logging, os, time
 import numpy as np
 from mirnylib.genome import Genome
 from hiclib.fragmentHiC import HiCdataset
-from mirnylib.numutils import uniqueIndex, fillDiagonal
+from mirnylib.numutils import uniqueIndex, fillDiagonal, fasterBooleanIndexing
 from mirnylib.h5dict import h5dict
 
 log = logging.getLogger(__name__)
@@ -97,11 +97,10 @@ class cHiCdataset(HiCdataset):
         try:
             dictLike['misc']['genome']['idx2label']
             self.updateGenome(self.genome,
-                              oldGenome=dictLike["misc"]["genome"]["idx2label"],
-                              putMetadata=True)
+                              oldGenome = dictLike["misc"]["genome"]["idx2label"])
         except KeyError:
             assumedGenome = Genome(self.genome.genomePath)
-            self.updateGenome(self.genome, oldGenome=assumedGenome, putMetadata=True)
+            self.updateGenome(self.genome, oldGenome = assumedGenome)
 
         # Discard dangling ends and self-circles
         DSmask = (self.chrms1 >= 0) * (self.chrms2 >= 0)
@@ -150,9 +149,9 @@ class cHiCdataset(HiCdataset):
 
         del dist, readsMolecules
         
-        del dictLike
+        self.maskFilter(mask)
     
-    def updateGenome(self, newGenome, oldGenome = 'current', putMetadata = False):
+    def updateGenome(self, newGenome, oldGenome = 'current'):
 
         assert isinstance(newGenome, Genome)
         
@@ -223,6 +222,28 @@ class cHiCdataset(HiCdataset):
         self.metadata["320_StartNearRsiteReads"] = len(mask) - mask.sum()
         self.maskFilter(mask)
     
+    def maskFilter(self, mask):
+        
+        # Uses 16 bytes per read
+        length = 0
+        ms = mask.sum()
+        assert mask.dtype == np.bool
+        self.N = ms
+        for name in self.vectors:
+            data = self._getData(name)
+            ld = len(data)
+            if length == 0:
+                length = ld
+            else:
+                if ld != length:
+                    self.delete()
+            newdata = fasterBooleanIndexing(data, mask, outLen=ms,
+                                        bounds=False)  # see mirnylib.numutils
+            del data
+            self._setData(name, newdata)
+            del newdata
+        del mask
+    
     def merge(self, filenames):
 
         h5dicts = [h5dict(i, mode = 'r') for i in filenames]
@@ -292,6 +313,29 @@ class cHiCdataset(HiCdataset):
                     myfile.write(':   ')
                     myfile.write(str(self.metadata[i]))
                     myfile.write('\n')
+    
+    def saveHeatmap(self, filename, resolution, countDiagonalReads = 'Once'):
+
+        try:
+            os.remove(filename)
+        except:
+            pass
+
+        tosave = h5dict(path = filename, mode = 'w')
+        
+        heatmap = self.buildAllHeatmap(resolution, countDiagonalReads)
+
+        tosave['heatmap'] = heatmap
+        
+        del heatmap
+        
+        chromosomeStarts = np.array(self.genome.chrmStartsBinCont)
+        numBins = self.genome.numBins
+            
+        tosave['resolution'] = resolution
+        tosave['genomeBinNum'] = numBins
+        tosave['genomeIdxToLabel'] = self.genome.idx2label
+        tosave['chromosomeStarts'] = chromosomeStarts
     
     def saveByChromosomeHeatmap(self, filename, resolution = 40000,
                                 includeTrans = False,
@@ -378,6 +422,36 @@ class cHiCdataset(HiCdataset):
         mydict['resolution'] = resolution
 
         return
+    
+    def buildAllHeatmap(self, resolution, countDiagonalReads = 'Once'):
+        
+        # 8 bytes per record + heatmap
+        self.genome.setResolution(resolution)
+        numBins = self.genome.numBins
+        label = self.genome.chrmStartsBinCont[self.chrms1]
+        label = np.asarray(label, dtype="int64")
+        label += self.mids1 / resolution
+        label *= numBins
+        label += self.genome.chrmStartsBinCont[self.chrms2]
+        label += self.mids2 / resolution
+        
+        counts = np.bincount(label, minlength=numBins ** 2)
+        if len(counts) > numBins ** 2:
+            raise StandardError("\nHeatMap exceed length of the genome!")
+
+        counts.shape = (numBins, numBins)
+        for i in xrange(len(counts)):
+            counts[i, i:] += counts[i:, i]
+            counts[i:, i] = counts[i, i:]
+        if countDiagonalReads.lower() == "once":
+            diag = np.diag(counts)
+            fillDiagonal(counts, diag / 2)
+        elif countDiagonalReads.lower() == "twice":
+            pass
+        else:
+            raise ValueError("Bad value for countDiagonalReads")
+            
+        return counts
     
     def __setattr__(self, x, value):
         

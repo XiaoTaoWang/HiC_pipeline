@@ -32,7 +32,6 @@ def getargs():
                                     and restriction enzyme name. An example file is distributed
                                     along with this software, please check it.''',
                                     formatter_class = argparse.ArgumentDefaultsHelpFormatter)
-    
     # Version
     parser.add_argument('-v', '--version', action = 'version', version = '%(prog)s 0.5.0',
                         help = 'Print version number and exit')
@@ -189,6 +188,13 @@ def getargs():
                          allowed. If a folder name is provided, conversion will be performed on each
                          HeatMap file under that folder.''')
     sMatrix.set_defaults(func = tosparse)
+    
+    QA = subparser.add_parser('quality',
+                              parents = [common],
+                              help = '''Quality assessment for Hi-C experiments. Do not call this
+                              command before filtering!''',
+                              formatter_class = argparse.ArgumentDefaultsHelpFormatter)
+    QA.add_argument('')
                     
     ## Pile Up
     streamline = subparser.add_parser('pileup',
