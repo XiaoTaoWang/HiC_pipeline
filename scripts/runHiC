@@ -992,7 +992,7 @@ def correcting(args, commands):
         BD.loadData(dictLike = inFile)
         
         BD.removeDiagonal(m = 0)
-        BD.removeDiagonal(percent = 0.5)
+        BD.removePoorRegions(percent = 0.5)
         
         ## Perform ICE ...
         BD.iterativeCorrection()
