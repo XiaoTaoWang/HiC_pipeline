@@ -50,8 +50,6 @@ class cHiCdataset(HiCdataset):
         
         self.N = len(self.chrms1)
 
-        self.metadata['010_CheckConsistency'] = self.N
-
         try:
             dictLike['misc']['genome']['idx2label']
             self.updateGenome(self.genome,

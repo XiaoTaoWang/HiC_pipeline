@@ -156,9 +156,6 @@ def getargs():
                           for each file in that folder.''')
     binReads.add_argument('-M', '--mode', default = 'wholeGenome', choices = ['wholeGenome', 'byChromosome'],
                           help = 'Mode for building Heat Maps.')
-    binReads.add_argument('--includeTrans', action = 'store_true',
-                          help = '''Whether to include inter-chromosomal interactions in "byChromosome"
-                          mode.''')
     binReads.add_argument('-R', '--resolution', type = int, default = 200000,
                           help = 'Resolution of a heatmap. Unit: bp')
     binReads.set_defaults(func = binning)
@@ -937,7 +934,7 @@ def binning(args, commands):
             if args.mode == 'wholeGenome':
                 fragments.saveHeatmap(hFile, resolution = args.resolution)
             if args.mode == 'byChromosome':
-                fragments.saveByChromosomeHeatmap(hFile, resolution = args.resolution, includeTrans = args.includeTrans)
+                fragments.saveByChromosomeHeatmap(hFile, resolution = args.resolution, includeTrans = True)
             
             completed = open(Indicator, 'wb')
             completed.close()
@@ -984,31 +981,22 @@ def correcting(args, commands):
 
     def Hcore(inFile, outFile, resolution):
         # Necessary Modules
-        from mirnylib.numutils import completeIC
-        # Create a hdf5 file manually
-        mydict = h5dict.h5dict(outFile)
-        # Raw HeatMap
-        raw = h5dict.h5dict(inFile, mode = 'r')
-        ## Perform ICE for each chsomosome
-        keys = raw.keys()
-        cisKeys = [i for i in keys if ((len(set(i.split())) == 1) and (i != 'resolution'))]
-        for i in cisKeys:
-            logging.log(21, 'Current Chromosome ID: %s', i.split()[0])
-            if i in mydict.keys():
-                logging.log(21, '"%s" is already there, skipping ...', i)
-                continue
-            logging.log(21, 'Loading Cis-HeatMap: "%s" from %s ...', i, inFile)
-            # Extract Cis HeatMap
-            rawHeatMap = raw[i]
-            logging.log(21, 'Done!')
-            # Only work for cis-heatmaps
-            logging.log(21, 'Correcting ...')
-            cHeatMap, bias = completeIC(rawHeatMap, returnBias = True)
-            logging.log(21, 'Done!')
-            logging.log(21, 'Writing Corrected Matrix to %s ...', outFile)
-            mydict[i] = cHeatMap
-            logging.log(21, 'Done!')
-        mydict['resolution'] = resolution
+        from hiclib.highResBinnedData import HiResHiC
+        import tempfile
+        # Create a HiResHiC object
+        fd, tempHDF5 = tempfile.mkstemp(suffix = '.hdf5')
+        os.close(fd)
+        BD = HiResHiC(genome = genome_db, resolution = resolution,
+                      storageFile = tempHDF5, mode = 'w')
+        # Load Raw HeatMap
+        BD.loadData(dictLike = inFile)
+        
+        BD.removeDiagonal(m = 0)
+        BD.removeDiagonal(percent = 0.5)
+        
+        ## Perform ICE ...
+        BD.iterativeCorrection()
+        BD.export(outFile)
         
     Sources = [os.path.abspath(os.path.expanduser(i)) for i in args.HeatMap]
     
@@ -1161,7 +1149,6 @@ def pileup(args, commands):
     args.InterResults = False
     args.duplicates = args.startNearRsite = True
     filtering(args, commands)
-    args.includeTrans = False
     binning(args, commands)
     correcting(args, commands)
     if args.mode == 'wholeGenome':
