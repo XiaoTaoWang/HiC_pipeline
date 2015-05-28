@@ -469,38 +469,12 @@ def mapping(args, commands):
             logging.log(21, 'Someone is working on %s, skipping', i)
             continue
         
-        for folder in [chunkFolder, subbamFolder, subhdf5F]:
-            if not os.path.exists(folder):
-                os.makedirs(folder)
-            
-        for folder in [chunkFolder, subbamFolder]:
-            cleanDirectory(folder)
-        
-        lock = open(lockFile, 'w')
-        lock.close()
-        
-        atexit.register(cleanFile, lockFile)
-        
-        ## Iterative Mapping
-        # Common Parameters
-        Parameters = {'bowtie_path': bowtiePath, 'bowtie_index_path': bowtieIndex,
-                      'nthreads': args.threads, 'temp_dir': cache,
-                      'bowtie_flags': '--very-sensitive'}
         if Format == 'sra':
             sourceFile = os.path.join(fastqDir, i + '.sra')
             if not os.path.exists(sourceFile):
-                logging.error('%s can not be found on your system!', sourceFile)
-                logging.error('Exit ...')
-                sys.exit(1)
-            if not args.chunkSize:
-                logging.log(21, 'Uncompress SRA ...')
-                uncompressSRA(sourceFile, chunkFolder)
-                logging.log(21, 'Done!')
-            else:
-                logging.log(21, 'Split raw SRA into chunks ...')
-                counters = splitSRA(sourceFile, chunkFolder, splitBy = args.chunkSize)
-                cPickle.dump(counters, open(os.path.join(chunkFolder, 'Chunk-read-counts'), 'wb'))
-                logging.log(21, 'Done!')
+                logging.warning('%s can not be found on your system!', sourceFile)
+                logging.warning('Skipping ...')
+                continue
         else:
             tryFile_1 = os.path.join(fastqDir, i + '_1.fastq')
             tryFile_2 = os.path.join(fastqDir, i + '_1.fastq.gz')
@@ -519,17 +493,45 @@ def mapping(args, commands):
                 Fastq_1 = tryFile_2
                 Fastq_2 = tryFile_4
             else:
-                logging.error('No proper FASTQ pairs can be found!')
-                logging.error('Exit ...')
-                sys.exit(1)
-                
+                logging.warning('No proper FASTQ pairs can be found!')
+                logging.warning('Skipping ...')
+                continue
+        
+        for folder in [chunkFolder, subbamFolder, subhdf5F]:
+            if not os.path.exists(folder):
+                os.makedirs(folder)
+            
+        for folder in [chunkFolder, subbamFolder]:
+            cleanDirectory(folder)
+        
+        lock = open(lockFile, 'w')
+        lock.close()
+        
+        atexit.register(cleanFile, lockFile)
+        
+        ## Iterative Mapping
+        # Common Parameters
+        Parameters = {'bowtie_path': bowtiePath, 'bowtie_index_path': bowtieIndex,
+                      'nthreads': args.threads, 'temp_dir': cache,
+                      'bowtie_flags': '--very-sensitive'}
+        if Format == 'sra':
+            if not args.chunkSize:
+                logging.log(21, 'Uncompress SRA ...')
+                uncompressSRA(sourceFile, chunkFolder)
+                logging.log(21, 'Done!')
+            else:
+                logging.log(21, 'Split raw SRA into chunks ...')
+                counters = splitSRA(sourceFile, chunkFolder, splitBy = args.chunkSize)
+                cPickle.dump(counters, open(os.path.join(chunkFolder, 'Chunk-read-counts'), 'wb'))
+                logging.log(21, 'Done!')
+        else:
             if not args.chunkSize:
                 os.symlink(Fastq_1, os.path.join(chunkFolder, os.path.split(Fastq_1)[1]))
                 os.symlink(Fastq_2, os.path.join(chunkFolder, os.path.split(Fastq_2)[1]))
             else:
                 logging.log(21, 'Split raw FASTQs into chunks ...')
-                counters_1 = splitSingleFastq(Fastq_1, chunkFolder, splitBy = args.chunks)
-                splitSingleFastq(Fastq_2, chunkFolder, splitBy = args.chunks)
+                counters_1 = splitSingleFastq(Fastq_1, chunkFolder, splitBy = args.chunkSize)
+                splitSingleFastq(Fastq_2, chunkFolder, splitBy = args.chunkSize)
                 cPickle.dump(counters_1, open(os.path.join(chunkFolder, 'Chunk-read-counts'), 'wb'))
                 logging.log(21, 'Done!')
                 

@@ -15,6 +15,50 @@ log = logging.getLogger(__name__)
 # A Customized HiCdataset Class
 class cHiCdataset(HiCdataset):
     
+    def __init__(self, filename, genome, maximumMoleculeLength = 500,
+                 inMemory = False, mode = "a"):
+        
+        self.vectors = {
+            # chromosomes for each read.
+            "chrms1": "int8", "chrms2": "int8",
+
+            "mids1": "int32", "mids2": "int32",
+            # midpoint of a fragment, determined as "(start+end)/2"
+
+            "fraglens1": "int32", "fraglens2": "int32",
+            # fragment lengthes
+
+            "distances": "int32",
+            # distance between fragments. If -1, different chromosomes.
+            # If -2, different arms.
+
+            "fragids1": "int64", "fragids2": "int64",
+            # IDs of fragments. fragIDmult * chromosome + location
+            # distance to rsite
+            "dists1": "int32", "dists2": "int32",
+            # precise location of cut-site
+            "cuts1": "int32", "cuts2": "int32",
+            "strands1": "bool", "strands2": "bool",
+            }
+        self.metadata = {}
+
+        #-------Initialization of the genome and parameters-----
+        self.mode = mode
+        self.genome = genome
+
+        self.chromosomeCount = self.genome.chrmCount
+        self.fragIDmult = self.genome.fragIDmult  # used for building heatmaps
+
+        self.maximumMoleculeLength = maximumMoleculeLength
+
+        self.filename = os.path.abspath(os.path.expanduser(filename))  # File to save the data
+        self.chunksize = 5000000
+        # Chunk size for h5dict operation, external sorting, etc.
+
+        self.inMemory = inMemory
+
+        self.h5dict = h5dict(self.filename, mode = mode, in_memory = inMemory)
+    
     def parseInputData(self, dictLike, **kwargs):
         
         import numexpr
@@ -228,7 +272,8 @@ class cHiCdataset(HiCdataset):
         
         self.rebuildFragments()
     
-    def printMetadata(self, saveTo=None):
+    def printMetadata(self, saveTo = None):
+        
         self._dumpMetadata()
         for i in sorted(self.metadata):
             if (i[2] != '0'):
@@ -333,3 +378,34 @@ class cHiCdataset(HiCdataset):
         mydict['resolution'] = resolution
 
         return
+    
+    def __setattr__(self, x, value):
+        
+        if x == 'vectors':
+            return object.__setattr__(self, x, value)
+
+        if x in self.vectors.keys():
+            self._setData(x, value)
+        else:
+            return object.__setattr__(self, x, value)
+    
+    def __getattribute__(self, x):
+        
+        if x == 'vectors':
+            return object.__getattribute__(self, x)
+
+        if x in self.vectors.keys():
+            a = self._getData(x)
+            return a
+        else:
+            return object.__getattribute__(self, x)
+    
+    def _getData(self, name):
+        
+        return self.h5dict[name]
+    
+    def _setData(self, name, data):
+        
+        dtype = np.dtype(self.vectors[name])
+        data = np.asarray(data, dtype=dtype)
+        self.h5dict[name] = data
