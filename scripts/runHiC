@@ -1061,12 +1061,7 @@ def correcting(args, commands):
             if 'heatmap' in Keys: # Low resolution case
                 Lcore(f, cFile, resolution)
             else: # High resolution case
-                try:
-                    Hcore(f, cFile, resolution)
-                except ValueError:
-                    logging.warning('Iterative correction will remove more than a half of the matrix')
-                    logging.warning('Skipping ...')
-                    continue
+                Hcore(f, cFile, resolution)
             
             completed = open(Indicator, 'wb')
             completed.close()
