@@ -1139,7 +1139,7 @@ def quality(args, commands):
     
     locator = os.path.abspath('filtered-' + args.genomeName)
     if not os.path.exists(locator):
-        logging.error(21, '%s can not be found! Filter your data before quality assessment!',
+        logging.error('%s can not be found! Filter your data before quality assessment!',
                       locator)
         logging.error('Exit ..')
         sys.exit(1)
@@ -1173,7 +1173,7 @@ def quality(args, commands):
     
     logging.log(21, 'bioRep-level assessment ...')
     for rep in bioReps:
-        logging.log(21, 'Current rep ID: %s-%s-%s', rep)
+        logging.log(21, 'Current rep ID: %s-%s-%s' % rep)
         checkFile_1 = os.path.join(locator, '%s-%s-%s.completed' % rep)
         checkFile_2= os.path.join(locator, '%s-%s-%s-filtered.hdf5' % rep)
         if os.path.exists(checkFile_1) and os.path.exists(checkFile_2):
@@ -1199,7 +1199,7 @@ def quality(args, commands):
     
     logging.log(21, 'Cell-line-level assessment ...')
     for cell in cellLines:
-        logging.log(21, 'Current cell ID: %s-%s', cell)
+        logging.log(21, 'Current cell ID: %s-%s' % cell)
         checkFile_1 = os.path.join(locator, '%s-%s-allReps.completed' % cell)
         checkFile_2= os.path.join(locator, '%s-%s-allReps-filtered.hdf5' % cell)
         if os.path.exists(checkFile_1) and os.path.exists(checkFile_2):

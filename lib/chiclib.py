@@ -318,7 +318,7 @@ class cHiCdataset(HiCdataset):
             self.h5dict['OuterType'] = OuterType
         
     
-    def printMetadata(self, saveTo = None):
+    def printMetadata(self, saveTo):
         
         self.metadata = self.h5dict['metadata']
         
@@ -344,26 +344,13 @@ class cHiCdataset(HiCdataset):
                     myfile.write(str(i))
                     myfile.write(':   ')
                     myfile.write(str(self.metadata[i]))
-                    myfile.write('\n\n')
-                myfile.write('Critical Indicators:\n')
+                    myfile.write('\n')
+                myfile.write('\nCritical Indicators:\n')
                 myfile.write('Unique-Mapping Ratio = %d / %d = %.2f\n' % (Ureads, Total, Uratio))
                 myfile.write('Ligation-Junction Ratio = %d / %d = %.2f\n' % (ligSeq, Total, Lratio))
                 myfile.write('Intra-Fragment Ratio = %d / %d = %.2f\n' % (selfLig, Total, Fratio))
                 myfile.write('Long-Range Ratio = %d / %d = %.2f\n' % (longrange, Ureads, longRatio))
-        
-        else:
-            for i in sorted(self.metadata):
-                if (i[2] != '0'):
-                    print '\t\t',
-                elif (i[1] != '0') and (i[2] == '0'):
-                    print '\t',
-                print i, self.metadata[i]
-            print '\nCritical Indicators:'
-            print 'Unique-Mapping Ratio = %d / %d = %.2f' % (Ureads, Total, Uratio)
-            print 'Ligation-Junction Ratio = %d / %d = %.2f' % (ligSeq, Total, Lratio)
-            print 'Intra-Fragment Ratio = %d / %d = %.2f' % (selfLig, Total, Fratio)
-            print 'Long-Range Ratio = %d / %d = %.2f' % (longrange, Ureads, longRatio)
-    
+                
     def saveHeatmap(self, filename, resolution, countDiagonalReads = 'Once'):
 
         try:
@@ -543,7 +530,7 @@ class cHiCdataset(HiCdataset):
         
         ax.legend(lines, labels, frameon = False, fontsize = 11, labelspacing = 1,
                   handletextpad = 1, borderpad = 1, markerscale = 1, numpoints = 1,
-                  ncol = 2, loc = 'lower left')
+                  ncol = 2, loc = 'upper right')
         
         plt.savefig(outfile, dpi = dpi)
         plt.close()
