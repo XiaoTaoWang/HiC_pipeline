@@ -1,1 +1,2 @@
-include README.rst datasets.tsv
+include README.rst INSTALL.rst fastq-dump
+recursive-include Sample *
