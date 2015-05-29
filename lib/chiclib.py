@@ -4,6 +4,8 @@
 # Organization: HuaZhong Agricultural University
 
 import logging, os, time
+import matplotlib
+matplotlib.use('Agg')
 import numpy as np
 from mirnylib.genome import Genome
 from hiclib.fragmentHiC import HiCdataset
@@ -11,8 +13,6 @@ from mirnylib.numutils import uniqueIndex, fillDiagonal, fasterBooleanIndexing
 from mirnylib.h5dict import h5dict
 
 ## Plot Settings
-import matplotlib
-matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 # Matplotlib Settings
 matplotlib.rcParams['xtick.direction'] = 'out'
