@@ -1,6 +1,6 @@
 Python Packages
 ===============
-We recommend using `conda <http://conda.pydata.org/miniconda.html>`_, an excellent Python package and
+I recommend using `conda <http://conda.pydata.org/miniconda.html>`_, an excellent Python package and
 environment manager.
 
 Open a terminal and type::
@@ -20,7 +20,7 @@ Other dependencies
 ==================
 Install *fastq-dump*:
 
-We have included it in our distribution. Just make it accessible to your system. (Via the environment variable
+I have included it in our distribution. Just make it accessible to your system. (Via the environment variable
 *PATH*)
 
 Install *samtools*:
