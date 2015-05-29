@@ -29,9 +29,11 @@ end at any stage using certain subcommands.
 
 Preparation
 ===========
+Please refer to the **Sample** folder distributed with our source code.
+
 Directory Rearrangements
 ````````````````````````
-Although not required, we recommend creating a data root directory separate from the working
+Although not required, I recommend creating a data root directory separate from the working
 directory.
 
 Data Placement
@@ -48,7 +50,8 @@ Meta Data
 Construct a meta data file describing your sequencing data under the working directory
 
 Four columns are required: prefix of SRA file name, cell line name, biological replicate label, and
-restriction enzyme name. An example file is distributed along with this software, please check it.
+restriction enzyme name. An example file(Sample/working/datasets.tsv) is distributed along with this
+software, please check it.
 
 Usage
 =====
