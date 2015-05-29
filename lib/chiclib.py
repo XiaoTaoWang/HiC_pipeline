@@ -267,6 +267,8 @@ class cHiCdataset(HiCdataset):
             self._setData(name, newdata)
             del newdata
         del mask
+        
+        self.h5dict["metadata"] = self.metadata
     
     def merge(self, filenames):
 
@@ -325,11 +327,12 @@ class cHiCdataset(HiCdataset):
         ligSeq = self.metadata['020_LigationCounts']
         selfLig = self.metadata['122_SelfLigationReads']
         longrange = self.metadata['412_IntraLongRangeReads(>=20Kb)']
+        contacts = self.metadata['400_TotalContacts']
         
         Uratio = float(Ureads) / Total
         Lratio = float(ligSeq) / Total
         Fratio = float(selfLig) / Total
-        longRatio = float(longrange) / Ureads
+        longRatio = float(longrange) / contacts
         
         if saveTo != None:
             with open(saveTo, 'w') as myfile:
