@@ -318,13 +318,19 @@ class cHiCdataset(HiCdataset):
     
     def printMetadata(self, saveTo = None):
         
-        self._dumpMetadata()
-        for i in sorted(self.metadata):
-            if (i[2] != '0'):
-                print '\t\t',
-            elif (i[1] != '0') and (i[2] == '0'):
-                print '\t',
-            print i, self.metadata[i]
+        self.metadata = self.h5dict['metadata']
+        
+        Total = self.metadata['000_SequencedReads']
+        Ureads = self.metadata['010_UniqueMappedReads']
+        ligSeq = self.metadata['020_LigationCounts']
+        selfLig = self.metadata['122_SelfLigationReads']
+        longrange = self.metadata['412_IntraLongRangeReads(>=20Kb)']
+        
+        Uratio = float(Ureads) / Total
+        Lratio = float(ligSeq) / Total
+        Fratio = float(selfLig) / Total
+        longRatio = float(longrange) / Ureads
+        
         if saveTo != None:
             with open(saveTo, 'w') as myfile:
                 for i in sorted(self.metadata):
@@ -335,7 +341,25 @@ class cHiCdataset(HiCdataset):
                     myfile.write(str(i))
                     myfile.write(':   ')
                     myfile.write(str(self.metadata[i]))
-                    myfile.write('\n')
+                    myfile.write('\n\n')
+                myfile.write('Critical Indicators:\n')
+                myfile.write('Unique-Mapping Ratio = %d / %d = %.2f\n' % (Ureads, Total, Uratio))
+                myfile.write('Ligation-Junction Ratio = %d / %d = %.2f\n' % (ligSeq, Total, Lratio))
+                myfile.write('Intra-Fragment Ratio = %d / %d = %.2f\n' % (selfLig, Total, Fratio))
+                myfile.write('Long-Range Ratio = %d / %d = %.2f\n' % (longrange, Ureads, longRatio))
+        
+        else:
+            for i in sorted(self.metadata):
+                if (i[2] != '0'):
+                    print '\t\t',
+                elif (i[1] != '0') and (i[2] == '0'):
+                    print '\t',
+                print i, self.metadata[i]
+            print '\nCritical Indicators:'
+            print 'Unique-Mapping Ratio = %d / %d = %.2f' % (Ureads, Total, Uratio)
+            print 'Ligation-Junction Ratio = %d / %d = %.2f' % (ligSeq, Total, Lratio)
+            print 'Intra-Fragment Ratio = %d / %d = %.2f' % (selfLig, Total, Fratio)
+            print 'Long-Range Ratio = %d / %d = %.2f' % (longrange, Ureads, longRatio)
     
     def saveHeatmap(self, filename, resolution, countDiagonalReads = 'Once'):
 
