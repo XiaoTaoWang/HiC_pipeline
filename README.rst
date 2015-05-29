@@ -1,18 +1,18 @@
 Introduction
-------------
-runHiC is a easy-to-use Hi-C processing software based on hiclib (https://bitbucket.org/mirnylab/hiclib) [1]_.
+============
+runHiC is a easy-to-use Hi-C processing software based on hiclib (https://bitbucket.org/mirnylab/hiclib) .
 Different from hiclib, which was born for flexibility, runHiC is a customized pipeline, and can be
 run from command line directly.
 
 Links
-------
+=====
 - `Repository <https://github.com/XiaoTaoWang/HiC_pipeline>`_
 - `PyPI <https://pypi.python.org/pypi/runHiC>`_
 
 Installation
--------------
-**Install required python packages**:
-
+============
+Python Packages
+---------------
 We recommend using `conda <http://conda.pydata.org/miniconda.html>`_, an excellent Python package and
 environment manager.
 
@@ -29,10 +29,8 @@ Install mirnylib and hiclib from source code:
 Download `mirnylib <https://bitbucket.org/mirnylab/mirnylib>`_ and `hiclib <https://bitbucket.org/mirnylab/hiclib>`_,
 and run install_linux.py contained in the unpacked folder, respectively.
 
-.. note:: According to our experiences, do not install mirnylib and hiclib through pip!
-
-**Non-python library (or software) dependencies**:
-
+Other dependencies
+------------------
 Install samtools:
 
 Download `samtools <http://sourceforge.net/projects/samtools/files/>`_, unpack it, change to the extracted
@@ -47,14 +45,15 @@ Install Bowtie2:
 Download the `source code <http://sourceforge.net/projects/bowtie-bio/files/bowtie2/>`_, unzip it and
 add the path to the extracted directory to *PATH*.
 
-**Install runHiC**:
+runHiC
+------
 
 Use easy_install::
 
     $ easy_install runHiC
 
 Design Concepts
----------------
+===============
 runHiC is able to perform the entire analysis from sequencing data to corrected HeatMaps.
 
 runHiC separate the whole process into 4 stages and you can begin and end at any stage using certain
@@ -70,7 +69,7 @@ subcommands.
 - *tosparse*: Convert intra-chromosomal contact matrices to sparse ones.
 
 Preparation
------------
+===========
 Before running this program, you need to carry out several other things to improve performance:
 
 **Re-organize your directory arrangements**
@@ -90,11 +89,5 @@ Four columns are required: prefix of SRA file name, cell line name, biological r
 restriction enzyme name. An example file is distributed along with this software, please check it.
 
 Usage
------
+=====
 Open a terminal, type ``runHiC -h`` and ``runHiC <subcommand> -h`` for help information.
-
-
-References
-----------
-.. [1] Imakaev M, Fudenberg G, McCord RP et al. Iterative correction of Hi-C data
-      reveals hallmarks ofchromosome organization. Nat Methods, 2012, 9: 999-1003.
