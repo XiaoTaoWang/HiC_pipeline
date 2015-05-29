@@ -132,8 +132,6 @@ def getargs():
                              help = '''Remove read pairs resulting from PCR amplification.''')
     removeNoise.add_argument('--startNearRsite', action = 'store_true',
                              help = '''Remove reads that start within 5 bp near a restriction site.''')
-    removeNoise.add_argument('--InterResults', action = 'store_true',
-                             help = '''If specified, intermediate results will be retained.''')
     removeNoise.add_argument('-l', '--level', type = int, default = 2, choices = [1, 2],
                              help = '''Set merging level. 1: hdf5 files from the same biological
                              replicate will be merged, 2: hdf5 files from the same cell line will also be
@@ -194,7 +192,10 @@ def getargs():
                               help = '''Quality assessment for Hi-C experiments. Do not call this
                               command before filtering!''',
                               formatter_class = argparse.ArgumentDefaultsHelpFormatter)
-    QA.add_argument('')
+    QA.add_argument('-m', '--metadata', default = 'datasets.tsv',
+                    help = '''Experiment information(sequencing lane, biological replicates and cell
+                    lines) contained in metadata can be used to guide quality assessment.''')
+    QA.set_defaults(func = quality)
                     
     ## Pile Up
     streamline = subparser.add_parser('pileup',
@@ -215,7 +216,7 @@ def getargs():
     
      ## Parse the command-line arguments
     commands = sys.argv[1:]
-    if ((not commands) or ((commands[0] in ['mapping', 'filtering', 'binning','correcting', 'pileup', 'tosparse'])
+    if ((not commands) or ((commands[0] in ['mapping', 'filtering', 'binning','correcting', 'pileup', 'tosparse', 'quality'])
         and len(commands) == 1)):
         commands.append('-h')
     args = parser.parse_args(commands)
@@ -275,7 +276,6 @@ def run():
                             '# Library Size = %d' % args.libSize,
                             '# Remove PCR Duplicates = %s' % args.duplicates,
                             '# Remove startNearRsite = %s' % args.startNearRsite,
-                            '# Retain Intermediate Results = %s' % args.InterResults,
                             '# Merging Level = %s' % args.level])
         if commands[0] == 'binning':
             arglist.extend(['# Source Files = %s' % args.filteredDir,
@@ -293,6 +293,9 @@ def run():
                             '# HeatMap Resolution = %s' % args.resolution])
         if commands[0] == 'tosparse':
             arglist.extend(['# Source HeatMap = %s' % args.cHeatMap])
+        
+        if commands[0] == 'quality':
+            arglist.extend(['# MetaData = %s' % args.metadata])
         
         argtxt = '\n'.join(arglist)
         logging.log(21, '\n' + argtxt)
@@ -813,12 +816,6 @@ def filtering(args, commands):
         
         completed = open(Indicator, 'wb')
         completed.close()
-        ## Clean up SRA-level Files
-        if not args.InterResults:
-            for tempFile in filenames:
-                parsePath = os.path.split(tempFile)
-                rmcommand = ['rm', '-rf', parsePath[0]]
-                os.system(' '.join(rmcommand))
                
         os.remove(lockFile)
         
@@ -970,7 +967,7 @@ def correcting(args, commands):
         logging.log(21, 'Done!')
         ## Perform ICE
         # Remove the contacts between loci located within the same bin.
-        BD.removeDiagonal()
+        BD.removeDiagonal(m = 0)
         # Remove bins with less than half of a bin sequenced.
         BD.removeBySequencedCount(0.5)
         # Remove 0.5% bins with the lowest number of records
@@ -1128,8 +1125,8 @@ def tosparse(args, commands):
             raw = h5dict.h5dict(f, mode = 'r')
             Keys = raw.keys()
             if 'heatmap' in Keys:
-                logging.log(21, '%s is a whole-genome HeatMap', f)
-                logging.log(21, 'Skipping ...')
+                logging.warning('%s is a whole-genome HeatMap, skipping ...', f)
+                continue
             else:
                 toSparse(source = f, idx2label = genome_db.idx2label)
             
@@ -1137,6 +1134,100 @@ def tosparse(args, commands):
             completed.close()
                     
             os.remove(lockFile)
+
+def quality(args, commands):
+    
+    from runHiC.chiclib import cHiCdataset
+    
+    # Initialization
+    dataLocation, genomeFolder, genome_db = initialize(args)
+    
+    locator = os.path.abspath('filtered-' + args.genomeName)
+    if not os.path.exists(locator):
+        logging.error(21, '%s can not be found! Filter your data before quality assessment!',
+                      locator)
+        logging.error('Exit ..')
+        sys.exit(1)
+    
+    mFile = args.metadata
+    if not os.path.exists(mFile):
+        logging.error('%s can not be found under current working directory!', mFile)
+        logging.error('Exit ...')
+        sys.exit(1)
+    
+    metadata = [l.rstrip().split() for l in open(mFile)]
+    logging.log(21, 'SRA-level assessment ...')
+    for lane in metadata:
+        logging.log(21, 'Current SRA: %s', lane[0])
+        checkFile_1 = os.path.join(locator, lane[0], lane[0] + '.completed')
+        checkFile_2 = os.path.join(locator, lane[0], lane[0] + '-filtered.hdf5')
+        if os.path.exists(checkFile_1) and os.path.exists(checkFile_2):
+            logging.log(21, 'Generate statistic table ...')
+            fragments = cHiCdataset(checkFile_2, genome = genome_db,
+                                    mode = 'r', inMemory = False)
+            parsePath = os.path.split(checkFile_2)
+            outStats = os.path.join(parsePath[0], parsePath[1].replace('-filtered.hdf5', '.stats'))
+            fragments.printMetadata(saveto = outStats)
+            logging.log(21, 'Done!')
+        else:
+            logging.warning('Still in filtering stage, skipping ...')
+            continue
+        
+    bioReps = set((i[1], i[3], i[2]) for i in metadata)
+    cellLines = set((i[1], i[3]) for i in metadata)
+    
+    logging.log(21, 'bioRep-level assessment ...')
+    for rep in bioReps:
+        logging.log(21, 'Current rep ID: %s-%s-%s', rep)
+        checkFile_1 = os.path.join(locator, '%s-%s-%s.completed' % rep)
+        checkFile_2= os.path.join(locator, '%s-%s-%s-filtered.hdf5' % rep)
+        if os.path.exists(checkFile_1) and os.path.exists(checkFile_2):
+            logging.log(21, 'Generate statistic table ...')
+            fragments = cHiCdataset(checkFile_2, genome = genome_db,
+                                    mode = 'r', inMemory = False)
+            parsePath = os.path.split(checkFile_2)
+            outStats = os.path.join(parsePath[0], parsePath[1].replace('-filtered.hdf5', '.stats'))
+            fragments.printMetadata(saveto = outStats)
+            logging.log(21, 'Done!')
+            logging.log(21, 'Figure for read-pair types ...')
+            outFig = os.path.join(parsePath[0], parsePath[1].replace('-filtered.hdf5', '-PairType.png'))
+            try:    
+                fragments.typePlot(outFig)
+                logging.log(21, 'Done!')
+            except StandardError:
+                logging.warning('Some read pair type information is missing!')
+                logging.warning('Skipping ...')
+                continue
+        else:
+            logging.warning('Still in filtering stage, skipping ...')
+            continue
+    
+    logging.log(21, 'Cell-line-level assessment ...')
+    for cell in cellLines:
+        logging.log(21, 'Current cell ID: %s-%s', cell)
+        checkFile_1 = os.path.join(locator, '%s-%s-allReps.completed' % cell)
+        checkFile_2= os.path.join(locator, '%s-%s-allReps-filtered.hdf5' % cell)
+        if os.path.exists(checkFile_1) and os.path.exists(checkFile_2):
+            logging.log(21, 'Generate statistic table ...')
+            fragments = cHiCdataset(checkFile_2, genome = genome_db,
+                                    mode = 'r', inMemory = False)
+            parsePath = os.path.split(checkFile_2)
+            outStats = os.path.join(parsePath[0], parsePath[1].replace('-filtered.hdf5', '.stats'))
+            fragments.printMetadata(saveto = outStats)
+            logging.log(21, 'Done!')
+            logging.log(21, 'Figure for read-pair types ...')
+            outFig = os.path.join(parsePath[0], parsePath[1].replace('-filtered.hdf5', '-PairType.png'))
+            try:    
+                fragments.typePlot(outFig)
+                logging.log(21, 'Done!')
+            except StandardError:
+                logging.warning('Some read pair type information is missing!')
+                logging.warning('Skipping ...')
+                continue
+        else:
+            logging.warning('Still in filtering stage, skipping ...')
+            continue
+    
     
 # A Local Function
 def cleanFile(filename):
@@ -1154,7 +1245,6 @@ def pileup(args, commands):
     """
     mapping(args, commands)
     args.level = 2
-    args.InterResults = False
     args.duplicates = args.startNearRsite = True
     filtering(args, commands)
     binning(args, commands)

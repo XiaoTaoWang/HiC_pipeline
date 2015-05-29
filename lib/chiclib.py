@@ -10,6 +10,27 @@ from hiclib.fragmentHiC import HiCdataset
 from mirnylib.numutils import uniqueIndex, fillDiagonal, fasterBooleanIndexing
 from mirnylib.h5dict import h5dict
 
+## Plot Settings
+import matplotlib
+matplotlib.use('Agg')
+import matplotlib.pyplot as plt
+# Matplotlib Settings
+matplotlib.rcParams['xtick.direction'] = 'out'
+matplotlib.rcParams['ytick.direction'] = 'out'
+matplotlib.rcParams['axes.labelsize'] = 13
+matplotlib.rcParams['xtick.labelsize'] = 13
+matplotlib.rcParams['ytick.labelsize'] = 13
+matplotlib.rcParams['xtick.major.size'] = 8
+matplotlib.rcParams['ytick.major.size'] = 8
+matplotlib.rcParams['xtick.minor.size'] = 5
+matplotlib.rcParams['ytick.minor.size'] = 5
+matplotlib.rcParams['xtick.major.pad'] = 6
+matplotlib.rcParams['ytick.major.pad'] = 6
+matplotlib.rcParams['xtick.minor.pad'] = 6
+matplotlib.rcParams['ytick.minor.pad'] = 6
+
+colorPool = ['#A6CEE3', '#1F78B4', '#B2DF8A', '#33A02C', '#FB9A99', '#E31A1C']
+
 log = logging.getLogger(__name__)
 
 # A Customized HiCdataset Class
@@ -58,6 +79,10 @@ class cHiCdataset(HiCdataset):
         self.inMemory = inMemory
 
         self.h5dict = h5dict(self.filename, mode = mode, in_memory = inMemory)
+        
+        if 'chrms1' in self.h5dict.keys():
+            chrms1 = self.chrms1
+            self.DSnum = self.N = len(chrms1)
     
     def parseInputData(self, dictLike, **kwargs):
         
@@ -203,10 +228,9 @@ class cHiCdataset(HiCdataset):
         stay = np.zeros(Nds, bool)
         stay[uids] = True  # indexes of unique DS elements
         del uids
-        uflen = len(self.ufragments)
+        
         self.metadata["310_DuplicatedRemoved"] = len(stay) - stay.sum()
         self.maskFilter(stay)
-        assert len(self.ufragments) == uflen  # self-check
     
     def filterRsiteStart(self, offset=5):
 
@@ -291,7 +315,6 @@ class cHiCdataset(HiCdataset):
             self.h5dict['InnerType'] = InnerType
             self.h5dict['OuterType'] = OuterType
         
-        self.rebuildFragments()
     
     def printMetadata(self, saveTo = None):
         
@@ -453,6 +476,52 @@ class cHiCdataset(HiCdataset):
             
         return counts
     
+    def typePlot(self, outfile, dpi = 500):
+        
+        Keys = ['LeftType', 'RightType', 'InnerType', 'OuterType']
+        if not all([(i in self.h5dict for i in Keys)]):
+            raise StandardError
+        
+        LeftType = self.h5dict['LeftType'][:25]
+        RightType = self.h5dict['RightType'][:25]
+        InnerType = self.h5dict['InnerType'][:25]
+        OuterType = self.h5dict['OuterType'][:25]
+        
+        Total = LeftType + RightType + InnerType + OuterType
+        Total = Total.astype(np.float)
+        
+        LeftRatio = LeftType / Total
+        RightRatio = RightType / Total
+        InnerRatio = InnerType / Total
+        OuterRatio = OuterType / Total
+        
+        fig = plt.figure(figsize = (15, 9))
+        ax = fig.add_subplot(111)
+        lines = []
+        labels = ['Left Type', 'Right Type', 'Inner Type', 'Outer Type']
+        x = np.arange(1, LeftRatio.size + 1)
+        idx = 0
+        for y in [LeftRatio, RightRatio, InnerRatio, OuterRatio]:
+            L = ax.plot(x, y, color = colorPool[idx], linewidth = 1.5)
+            lines.extend(L)
+            idx += 1
+        
+        ax.set_xlabel('Genomic Separation, KB')
+        ax.set_ylabel('Type Ratio')
+        
+        ax.set_ylim((0, 1))
+        ax.set_title('Read Pair Type Statistics')
+        ax.xaxis.set_ticks_position('bottom')
+        ax.yaxis.set_ticks_position('left')
+        
+        ax.legend(lines, labels, frameon = False, fontsize = 11, labelspacing = 1,
+                  handletextpad = 1, borderpad = 1, markerscale = 1, numpoints = 1,
+                  ncol = 2, loc = 'lower left')
+        
+        plt.savefig(outfile, dpi = dpi)
+        plt.close()
+        
+        
     def __setattr__(self, x, value):
         
         if x == 'vectors':
