@@ -502,7 +502,7 @@ class cHiCdataset(HiCdataset):
         x = np.arange(1, LeftRatio.size + 1)
         idx = 0
         for y in [LeftRatio, RightRatio, InnerRatio, OuterRatio]:
-            L = ax.plot(x, y, color = colorPool[idx], linewidth = 1.5)
+            L = ax.plot(x, y, color = colorPool[idx], linewidth = 2)
             lines.extend(L)
             idx += 1
         
