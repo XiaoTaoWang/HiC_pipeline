@@ -334,22 +334,21 @@ class cHiCdataset(HiCdataset):
         Fratio = float(selfLig) / Total
         longRatio = float(longrange) / contacts
         
-        if saveTo != None:
-            with open(saveTo, 'w') as myfile:
-                for i in sorted(self.metadata):
-                    if (i[2] != '0'):
-                        myfile.write('\t\t')
-                    elif (i[1] != '0') and (i[2] == '0'):
-                        myfile.write('\t')
-                    myfile.write(str(i))
-                    myfile.write(':   ')
-                    myfile.write(str(self.metadata[i]))
-                    myfile.write('\n')
-                myfile.write('\nCritical Indicators:\n')
-                myfile.write('Unique-Mapping Ratio = %d / %d = %.2f\n' % (Ureads, Total, Uratio))
-                myfile.write('Ligation-Junction Ratio = %d / %d = %.2f\n' % (ligSeq, Total, Lratio))
-                myfile.write('Intra-Fragment Ratio = %d / %d = %.2f\n' % (selfLig, Total, Fratio))
-                myfile.write('Long-Range Ratio = %d / %d = %.2f\n' % (longrange, Ureads, longRatio))
+        with open(saveTo, 'w') as myfile:
+            for i in sorted(self.metadata):
+                if (i[2] != '0'):
+                    myfile.write('\t\t')
+                elif (i[1] != '0') and (i[2] == '0'):
+                    myfile.write('\t')
+                myfile.write(str(i))
+                myfile.write(':   ')
+                myfile.write(str(self.metadata[i]))
+                myfile.write('\n')
+            myfile.write('\nCritical Indicators:\n')
+            myfile.write('Unique-Mapping Ratio = %d / %d = %.4f\n' % (Ureads, Total, Uratio))
+            myfile.write('Ligation-Junction Ratio = %d / %d = %.4f\n' % (ligSeq, Total, Lratio))
+            myfile.write('Intra-Fragment Ratio = %d / %d = %.4f\n' % (selfLig, Total, Fratio))
+            myfile.write('Long-Range Ratio = %d / %d = %.4f\n' % (longrange, Ureads, longRatio))
                 
     def saveHeatmap(self, filename, resolution, countDiagonalReads = 'Once'):
 
