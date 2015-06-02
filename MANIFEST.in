@@ -1,2 +1,2 @@
-include README.rst INSTALL.rst fastq-dump
+include README.rst INSTALL.rst Recipes.rst fastq-dump
 recursive-include Sample *
