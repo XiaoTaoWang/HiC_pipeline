@@ -294,8 +294,8 @@ def splitSingleFastq(filename, folder, splitBy = 4000000):
 
     inFile = os.path.abspath(filename)
     
-    parse = os.path.split(inFile)[1].split('.')[0].split('_')
-    outFile = parse[0] + '_chunk{0}_{1}.fastq.gz'
+    parse = os.path.split(inFile)[1].split('.')[0].split('_')[:-1]
+    outFile = '_'.join(parse[0]) + '_chunk{0}_{1}.fastq.gz'
     
     if inFile.endswith('.fastq.gz'):
         pread = subprocess.Popen(['gunzip', inFile, '-c'],
