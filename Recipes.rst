@@ -13,8 +13,8 @@ Simply run following command in a terminal prompt::
 
 *pileup* streamlines all analysis stages from mapping to ICE correcting.
 
-If you want to perform a step-by-step analysis, you need to call ``mapping``,
-``filtering``, ``binning``, ``correcting`` and ``tosparse`` in order.
+If you want to perform a step-by-step analysis, you need to call *mapping*,
+*filtering*, *binning*, *correcting* and *tosparse* separately, in order.
 
 Mapping::
 
@@ -36,3 +36,8 @@ Convert to sparse format::
 
     $ runHiC tosparse -p ../data -g hg19 --cHeatMap Corrected-hg19
 
+Parallel Tasks
+--------------
+a) Bowtie2 supports multiple threads for alignments. (You can specify the number
+   of threads through ``-t/--threads`` when running *mapping* or *pileup*)
+b) 
