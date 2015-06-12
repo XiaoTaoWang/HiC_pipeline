@@ -348,7 +348,7 @@ class cHiCdataset(HiCdataset):
             myfile.write('Unique-Mapping Ratio = %d / %d = %.4f\n' % (Ureads, Total, Uratio))
             myfile.write('Ligation-Junction Ratio = %d / %d = %.4f\n' % (ligSeq, Total, Lratio))
             myfile.write('Intra-Fragment Ratio = %d / %d = %.4f\n' % (selfLig, Total, Fratio))
-            myfile.write('Long-Range Ratio = %d / %d = %.4f\n' % (longrange, Ureads, longRatio))
+            myfile.write('Long-Range Ratio = %d / %d = %.4f\n' % (longrange, contacts, longRatio))
                 
     def saveHeatmap(self, filename, resolution, countDiagonalReads = 'Once'):
 
