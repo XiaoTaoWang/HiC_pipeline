@@ -290,6 +290,9 @@ class cHiCdataset(HiCdataset):
 
         for name in self.vectors.keys():
             res = []
+            IfIn = [(name in mydict.keys()) for mydict in h5dicts]
+            if not all(IfIn):
+                continue
             for mydict in h5dicts:
                 res.append(mydict[name])
             res = np.concatenate(res)
