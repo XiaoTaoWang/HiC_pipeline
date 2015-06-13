@@ -3,10 +3,10 @@
 # Author: XiaoTao Wang
 # Organization: HuaZhong Agricultural University
 
-import logging, os, subprocess
+import logging, os, subprocess, zipfile, tempfile, time, gc
 import numpy as np
 from mirnylib.h5dict import h5dict
-import time, gc
+from numpy.lib.format import write_array
 
 log = logging.getLogger(__name__)
 
@@ -342,7 +342,7 @@ def splitSingleFastq(filename, folder, splitBy = 4000000):
     return counters
     
 # Convert Matrix to Scipy Sparse Matrix
-def toSparse(source, idx2label):
+def toSparse(source, idx2label, Format = 'NPZ'):
     """
     Convert intra-chromosomal contact matrices to sparse ones.
     
@@ -355,25 +355,31 @@ def toSparse(source, idx2label):
         A dictionary for conversion between zero-based indices and
         string chromosome labels.
     
-    """
-    import zipfile, tempfile
-    from scipy import sparse
-    from numpy.lib.format import write_array
+    Format : {'NPZ', 'HDF5'}
+        Output format. (Default: HDF5)
     
+    """
     lib = h5dict(source, mode = 'r')
     
-    ## Create a Zip file first
-    output = source.replace('.hm', '-scipysparse.npz')
-    Zip = zipfile.ZipFile(output, mode = 'w', allowZip64 = True)
-    fd, tmpfile = tempfile.mkstemp(suffix = '-numpy.npy')
-    os.close(fd)
+    ## Uniform numpy-structured-array format
+    itype = np.dtype({'names':['bin1', 'bin2', 'IF'],
+                          'formats':[np.int, np.int, np.float]})
     
+    ## Create a Zip file in NPZ case
+    if Format.upper() == 'NPZ':
+        output = source.replace('.hm', '-sparse.npz')
+        Zip = zipfile.ZipFile(output, mode = 'w', allowZip64 = True)
+        fd, tmpfile = tempfile.mkstemp(suffix = '-numpy.npy')
+        os.close(fd)
+    
+    if Format.upper() == 'HDF5':
+        output = source.replace('.hm', '-sparse.hm')
+        odict = h5dict(output)
     
     log.log(21, 'Sparse Matrices will be saved to %s', output)
     log.log(21, 'Only intra-chromosomal matrices will be taken into account')
     log.log(21, 'Coverting ...')
     
-    count = 0
     for i in lib:
         if (i != 'resolution') and (len(set(i.split())) == 1):
             # Used for the dict-like key
@@ -384,25 +390,32 @@ def toSparse(source, idx2label):
             H = lib[i]
             
             # Triangle Array
-            Triu = sparse.triu(H, format = 'csr')
+            Triu = np.triu(H)
+            # Sparse Matrix in Memory
+            x, y = np.nonzero(Triu)
+            values = Triu[x, y]
+            sparse = np.zeros(values.size, dtype = itype)
+            sparse['bin1'] = x
+            sparse['bin2'] = y
+            sparse['IF'] = values
             
-            fname = key + '.npy'
-            fid = open(tmpfile, 'wb')
-            try:
-                write_array(fid, np.asanyarray(Triu))
-                fid.close()
-                fid = None
-                Zip.write(tmpfile, arcname = fname)
-            finally:
-                if fid:
+            if Format.upper() == 'HDF5':
+                # Really Simple, just like a dictionary
+                odict[key] = sparse
+            if Format.upper() == 'NPZ':
+                # Much more complicated, but we need make a compatible
+                # file interface for other API
+                fname = key + '.npy'
+                fid = open(tmpfile, 'wb')
+                try:
+                    write_array(fid, np.asanyarray(sparse))
                     fid.close()
-            
+                    fid = None
+                    Zip.write(tmpfile, arcname = fname)
+                finally:
+                    if fid:
+                        fid.close()
             log.log(21, 'Done!')
-            
-            count += 1
-    
-    if count == 0:
-        log.log(21, 'Empty source file!')
     
     os.remove(tmpfile)
     

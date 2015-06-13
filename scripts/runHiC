@@ -33,7 +33,7 @@ def getargs():
                                     along with this software, please check it.''',
                                     formatter_class = argparse.ArgumentDefaultsHelpFormatter)
     # Version
-    parser.add_argument('-v', '--version', action = 'version', version = '%(prog)s 0.5.6',
+    parser.add_argument('-v', '--version', action = 'version', version = '%(prog)s 0.5.7',
                         help = 'Print version number and exit')
     
     ## One for all
@@ -179,12 +179,12 @@ def getargs():
     sMatrix = subparser.add_parser('tosparse',
                                   parents = [common],
                                   help = '''Convert intra-chromosomal contact matrices to sparse ones.
-                                  (CSR format)''',
+                                  ''',
                                   formatter_class = argparse.ArgumentDefaultsHelpFormatter)
     sMatrix.add_argument('-H', '--cHeatMap', nargs = '*',
                          help = '''Source HeatMap files which was saved by chromosome. Wild cards are
                          allowed. If a folder name is provided, conversion will be performed on each
-                         HeatMap file under that folder.''')
+                         HeatMap file under that folder.''')                    
     sMatrix.set_defaults(func = tosparse)
     
     QA = subparser.add_parser('quality',
