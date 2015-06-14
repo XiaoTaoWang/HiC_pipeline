@@ -9,6 +9,10 @@ Links
 - `Repository <https://github.com/XiaoTaoWang/HiC_pipeline>`_
 - `PyPI <https://pypi.python.org/pypi/runHiC>`_
 
+Installation
+============
+Please check the file "INSTALL.rst" in the distribution.
+
 Design Concepts
 ===============
 runHiC is able to perform the entire analysis from sequencing data to corrected Heat Maps. It separates
