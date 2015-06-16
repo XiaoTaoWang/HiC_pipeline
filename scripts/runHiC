@@ -33,7 +33,7 @@ def getargs():
                                     along with this software, please check it.''',
                                     formatter_class = argparse.ArgumentDefaultsHelpFormatter)
     # Version
-    parser.add_argument('-v', '--version', action = 'version', version = '%(prog)s 0.5.8',
+    parser.add_argument('-v', '--version', action = 'version', version = '%(prog)s 0.5.9',
                         help = 'Print version number and exit')
     
     ## One for all
@@ -233,6 +233,8 @@ def getargs():
 def run():
     # Parse Arguments
     args, commands = getargs()
+    
+    args.genomeName = os.path.dirname(args.genomeName)
     # Improve the performance if you don't want to run it
     if commands[-1] not in ['-h', '-v', '--help', '--version']:
         # Define a special level name
@@ -552,9 +554,12 @@ def mapping(args, commands):
                 logging.log(21, 'Done!')
                 
         ReadFiles = [os.path.join(chunkFolder, f) for f in os.listdir(chunkFolder)]
-        Read_1 = sorted([f for f in ReadFiles if f.endswith('_1.fastq.gz')])
-        Read_2 = sorted([f for f in ReadFiles if f.endswith('_2.fastq.gz')])
-        OutFiles = [os.path.join(subhdf5F, os.path.split(f)[1].replace('_1.fastq.gz', '.hdf5')) for f in Read_1]
+        Read_1 = sorted([f for f in ReadFiles if (f.endswith('_1.fastq.gz') or f.endswith('_1.fastq'))])
+        Read_2 = sorted([f for f in ReadFiles if (f.endswith('_2.fastq.gz') or f.endswith('_2.fastq'))])
+        if all([f.endswith('_1.fastq') for f in Read_1]) and all([f.endswith('_2.fastq') for f in Read_2]):
+            OutFiles = [os.path.join(subhdf5F, os.path.split(f)[1].replace('_1.fastq', '.hdf5')) for f in Read_1]
+        else:
+            OutFiles = [os.path.join(subhdf5F, os.path.split(f)[1].replace('_1.fastq.gz', '.hdf5')) for f in Read_1]
             
         Assignments = zip(Read_1, Read_2, OutFiles)
             
