@@ -94,4 +94,13 @@ Suppose you have four file as follows::
 
     Test-HindIII-allReps-filtered.hdf5
     Test-HindIII-allReps-filtered-200K.hm
+    Test-HindIII-allReps-filtered-10K_c-sparse.npz
+    Test-HindIII-allReps-filtered-10K_c-csrsparse.npz
+
+Now, open a Python Interpreter:
+
+>>> from mirnylib import h5dict
+>>> Reads = h5dict.h5dict('Test-HindIII-allReps-filtered.hdf5', 'r')
+>>> HeatMap = h5dict.h5dict('Test-HindIII-allReps-filtered-200K.hm', 'r')
+>>> # You can manipulate Reads and HeatMap just like Python dictionary
     
