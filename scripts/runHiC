@@ -33,7 +33,7 @@ def getargs():
                                     along with this software, please check it.''',
                                     formatter_class = argparse.ArgumentDefaultsHelpFormatter)
     # Version
-    parser.add_argument('-v', '--version', action = 'version', version = '%(prog)s 0.5.7',
+    parser.add_argument('-v', '--version', action = 'version', version = '%(prog)s 0.5.8',
                         help = 'Print version number and exit')
     
     ## One for all
@@ -155,6 +155,9 @@ def getargs():
                           help = 'Mode for building Heat Maps.')
     binReads.add_argument('-R', '--resolution', type = int, default = 200000,
                           help = 'Resolution of a heatmap. Unit: bp')
+    binReads.add_argument('--includeTrans', action = 'store_true',
+                          help = '''Whether to include inter-chromosomal interactions in "byChromosome"
+                          mode.''')
     binReads.set_defaults(func = binning)
     
     ## Iterative Correction
@@ -184,7 +187,10 @@ def getargs():
     sMatrix.add_argument('-H', '--cHeatMap', nargs = '*',
                          help = '''Source HeatMap files which was saved by chromosome. Wild cards are
                          allowed. If a folder name is provided, conversion will be performed on each
-                         HeatMap file under that folder.''')                    
+                         HeatMap file under that folder.''')   
+    sMatrix.add_argument('--csr', action = 'store_true',
+                         help = '''If specified, matrices are converted into CSR (Compressed Row Storage)
+                         format. By default, a customized numpy structured array is applied.''')
     sMatrix.set_defaults(func = tosparse)
     
     QA = subparser.add_parser('quality',
@@ -292,7 +298,8 @@ def run():
                             '# HeatMap Mode = %s' % args.mode,
                             '# HeatMap Resolution = %s' % args.resolution])
         if commands[0] == 'tosparse':
-            arglist.extend(['# Source HeatMap = %s' % args.cHeatMap])
+            arglist.extend(['# Source HeatMap = %s' % args.cHeatMap,
+                            '# Use CSR = %s' % args.csr])
         
         if commands[0] == 'quality':
             arglist.extend(['# MetaData = %s' % args.metadata])
@@ -939,7 +946,8 @@ def binning(args, commands):
             if args.mode == 'wholeGenome':
                 fragments.saveHeatmap(hFile, resolution = args.resolution)
             if args.mode == 'byChromosome':
-                fragments.saveByChromosomeHeatmap(hFile, resolution = args.resolution, includeTrans = True)
+                fragments.saveByChromosomeHeatmap(hFile, resolution = args.resolution,
+                                                  includeTrans = args.includeTrans)
             
             completed = open(Indicator, 'wb')
             completed.close()
@@ -986,22 +994,22 @@ def correcting(args, commands):
 
     def Hcore(inFile, outFile, resolution):
         # Necessary Modules
-        from hiclib.highResBinnedData import HiResHiC
+        from runHiC.chiclib import cHiResHiC
         import tempfile
         # Create a HiResHiC object
         fd, tempHDF5 = tempfile.mkstemp(suffix = '.hdf5')
         os.close(fd)
-        BD = HiResHiC(genome = genome_db, resolution = resolution,
-                      storageFile = tempHDF5, mode = 'w')
+        BD = cHiResHiC(genome = genome_db, resolution = resolution,
+                       storageFile = tempHDF5, mode = 'w')
         # Load Raw HeatMap
-        BD.loadData(dictLike = inFile)
+        BD.loadData(dictLike = inFile, mode = 'cis')
         
         BD.removeDiagonal(m = 0)
         BD.removePoorRegions(percent = 0.5)
         
         ## Perform ICE ...
         BD.iterativeCorrection()
-        BD.export(outFile)
+        BD.export(outFile, mode = 'cis')
         
     Sources = [os.path.abspath(os.path.expanduser(i)) for i in args.HeatMap]
     
@@ -1123,7 +1131,7 @@ def tosparse(args, commands):
                 logging.warning('%s is a whole-genome HeatMap, skipping ...', f)
                 continue
             else:
-                toSparse(source = f, idx2label = genome_db.idx2label)
+                toSparse(source = f, idx2label = genome_db.idx2label, csr = args.csr)
             
             completed = open(Indicator, 'wb')
             completed.close()
@@ -1242,12 +1250,14 @@ def pileup(args, commands):
     args.level = 2
     args.duplicates = args.startNearRsite = True
     filtering(args, commands)
+    args.includeTrans = False
     binning(args, commands)
     correcting(args, commands)
     if args.mode == 'wholeGenome':
         logging.error('Only by-chromosome HeatMaps can be converted to sparse ones!')
         logging.error('Exit ...')
         sys.exit(1)
+    args.csr = False
     tosparse(args, commands)
     
 

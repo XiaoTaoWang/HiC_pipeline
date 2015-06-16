@@ -3,10 +3,9 @@
 # Author: XiaoTao Wang
 # Organization: HuaZhong Agricultural University
 
-import logging, os, subprocess, zipfile, tempfile, time, gc
+import logging, os, subprocess, time, gc
 import numpy as np
 from mirnylib.h5dict import h5dict
-from numpy.lib.format import write_array
 
 log = logging.getLogger(__name__)
 
@@ -342,7 +341,7 @@ def splitSingleFastq(filename, folder, splitBy = 4000000):
     return counters
     
 # Convert Matrix to Scipy Sparse Matrix
-def toSparse(source, idx2label, Format = 'NPZ'):
+def toSparse(source, idx2label, csr = False):
     """
     Convert intra-chromosomal contact matrices to sparse ones.
     
@@ -355,10 +354,14 @@ def toSparse(source, idx2label, Format = 'NPZ'):
         A dictionary for conversion between zero-based indices and
         string chromosome labels.
     
-    Format : {'NPZ', 'HDF5'}
-        Output format. (Default: HDF5)
+    csr : bool
+        Whether to use CSR (Compressed Row Storage) format or not.
     
     """
+    import zipfile, tempfile
+    from numpy.lib.format import write_array
+    from scipy import sparse
+    
     lib = h5dict(source, mode = 'r')
     
     ## Uniform numpy-structured-array format
@@ -366,19 +369,20 @@ def toSparse(source, idx2label, Format = 'NPZ'):
                           'formats':[np.int, np.int, np.float]})
     
     ## Create a Zip file in NPZ case
-    if Format.upper() == 'NPZ':
+    if not csr:
         output = source.replace('.hm', '-sparse.npz')
-        Zip = zipfile.ZipFile(output, mode = 'w', allowZip64 = True)
-        fd, tmpfile = tempfile.mkstemp(suffix = '-numpy.npy')
-        os.close(fd)
+    else:
+        output = source.replace('.hm', '-csrsparse.npz')
     
-    if Format.upper() == 'HDF5':
-        output = source.replace('.hm', '-sparse.hm')
-        odict = h5dict(output)
+    Zip = zipfile.ZipFile(output, mode = 'w', allowZip64 = True)
+    fd, tmpfile = tempfile.mkstemp(suffix = '-numpy.npy')
+    os.close(fd)
     
     log.log(21, 'Sparse Matrices will be saved to %s', output)
     log.log(21, 'Only intra-chromosomal matrices will be taken into account')
     log.log(21, 'Coverting ...')
+    
+    count = 0
     
     for i in lib:
         if (i != 'resolution') and (len(set(i.split())) == 1):
@@ -389,33 +393,36 @@ def toSparse(source, idx2label, Format = 'NPZ'):
             # 2D-Matrix
             H = lib[i]
             
-            # Triangle Array
-            Triu = np.triu(H)
-            # Sparse Matrix in Memory
-            x, y = np.nonzero(Triu)
-            values = Triu[x, y]
-            sparse = np.zeros(values.size, dtype = itype)
-            sparse['bin1'] = x
-            sparse['bin2'] = y
-            sparse['IF'] = values
+            if not csr:
+                # Triangle Array
+                Triu = np.triu(H)
+                # Sparse Matrix in Memory
+                x, y = np.nonzero(Triu)
+                values = Triu[x, y]
+                temp = np.zeros(values.size, dtype = itype)
+                temp['bin1'] = x
+                temp['bin2'] = y
+                temp['IF'] = values
+            else:
+                temp = sparse.triu(H, format = 'csr')
             
-            if Format.upper() == 'HDF5':
-                # Really Simple, just like a dictionary
-                odict[key] = sparse
-            if Format.upper() == 'NPZ':
-                # Much more complicated, but we need make a compatible
-                # file interface for other API
-                fname = key + '.npy'
-                fid = open(tmpfile, 'wb')
-                try:
-                    write_array(fid, np.asanyarray(sparse))
+            fname = key + '.npy'
+            fid = open(tmpfile, 'wb')
+            try:
+                write_array(fid, np.asanyarray(temp))
+                fid.close()
+                fid = None
+                Zip.write(tmpfile, arcname = fname)
+            finally:
+                if fid:
                     fid.close()
-                    fid = None
-                    Zip.write(tmpfile, arcname = fname)
-                finally:
-                    if fid:
-                        fid.close()
+                    
             log.log(21, 'Done!')
+            
+            count += 1
+    
+    if count == 0:
+        log.warning('Empty source file!')
     
     os.remove(tmpfile)
     

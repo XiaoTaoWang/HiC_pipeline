@@ -9,6 +9,7 @@ matplotlib.use('Agg')
 import numpy as np
 from mirnylib.genome import Genome
 from hiclib.fragmentHiC import HiCdataset
+from hiclib.highResBinnedData import HiResHiC
 from mirnylib.numutils import uniqueIndex, fillDiagonal, fasterBooleanIndexing
 from mirnylib.h5dict import h5dict
 
@@ -568,3 +569,17 @@ class cHiCdataset(HiCdataset):
         dtype = np.dtype(self.vectors[name])
         data = np.asarray(data, dtype=dtype)
         self.h5dict[name] = data
+
+class cHiResHiC(HiResHiC):
+    
+    def export(self, filename, mode = 'cis'):
+        mydict = h5dict(filename)
+        if mode == 'cis':
+            for i in self.cisKeys:
+                data = self.data[i].getData()
+                mydict["%d %d" % i] = data
+        else:
+            for i in self.allKeys:
+                data = self.data[i].getData()
+                mydict["%d %d" % i] = data
+        mydict["resolution"] = self.resolution
