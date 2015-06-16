@@ -33,7 +33,7 @@ def getargs():
                                     along with this software, please check it.''',
                                     formatter_class = argparse.ArgumentDefaultsHelpFormatter)
     # Version
-    parser.add_argument('-v', '--version', action = 'version', version = '%(prog)s 0.5.9',
+    parser.add_argument('-v', '--version', action = 'version', version = '%(prog)s 0.6.0',
                         help = 'Print version number and exit')
     
     ## One for all
@@ -234,7 +234,9 @@ def run():
     # Parse Arguments
     args, commands = getargs()
     
-    args.genomeName = os.path.dirname(args.genomeName)
+    tempName = os.path.dirname(args.genomeName)
+    if tempName:
+        args.genomeName = tempName
     # Improve the performance if you don't want to run it
     if commands[-1] not in ['-h', '-v', '--help', '--version']:
         # Define a special level name
@@ -568,30 +570,44 @@ def mapping(args, commands):
         uniquely_mapped = 0
         for r1, r2, out in Assignments:
             ## The first side ...
-            temp = gzip.open(r1, 'r')
+            if r1.endswith('_1.fastq.gz'):
+                temp = gzip.open(r1, 'r')
+            else:
+                temp = open(r1, 'r')
             temp.readline()
             length = len(temp.readline()) - 1
             minlen, step = calculateStep(length, 25)
+            if r1.endswith('.fastq.gz'):
+                out_sam_1 = os.path.join(subbamFolder, os.path.split(r1)[1].replace('.fastq.gz', '.bam'))
+            else:
+                out_sam_1 = os.path.join(subbamFolder, os.path.split(r1)[1].replace('.fastq', '.bam'))
             iterM.iterative_mapping(fastq_path = r1,
-                                    out_sam_path = os.path.join(subbamFolder, os.path.split(r1)[1].replace('.fastq.gz', '.bam')),
+                                    out_sam_path = out_sam_1,
                                     min_seq_len = minlen,
                                     len_step = step,
                                     **Parameters)
             ## The second side ...
-            temp = gzip.open(r2, 'r')
+            if r2.endswith('_2.fastq.gz'):
+                temp = gzip.open(r2, 'r')
+            else:
+                temp = open(r2, 'r')
             temp.readline()
             length = len(temp.readline()) - 1
             minlen, step = calculateStep(length, 25)
+            if r2.endswith('.fastq.gz'):
+                out_sam_2 = os.path.join(subbamFolder, os.path.split(r2)[1].replace('.fastq.gz', '.bam'))
+            else:
+                out_sam_2 = os.path.join(subbamFolder, os.path.split(r2)[1].replace('.fastq', '.bam'))
             iterM.iterative_mapping(fastq_path = r2,
-                                    out_sam_path = os.path.join(subbamFolder, os.path.split(r2)[1].replace('.fastq.gz', '.bam')),
+                                    out_sam_path = out_sam_2,
                                     min_seq_len = minlen,
                                     len_step = step,
                                     **Parameters)
             ## Parse the mapped sequences into a Python data structure
             ## Assign the ultra-sonic fragments to restriction fragments
             lib = h5dict.h5dict(out)
-            iterM.parse_sam(sam_basename1 = os.path.join(subbamFolder, os.path.split(r1)[1].replace('.fastq.gz', '.bam')),
-                            sam_basename2 = os.path.join(subbamFolder, os.path.split(r2)[1].replace('.fastq.gz', '.bam')),
+            iterM.parse_sam(sam_basename1 = out_sam_1,
+                            sam_basename2 = out_sam_2,
                             out_dict = lib,
                             genome_db = genome_db,
                             enzyme_name = database[i],
