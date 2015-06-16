@@ -102,5 +102,24 @@ Now, open a Python Interpreter:
 >>> from mirnylib import h5dict
 >>> Reads = h5dict.h5dict('Test-HindIII-allReps-filtered.hdf5', 'r')
 >>> HeatMap = h5dict.h5dict('Test-HindIII-allReps-filtered-200K.hm', 'r')
->>> # You can manipulate Reads and HeatMap just like Python dictionary
+>>> # You can manipulate Reads and HeatMap using Python dictionary operations
+>>> HeatMap.keys()
+[u'chromosomeStarts',
+ u'genomeBinNum',
+ u'genomeIdxToLabel',
+ u'heatmap',
+ u'resolution']
+ 
+>>> import numpy as np
+>>> Lib_1 = np.load('Test-HindIII-allReps-filtered-10K_c-sparse.npz')
+>>> # Heat Maps are saved chromosome by chromosome and can be extracted with chromosome labels
+>>> chr1 = Lib_1['1'] # Chromosome 1
+>>> chr1.dtype
+dtype([('bin1', '<i8'), ('bin2', '<i8'), ('IF', '<f8')])
+
+>>> Lib_2 = np.load('Test-HindIII-allReps-filtered-10K_c-csrsparse.npz')
+>>> chr1 = Lib_2['1'][()]
+>>> chr1
+<24926x24926 sparse matrix of type '<type 'numpy.int64'>'
+	with 9855216 stored elements in COOrdinate format>
     
