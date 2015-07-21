@@ -6,7 +6,7 @@
 # Organization: HuaZhong Agricultural University
 
 ## Required Modules
-import os, sys, argparse, logging, logging.handlers, glob, atexit
+import os, sys, argparse, logging, logging.handlers, glob, atexit, traceback
 
 try:
     import numpy as np
@@ -33,7 +33,7 @@ def getargs():
                                     along with this software, please check it.''',
                                     formatter_class = argparse.ArgumentDefaultsHelpFormatter)
     # Version
-    parser.add_argument('-v', '--version', action = 'version', version = '%(prog)s 0.6.0',
+    parser.add_argument('-v', '--version', action = 'version', version = '%(prog)s 0.6.1',
                         help = 'Print version number and exit')
     
     ## One for all
@@ -228,7 +228,7 @@ def getargs():
     args = parser.parse_args(commands)
     
     return args, commands
-
+    
 
 def run():
     # Parse Arguments
@@ -239,6 +239,13 @@ def run():
         args.genomeName = tempName
     # Improve the performance if you don't want to run it
     if commands[-1] not in ['-h', '-v', '--help', '--version']:
+        
+        def uncaught_exc_handler(ex_cls, ex, tb):
+            with open(args.logFile, 'a') as f:
+                traceback.print_last(file = f)
+        
+        sys.excepthook = uncaught_exc_handler # Redict TraceBack
+        
         # Define a special level name
         logging.addLevelName(21, 'main')
         ## Root Logger Configuration
