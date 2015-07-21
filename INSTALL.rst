@@ -13,7 +13,7 @@ Install *bx-python* and *joblib* using pip::
 
 Install *mirnylib* and *hiclib* from source code:
 
-Download `mirnylib <https://bitbucket.org/mirnylab/mirnylib>`_ and `hiclib <https://bitbucket.org/mirnylab/hiclib>`_,
+Download `mirnylib <https://bitbucket.org/mirnylab/mirnylib/downloads>`_ and `hiclib <https://bitbucket.org/mirnylab/hiclib/downloads`_,
 and run install_linux.py contained in the unpacked folder, respectively.
 
 Other dependencies
