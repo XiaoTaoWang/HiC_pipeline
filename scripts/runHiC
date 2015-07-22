@@ -33,7 +33,7 @@ def getargs():
                                     along with this software, please check it.''',
                                     formatter_class = argparse.ArgumentDefaultsHelpFormatter)
     # Version
-    parser.add_argument('-v', '--version', action = 'version', version = '%(prog)s 0.6.1',
+    parser.add_argument('-v', '--version', action = 'version', version = '%(prog)s 0.6.2',
                         help = 'Print version number and exit')
     
     ## One for all
@@ -350,7 +350,8 @@ def initialize(args):
         logging.log(21, 'Done!')
     
     # Python Genome Object
-    genome_db = genome.Genome(genomeFolder, readChrms = args.chroms)
+    genome_db = genome.Genome(genomeFolder, readChrms = args.chroms,
+                              chrmFileTemplate = args.template)
     
     return dataLocation, genomeFolder, genome_db
     
