@@ -5,7 +5,7 @@ environment manager.
 
 Open a terminal and type::
 
-    $ conda install numpy numexpr scipy matplotlib cython biopython h5py pysam pip
+    $ conda install numpy numexpr scipy matplotlib statsmodels cython biopython h5py pysam pip
 
 Install *bx-python* and *joblib* using pip::
 
