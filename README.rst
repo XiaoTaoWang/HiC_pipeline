@@ -15,7 +15,7 @@ Please check the file "INSTALL.rst" in the distribution.
 
 Design Concepts
 ===============
-runHiC is able to perform the entire analysis from sequencing data to corrected contact matrices. It
+runHiC is able to perform the entire analysis from sequencing data to corrected Heat Maps. It
 separates the whole process into 4 stages(*mapping*, *filtering*, *binning*, *correcting*). You can
 begin and end at any stage using certain subcommands.
 
@@ -23,8 +23,8 @@ begin and end at any stage using certain subcommands.
 
 :mapping:        Iteratively map pair-end sequencing reads to a supplied genome
 :filtering:      Remove noises at the level of aligned read pairs and restriction fragments
-:binning:        Generate original contact matrices
-:correcting:     Perform iterative corrections on original contact matrices
+:binning:        Generate original Heat Maps
+:correcting:     Perform iterative corrections on original Heat Maps
 :tosparse:       Convert intra-chromosomal contact matrices to sparse ones
 :pileup:         Streamline all stages from *mapping* to *correcting*
 :quality:        Assess the quality of your experiments
