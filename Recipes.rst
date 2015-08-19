@@ -30,7 +30,7 @@ Binning::
 
 Correcting::
 
-    $ runHiC correcting -p ../data -g hg19 --HeatMap Heatmaps-hg19
+    $ runHiC correcting -p ../data -g hg19 --HeatMap Raw-hg19
 	
 Convert to sparse format::
 
@@ -101,9 +101,9 @@ Now, open a Python Interpreter:
 
 >>> from mirnylib import h5dict
 >>> Reads = h5dict.h5dict('Test-HindIII-allReps-filtered.hdf5', 'r')
->>> HeatMap = h5dict.h5dict('Test-HindIII-allReps-filtered-200K.hm', 'r')
->>> # You can manipulate Reads and HeatMap using Python dictionary operations
->>> HeatMap.keys()
+>>> Matrix = h5dict.h5dict('Test-HindIII-allReps-filtered-200K.hm', 'r')
+>>> # You can manipulate Reads and Matrix using Python dictionary operations
+>>> Matrix.keys()
 [u'chromosomeStarts',
  u'genomeBinNum',
  u'genomeIdxToLabel',
@@ -112,7 +112,7 @@ Now, open a Python Interpreter:
  
 >>> import numpy as np
 >>> Lib_1 = np.load('Test-HindIII-allReps-filtered-10K_c-sparse.npz')
->>> # Heat Maps are saved chromosome by chromosome and can be extracted with chromosome labels
+>>> # Contact Matrices are saved chromosome by chromosome and can be extracted with chromosome labels
 >>> chr1 = Lib_1['1'] # Chromosome 1
 >>> chr1.dtype
 dtype([('bin1', '<i8'), ('bin2', '<i8'), ('IF', '<f8')])
