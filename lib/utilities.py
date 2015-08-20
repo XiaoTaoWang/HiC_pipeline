@@ -420,6 +420,19 @@ def toSparse(source, idx2label, csr = False):
             log.log(21, 'Done!')
             
             count += 1
+            
+    # Store the resolution information
+    if 'resolution' in lib:
+        fname = 'resolution.npy'
+        fid = open(tmpfile, 'wb')
+        try:
+            write_array(fid, np.asanyarray(lib['resolution']))
+            fid.close()
+            fid = None
+            Zip.write(tmpfile, arcname = fname)
+        finally:
+            if fid:
+                fid.close()
     
     if count == 0:
         log.warning('Empty source file!')
