@@ -132,6 +132,8 @@ Now, open a Python Interpreter:
  u'genomeIdxToLabel',
  u'heatmap',
  u'resolution']
+ >>> # Output the contact matrix into a TXT file
+ >>> np.savetxt('Test-HindIII-allReps-filtered-200K.txt', Matrix['heatmap'], fmt = '%d', header = 'Resolution: %d' % lib['resolution'])
  
 >>> import numpy as np
 >>> Lib_1 = np.load('Test-HindIII-allReps-filtered-10K_c-sparse.npz')
@@ -139,10 +141,16 @@ Now, open a Python Interpreter:
 >>> chr1 = Lib_1['1'] # Chromosome 1
 >>> chr1.dtype
 dtype([('bin1', '<i8'), ('bin2', '<i8'), ('IF', '<f8')])
+>>> # Write the sparse matrix into a TXT file
+>>> np.savetxt('Test-HindIII-allReps-filtered-10K_c-sparse.chr1.txt', chr1, fmt = ['%d', '%d', '%.4f'], header = 'Resolution: %d' % lib['resolution'][()])
 
 >>> Lib_2 = np.load('Test-HindIII-allReps-filtered-10K_c-csrsparse.npz')
 >>> chr1 = Lib_2['1'][()]
->>> chr1 # Depends on specific data
-<24926x24926 sparse matrix of type '<type 'numpy.int64'>'
-	with 9855216 stored elements in COOrdinate format>
-    
+>>> chr1
+<1522x1522 sparse matrix of type '<type 'numpy.float64'>'
+	with 680946 stored elements in Compressed Sparse Row format>
+>>> # Output TXT
+>>> x, y = chr1.nonzero()
+>>> z = np.array(chr1[x,y]).ravel()
+>>> cols = np.r_['1,2,0', x, y, z]
+>>> np.savetxt('Test-HindIII-allReps-filtered-10K_c-csrsparse.chr1.txt', cols, fmt = ['%d', '%d', '%.4f'], header = 'Resolution: %d' % lib['resolution'][()])
