@@ -207,7 +207,8 @@ def getargs():
                       help = '''The first linear region to participate interactions. ChromID,
                       Start Site (bp), and the End Site (bp) are required to uniquely identify
                       the region. For instance, "--RegionA 1 100000 8000000" indicates the
-                      100000bp ~ 800000bp interval on chromosome 1. By default, we plot heatmap
+                      100000bp ~ 800000bp interval on chromosome 1. The End Site is allowed to be negative,
+                      so "--RegionA 1 0 -1" specifies the whole chromosome 1. By default (None), we plot heatmap
                       for the whole genome.''')
     Draw.add_argument('--RegionB', nargs = 3, metavar = ('ChromID', 'Start', 'End'),
                       help = '''The second linear region to participate interactions.''')
@@ -1358,7 +1359,7 @@ def visualize(args, commands):
                 chromEnd = intervals[label2idx[C[0]]+1]
                 Start = int(C[1]) // res
                 End = int(C[2]) // res
-                if Start >= chromEnd:
+                if ((Start + chromStart) >= chromEnd) or (Start < 0):
                     logging.error('Specified region exceeds the chromosome bound! Exit ...')
                     sys.error(1)
                 else:
@@ -1385,25 +1386,21 @@ def visualize(args, commands):
         if idx_A > idx_B:
             A, B = B, A
             idx_A, idx_B = idx_B, idx_A
+        A_Start = int(A[1]) // res
+        A_End = int(A[2]) // res
+        B_Start = int(B[1]) // res
+        B_End = int(B[2]) // res
         if 'heatmap' in lib:
             chromStart_1 = intervals[idx_A]
             chromEnd_1 = intervals[idx_A+1]
             chromStart_2 = intervals[idx_B]
             chromEnd_2 = intervals[idx_B+1]
-            A_Start = int(A[1]) // res
-            A_End = int(A[2]) // res
-            B_Start = int(B[1]) // res
-            B_End = int(B[2]) // res
-            if (A_Start >= chromEnd_1) or (B_Start >= chromEnd_2):
+            if ((A_Start + chromStart_1) >= chromEnd_1) or ((B_Start + chromStart_2) >= chromEnd_2) or (A_Start < 0) or (B_Start < 0):
                 logging.error('Specified region exceeds the chromosome bound! Exit ...')
                 sys.error(1)
             else:
                 local = H[chromStart_2:chromEnd_2, chromStart_1:chromEnd_1][B_Start:B_End, A_Start:A_End]
         else:
-            A_Start = int(A[1]) // res
-            A_End = int(A[2]) // res
-            B_Start = int(B[1]) // res
-            B_End = int(B[2]) // res
             if '0 0' in lib:
                 key = ' '.join([str(idx_A), str(idx_B)])
                 if key not in lib:
@@ -1411,7 +1408,7 @@ def visualize(args, commands):
                     sys.exit(1)
                 else:
                     H = lib[key]
-                    if (A_Start >= H.shape[1]) or (B_Start >= H.shape[0]):
+                    if (A_Start >= H.shape[1]) or (B_Start >= H.shape[0]) or (A_Start < 0) or (B_Start < 0):
                         logging.error('Specified region exceeds the chromosome bound! Exit ...')
                         sys.exit(1)
                     else:
@@ -1427,7 +1424,7 @@ def visualize(args, commands):
                         Size = Extract['bin2'].max()
                         A_End = Size if A_End > Size else A_End
                         B_End = Size if B_End > Size else B_End
-                        if (A_Start >= Size)or (B_Start >= Size):
+                        if (A_Start >= Size)or (B_Start >= Size) or (A_Start < 0) or (B_Start < 0):
                             logging.error('Specified region exceeds the chromosome bound! Exit ...')
                             sys.exit(1)
                         else:
@@ -1447,7 +1444,7 @@ def visualize(args, commands):
                                     local[i['bin2']-B_Start][i['bin1']-A_Start] += i['IF']
                     else:
                         CSR = lib[A[0]][()].tocsr()
-                        if (A_Start >= CSR.shape[0])or (B_Start >= CSR.shape[0]):
+                        if (A_Start >= CSR.shape[0])or (B_Start >= CSR.shape[0]) or (A_Start < 0) or (B_Start < 0):
                             logging.error('Specified region exceeds the chromosome bound! Exit ...')
                             sys.exit(1)
                         else:
