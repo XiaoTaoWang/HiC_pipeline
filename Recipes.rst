@@ -102,7 +102,7 @@ To view the self-chromosomal contact information::
     
 Note that the End Site of a region is allowed to be negative. "-1" indicates the end of a chromosome.
 
-Similarly, to view the contact matrix between two whole chromosome::
+Similarly, to view the contact matrix between two whole chromosomes::
 
     $ runHiC visualize -p ../data -g hg19 -S Raw-hg19/Test-HindIII-allReps-filtered-200K.hm --RegionA 1 0 -1 --RegionB X 0 -1
 
