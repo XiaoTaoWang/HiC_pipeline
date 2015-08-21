@@ -28,8 +28,7 @@ begin and end at any stage using certain subcommands.
 :tosparse:       Convert intra-chromosomal contact matrices to sparse ones
 :pileup:         Streamline all stages from *mapping* to *correcting*
 :quality:        Assess the quality of your experiments
-
-.. note:: runHiC supports *quality assessment* since 0.5.0
+:visualize:      Plot the heatmap for given interval
 
 Preparation
 ===========
