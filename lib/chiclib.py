@@ -3,7 +3,7 @@
 # Author: XiaoTao Wang
 # Organization: HuaZhong Agricultural University
 
-import logging, os, time
+import logging, os, time, re
 import matplotlib
 matplotlib.use('Agg')
 import numpy as np
@@ -33,6 +33,27 @@ matplotlib.rcParams['ytick.minor.pad'] = 6
 colorPool = ['#A6CEE3', '#1F78B4', '#B2DF8A', '#33A02C', '#FB9A99', '#E31A1C']
 
 log = logging.getLogger(__name__)
+
+class myGenome(Genome):
+    
+    def _extractChrmLabel(self, fastaName):
+        # First assume a whole filename as input (e.g. 'chr01.fa')
+        _, fastaName = os.path.split(fastaName)
+        regexp = self.chrmFileTemplate % ('(.*)')
+        search_results = re.search(regexp, fastaName)
+        # If not, assume that only the name is supplied as input (e.g. 'chr01')
+        if search_results is None:
+            regexp = self.chrmFileTemplate.split('.')[0] % ('(.*)')
+            search_results = re.search(regexp, fastaName)
+
+        if search_results is None:
+            raise Exception(
+                'The filename {} does not match the template {}.'.format(
+                fastaName, self.chrmFileTemplate))
+
+        chrm_label = search_results.group(1)
+
+        return chrm_label
 
 # A Customized HiCdataset Class
 class cHiCdataset(HiCdataset):
@@ -125,7 +146,7 @@ class cHiCdataset(HiCdataset):
             self.updateGenome(self.genome,
                               oldGenome = dictLike["misc"]["genome"]["idx2label"])
         except KeyError:
-            assumedGenome = Genome(self.genome.genomePath)
+            assumedGenome = myGenome(self.genome.genomePath)
             self.updateGenome(self.genome, oldGenome = assumedGenome)
 
         # Discard dangling ends and self-circles
@@ -179,13 +200,13 @@ class cHiCdataset(HiCdataset):
     
     def updateGenome(self, newGenome, oldGenome = 'current'):
 
-        assert isinstance(newGenome, Genome)
+        assert isinstance(newGenome, myGenome)
         
         newN = newGenome.chrmCount
         if oldGenome == "current":
             oldGenome = self.genome
         upgrade = newGenome.upgradeMatrix(oldGenome)
-        if isinstance(oldGenome, Genome):
+        if isinstance(oldGenome, myGenome):
             if oldGenome.hasEnzyme():
                 newGenome.setEnzyme(oldGenome.enzymeName)
             oldGenome = oldGenome.idx2label

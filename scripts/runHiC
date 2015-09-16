@@ -346,7 +346,7 @@ def run():
 
 def initialize(args):
     ## Necessary Modules
-    from mirnylib import genome
+    from runHiC.chiclib import myGenome
     ## Validity of arguments
     dataLocation = os.path.abspath(os.path.expanduser(args.dataFolder))
     if not os.path.exists(dataLocation):
@@ -373,8 +373,8 @@ def initialize(args):
         logging.log(21, 'Done!')
     
     # Python Genome Object
-    genome_db = genome.Genome(genomeFolder, readChrms = args.chroms,
-                              chrmFileTemplate = args.template)
+    genome_db = myGenome(genomeFolder, readChrms = args.chroms,
+                         chrmFileTemplate = args.template)
     
     return dataLocation, genomeFolder, genome_db
     
