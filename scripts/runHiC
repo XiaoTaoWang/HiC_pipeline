@@ -33,7 +33,7 @@ def getargs():
                                     along with this software, please check it.''',
                                     formatter_class = argparse.ArgumentDefaultsHelpFormatter)
     # Version
-    parser.add_argument('-v', '--version', action = 'version', version = '%(prog)s 0.6.3',
+    parser.add_argument('-v', '--version', action = 'version', version = '%(prog)s 0.6.4',
                         help = 'Print version number and exit')
     
     ## One for all
@@ -500,7 +500,7 @@ def mapping(args, commands):
     logging.log(21, 'Bam files will be parsed into hdf5 format under %s', hdf5F)
     
     # Read Metadata
-    metadata = [l.rstrip().split() for l in open(mFile)]
+    metadata = [l.rstrip().split() for l in open(mFile) if not l.isspace()]
     database = dict([(i[0], i[-1]) for i in metadata])
     for i in database:
         logging.log(21, 'Current SRR: %s', i)
@@ -699,7 +699,7 @@ def filtering(args, commands):
     
     logging.log(21, 'Filtered files will be saved under %s', filteredFolder)
     
-    metadata = [l.rstrip().split() for l in open(mFile)]
+    metadata = [l.rstrip().split() for l in open(mFile) if not l.isspace()]
     database = dict([(i[0], i[-1]) for i in metadata])
     ## Hierarchical merging structures
     bioReps = set((i[1], i[3], i[2]) for i in metadata if not os.path.exists(os.path.join(filteredFolder, '%s-%s-%s.completed' % (i[1], i[3], i[2]))))
@@ -945,7 +945,7 @@ def binning(args, commands):
     logging.log(21, 'Contact Matrices will be saved in hdf5 format under %s', hFolder)
     
     mFile = args.metadata
-    enzymes = set([l.rstrip().split()[-1] for l in open(mFile)])
+    enzymes = set([l.rstrip().split()[-1] for l in open(mFile) if not l.isspace()])
     
     ## Generate Matrices
     for S in Sources:
@@ -1217,7 +1217,7 @@ def quality(args, commands):
         logging.error('Exit ...')
         sys.exit(1)
     
-    metadata = [l.rstrip().split() for l in open(mFile)]
+    metadata = [l.rstrip().split() for l in open(mFile) if not l.isspace()]
     logging.log(21, 'SRA-level assessment ...')
     for lane in metadata:
         logging.log(21, 'Current SRA: %s', lane[0])
