@@ -2,7 +2,7 @@ Suppose your directory structure looks exactly same as the **Sample** folder
 distributed with our source code.
 
 Basic Pipeline
---------------
+**************
 Change to the working directory::
 
     $ cd Sample/working
@@ -37,7 +37,7 @@ Convert to sparse format::
     $ runHiC tosparse -p ../data -g hg19 --cHeatMap Corrected-hg19
 
 Parallel Tasks
---------------
+**************
 a) Bowtie2 supports multiple threads for alignments. (You can specify the number
    of threads through ``-t/--threads`` when running *mapping* or *pileup*)
 b) runHiC provides another layer for parallel computing. On this level of parallel,
@@ -47,7 +47,7 @@ b) runHiC provides another layer for parallel computing. On this level of parall
    between processes.
 
 Example
-```````
+-------
 At first, run the similar but slightly changed command below::
 
     $ runHiC pileup -p ../data -g hg19 --fastqDir SRA -F SRA --bowtiePath ../Tools/bowtie2/bowtie2 -t 10 --logFile runHiC-pileup-1.log -m datasets.tsv --chunkSize 1500000 --libSize 500
@@ -69,10 +69,13 @@ That's not all, if you have three or more SRA files::
 ...
 
 Experiment Quality Assessment
------------------------------
+*****************************
 Call *quality* after *filtering* or *pileup*::
 
     $ runHiC quality -p ../data -g hg19 -m datasets.tsv
+
+Statistic Table
+----------------
 
 Statistic table on sequencing reads for each SRA/FASTQ (level 1), biological
 replicate (level 2) and cell type (level 3) will be generated under filtered-hg19.
