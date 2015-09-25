@@ -26,7 +26,7 @@ Filtering::
 
 Binning::
 
-    $ runHiC binning -p ../data -g hg19 --filteredDir filtered-hg19 --mode wholeGenome --resolution 200000
+    $ runHiC binning -p ../data -g hg19 --filteredDir filtered-hg19 -m datasets.tsv --mode wholeGenome --resolution 200000
 
 Correcting::
 
@@ -43,11 +43,11 @@ a) Bowtie2 supports multiple threads for alignments. (You can specify the number
 b) runHiC provides another layer for parallel computing. On this level of parallel,
    tasks are arranged based on separate SRA/FASTQ file, i.e., you can use this
    capacity only if you have two or more SRA/FASTQ files. Just submit the same command
-   repeatedly and the program allocate a unique ID for each SRA/FASTQ to avoid conflicts
+   repeatedly and the program will allocate a unique ID for each SRA/FASTQ to avoid conflicts
    between processes.
 
-I give an example below to use these capacities as much as possible.
-
+Example
+```````
 At first, run the similar but slightly changed command below::
 
     $ runHiC pileup -p ../data -g hg19 --fastqDir SRA -F SRA --bowtiePath ../Tools/bowtie2/bowtie2 -t 10 --logFile runHiC-pileup-1.log -m datasets.tsv --chunkSize 1500000 --libSize 500
