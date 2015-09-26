@@ -1504,7 +1504,8 @@ def pileup(args, commands):
     """
     mapping(args, commands)
     args.level = 2
-    args.duplicates = args.startNearRsite = True
+    args.duplicates = True
+    args.startNearRsite = False
     filtering(args, commands)
     args.includeTrans = False
     binning(args, commands)
