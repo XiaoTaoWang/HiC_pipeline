@@ -97,7 +97,7 @@ You could plot the heatmap through *visualize*::
 
     $ runHiC visualize -p ../data -g hg19 -S Raw-hg19/Test-HindIII-allReps-filtered-200K.hm --RegionA 1 0 10000000 --RegionB X 0 10000000
 
-That will plot a heatmap of contact matrix between "chr1: 0 ~ 10000000bp" and "chrX: 0 ~ 10000000bp"
+A heatmap of contact matrix between "chr1: 0 ~ 10000000bp" and "chrX: 0 ~ 10000000bp" will be plotted
 under Raw-hg19.
 
 To view the self-chromosomal contact information::
