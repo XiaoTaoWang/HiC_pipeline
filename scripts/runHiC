@@ -241,21 +241,13 @@ def getargs():
     return args, commands
     
 
-def run():
-    # Parse Arguments
-    args, commands = getargs()
+def run(args, commands):
     
     tempName = os.path.dirname(args.genomeName)
     if tempName:
         args.genomeName = tempName
     # Improve the performance if you don't want to run it
     if commands[-1] not in ['-h', '-v', '--help', '--version']:
-        
-        def uncaught_exc_handler(ex_cls, ex, tb):
-            with open(args.logFile, 'a') as f:
-                traceback.print_last(file = f)
-        
-        sys.excepthook = uncaught_exc_handler # Redict TraceBack
         
         # Define a special level name
         logging.addLevelName(21, 'main')
@@ -1539,4 +1531,9 @@ def pileup(args, commands):
     
 
 if __name__ == '__main__':
-    run()
+    # Parse Arguments
+    args, commands = getargs()
+    try:
+        run(args, commands)
+    except:
+        traceback.print_exc(file = open(args.logFile, 'a'))
