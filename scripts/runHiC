@@ -33,7 +33,7 @@ def getargs():
                                     along with this software, please check it.''',
                                     formatter_class = argparse.ArgumentDefaultsHelpFormatter)
     # Version
-    parser.add_argument('-v', '--version', action = 'version', version = '%(prog)s 0.6.4',
+    parser.add_argument('-v', '--version', action = 'version', version = '%(prog)s 0.6.5',
                         help = 'Print version number and exit')
     
     ## One for all
@@ -770,10 +770,12 @@ def filtering(args, commands):
             fragments.filterDuplicates()
         
         ## Other Stats
-        oriStats = cPickle.load(open(os.path.join(subHDF5, 'Read-Level-Stats'),'rb'))
-        fragments.metadata['000_SequencedReads'] = oriStats['Sequenced-Reads']
-        fragments.metadata['010_UniqueMappedReads'] = oriStats['Unique-Reads']
-        fragments.metadata['020_LigationCounts'] = oriStats['Ligation-Counts']
+        if os.path.exists(os.path.join(subHDF5, 'Read-Level-Stats')):
+            oriStats = cPickle.load(open(os.path.join(subHDF5, 'Read-Level-Stats'),'rb'))
+            fragments.metadata['000_SequencedReads'] = oriStats['Sequenced-Reads']
+            fragments.metadata['010_UniqueMappedReads'] = oriStats['Unique-Reads']
+            fragments.metadata['020_LigationCounts'] = oriStats['Ligation-Counts']
+            
         fragments.metadata['110_AfterFilteringReads'] = fragments.N
         fragments.metadata['400_TotalContacts'] = fragments.N
         sameChrom = (fragments.chrms1 == fragments.chrms2)

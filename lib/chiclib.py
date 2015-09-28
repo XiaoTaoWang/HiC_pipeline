@@ -374,21 +374,28 @@ class cHiCdataset(HiCdataset):
         
         self.metadata = self.h5dict['metadata']
         
-        Total = self.metadata['000_SequencedReads']
-        Ureads = self.metadata['010_UniqueMappedReads']
-        ligSeq = self.metadata['020_LigationCounts']
-        selfLig = self.metadata['122_SelfLigationReads']
-        dangling = self.metadata['124_DanglingReads']
         longrange = self.metadata['412_IntraLongRangeReads(>=20Kb)']
         contacts = self.metadata['400_TotalContacts']
-        
-        Uratio = float(Ureads) / Total
-        Lratio = float(ligSeq) / Total
-        Fratio = float(selfLig) / Total
-        Dratio = float(dangling) / Total
         longRatio = float(longrange) / contacts
-        usage = float(contacts) / Total
         
+        ##-----------------------------------------------------------------
+        # Try to support older versions
+        fromMapping = ['000_SequencedReads', '010_UniqueMappedReads',
+                       '020_LigationCounts']
+        
+        check = all([mem in self.metadata for mem in fromMapping])
+        if check:
+            Total = self.metadata['000_SequencedReads']
+            Ureads = self.metadata['010_UniqueMappedReads']
+            ligSeq = self.metadata['020_LigationCounts']
+            selfLig = self.metadata['122_SelfLigationReads']
+            dangling = self.metadata['124_DanglingReads']
+            Uratio = float(Ureads) / Total
+            Lratio = float(ligSeq) / Total
+            Fratio = float(selfLig) / Total
+            Dratio = float(dangling) / Total
+            usage = float(contacts) / Total
+        ##-----------------------------------------------------------------
         with open(saveTo, 'w') as myfile:
             for i in sorted(self.metadata):
                 if (i[2] != '0'):
@@ -400,12 +407,14 @@ class cHiCdataset(HiCdataset):
                 myfile.write(str(self.metadata[i]))
                 myfile.write('\n')
             myfile.write('\nCritical Indicators:\n')
-            myfile.write('Unique-Mapping Ratio = %d / %d = %.4f\n' % (Ureads, Total, Uratio))
-            myfile.write('Ligation-Junction Ratio = %d / %d = %.4f\n' % (ligSeq, Total, Lratio))
-            myfile.write('Self-Ligation Ratio = %d / %d = %.4f\n' % (selfLig, Total, Fratio))
-            myfile.write('Dangling-Reads Ratio = %d / %d = %.4f\n' % (dangling, Total, Dratio))
+            if check:
+                myfile.write('Unique-Mapping Ratio = %d / %d = %.4f\n' % (Ureads, Total, Uratio))
+                myfile.write('Ligation-Junction Ratio = %d / %d = %.4f\n' % (ligSeq, Total, Lratio))
+                myfile.write('Self-Ligation Ratio = %d / %d = %.4f\n' % (selfLig, Total, Fratio))
+                myfile.write('Dangling-Reads Ratio = %d / %d = %.4f\n' % (dangling, Total, Dratio))
             myfile.write('Long-Range Ratio = %d / %d = %.4f\n' % (longrange, contacts, longRatio))
-            myfile.write('Data Usage = %d / %d = %.4f\n' % (contacts, Total, usage))
+            if check:
+                myfile.write('Data Usage = %d / %d = %.4f\n' % (contacts, Total, usage))
                 
     def saveHeatmap(self, filename, resolution, countDiagonalReads = 'Once'):
 
