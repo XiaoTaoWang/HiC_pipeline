@@ -30,7 +30,7 @@ matplotlib.rcParams['ytick.major.pad'] = 6
 matplotlib.rcParams['xtick.minor.pad'] = 6
 matplotlib.rcParams['ytick.minor.pad'] = 6
 
-colorPool = ['#A6CEE3', '#1F78B4', '#B2DF8A', '#33A02C', '#FB9A99', '#E31A1C']
+colorPool = ['#A6CEE3', '#1F78B4', '#B2DF8A', '#33A02C', '#348ABD', '#A60628']
 
 log = logging.getLogger(__name__)
 
@@ -82,6 +82,8 @@ class cHiCdataset(HiCdataset):
             # precise location of cut-site
             "cuts1": "int32", "cuts2": "int32",
             "strands1": "bool", "strands2": "bool",
+            # statistics on dangling ends
+            "extLen": "float", "extD": "int32", "extSpace": "int32"
             }
         self.metadata = {}
 
@@ -149,7 +151,7 @@ class cHiCdataset(HiCdataset):
             assumedGenome = myGenome(self.genome.genomePath)
             self.updateGenome(self.genome, oldGenome = assumedGenome)
 
-        # Discard dangling ends and self-circles
+        ## Discard dangling ends and self-circles ...
         DSmask = (self.chrms1 >= 0) * (self.chrms2 >= 0)
         self.metadata['100_NormalPairs'] = DSmask.sum()
 
@@ -161,25 +163,40 @@ class cHiCdataset(HiCdataset):
         s2 = self.strands2[sameFragMask]
         SSDE = (s1 != s2)
         SS = SSDE * (cutDifs == s2)
+        DM = SSDE & np.logical_not(SS)
         SS_N = SS.sum()
+        DM_N = DM.sum()
         SSDE_N = SSDE.sum()
         sameFrag_N = sameFragMask.sum()
         self.metadata['120_SameFragmentReads'] = sameFrag_N
         self.metadata['122_SelfLigationReads'] = SS_N
-        self.metadata['124_DanglingReads'] = SSDE_N - SS_N
+        self.metadata['124_DanglingReads'] = DM_N
         self.metadata['126_UnknownMechanism'] = sameFrag_N - SSDE_N
         
         mask = DSmask * (-sameFragMask)
-
-        del DSmask, sameFragMask
-        
         noSameFrag = mask.sum()
+        
+        del DSmask
+        
+        ## Dissect dangling ends ...
+        Ddists1 = self.fraglens1 - self.dists1
+        Ddists2 = self.fraglens2 - self.dists2
+        extD1 = Ddists1[sameFragMask][DM]
+        extD2 = Ddists2[sameFragMask][DM]
+        self.extLen = self.fraglens1[sameFragMask][DM].astype(float)
+        self.extD = np.r_['0,2', extD1, extD2].min(0)
+        
+        del Ddists1, Ddists2, extD1, extD2
         
         # distance between sites facing each other
         dist = self.evaluate("a = numexpr.evaluate('- cuts1 * (2 * strands1 -1) - "
                              "cuts2 * (2 * strands2 - 1)')",
                              ["cuts1", "cuts2", "strands1", "strands2"],
                              constants={"numexpr":numexpr})
+        
+        self.extSpace = dist[sameFragMask][DM]
+        
+        del sameFragMask
 
         readsMolecules = self.evaluate(
             "a = numexpr.evaluate('(chrms1 == chrms2) & (strands1 != strands2) &  (dist >=0) &"
@@ -187,7 +204,7 @@ class cHiCdataset(HiCdataset):
             internalVariables=["chrms1", "chrms2", "strands1", "strands2"],
             externalVariables={"dist": dist},
             constants={"maximumMoleculeLength": self.maximumMoleculeLength, "numexpr": numexpr})
-
+        
         mask *= (readsMolecules == False)
         extraDE = mask.sum()
         self.metadata['210_ExtraDanglingReads'] = -extraDE + noSameFrag
@@ -557,6 +574,49 @@ class cHiCdataset(HiCdataset):
                   ncol = 2, loc = 'upper right')
         
         plt.savefig(outfile, dpi = dpi)
+        plt.close()
+    
+    def dangStats(self, prefix, offset = 2, dpi = 500):
+        
+        Keys = ['extD', 'extLen', 'extSpace']
+        if not all([(i in self.h5dict for i in Keys)]):
+            raise StandardError
+        
+        extD = self.h5dict['extD']
+        extLen = self.h5dict['extLen']
+        extSpace = self.h5dict['extSpace']
+        
+        m = extD.min()
+        if offset < -m:
+            offset = -m
+        
+        extD += offset
+        extR = extD / extLen
+        
+        lenlow = np.percentile(extLen, 0.1)
+        lenhigh = np.percentile(extLen, 99.9)
+        spacelow = np.percentile(extSpace, 0.1)
+        spacehigh = np.percentile(extSpace, 99.9)
+        
+        lenM = (extLen >= lenlow) & (extLen <= lenhigh)
+        spaceM = (extSpace >= spacelow) & (extSpace <= spacehigh)
+        
+        fig = plt.figure(figsize = (15, 9))
+        ax = fig.add_subplot(111)
+        ax.hist(extR[lenM], bins = 15, color = colorPool[-2])
+        ax.set_title('Start Site of Dandling Ends Relative to Fragments (Ratio)')
+        ax.xaxis.set_ticks_position('bottom')
+        ax.yaxis.set_ticks_position('left')
+        plt.savefig('-'.join([prefix, 'danglingStart']) + '.png', dpi = dpi)
+        plt.close()
+        
+        fig = plt.figure(figsize = (15, 9))
+        ax = fig.add_subplot(111)
+        ax.hist(extSpace[spaceM], bins = 15, color = colorPool[-1])
+        ax.set_title('Estimated Library Size Distribution (bp)')
+        ax.xaxis.set_ticks_position('bottom')
+        ax.yaxis.set_ticks_position('left')
+        plt.savefig('-'.join([prefix, 'librarySize']) + '.png', dpi = dpi)
         plt.close()
         
         
