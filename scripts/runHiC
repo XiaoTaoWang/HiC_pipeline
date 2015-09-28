@@ -316,7 +316,7 @@ def run():
             arglist.extend(['# Merging Level = 2',
                             '# Library Size = %d' % args.libSize,
                             '# Remove PCR Duplicates = True',
-                            '# Remove startNearRsite = True',
+                            '# Remove startNearRsite = False',
                             '# Building Mode = %s' % args.mode,
                             '# Resolution = %s' % args.resolution])
         if commands[0] == 'tosparse':

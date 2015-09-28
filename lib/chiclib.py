@@ -81,9 +81,7 @@ class cHiCdataset(HiCdataset):
             "dists1": "int32", "dists2": "int32",
             # precise location of cut-site
             "cuts1": "int32", "cuts2": "int32",
-            "strands1": "bool", "strands2": "bool",
-            # statistics on dangling ends
-            "extLen": "float", "extD": "int32", "extSpace": "int32"
+            "strands1": "bool", "strands2": "bool"
             }
         self.metadata = {}
 
@@ -183,8 +181,8 @@ class cHiCdataset(HiCdataset):
         Ddists2 = self.fraglens2 - self.dists2
         extD1 = Ddists1[sameFragMask][DM]
         extD2 = Ddists2[sameFragMask][DM]
-        self.extLen = self.fraglens1[sameFragMask][DM].astype(float)
-        self.extD = np.r_['0,2', extD1, extD2].min(0)
+        self.h5dict['extLen'] = self.fraglens1[sameFragMask][DM].astype(float)
+        self.h5dict['extD'] = np.r_['0,2', extD1, extD2].min(0)
         
         del Ddists1, Ddists2, extD1, extD2
         
@@ -194,7 +192,7 @@ class cHiCdataset(HiCdataset):
                              ["cuts1", "cuts2", "strands1", "strands2"],
                              constants={"numexpr":numexpr})
         
-        self.extSpace = dist[sameFragMask][DM]
+        self.h5dict['extSpace'] = dist[sameFragMask][DM]
         
         del sameFragMask
 
@@ -341,6 +339,18 @@ class cHiCdataset(HiCdataset):
             self.h5dict.flush()
             time.sleep(0.2)  # allow buffers to flush
         
+        stats = ['extLen', 'extD', 'extSpace']
+        check = all([(i in j) for i in stats for j in h5dicts])
+        if check:
+            for name in stats:
+                res = []
+                for mydict in h5dicts:
+                    res.append(mydict[name])
+                res = np.concatenate(res)
+                self.h5dict[name] = res
+                self.h5dict.flush()
+                time.sleep(0.2)
+        
         Types = ['LeftType', 'RightType', 'InnerType', 'OuterType']
         check = all([(i in j) for i in Types for j in h5dicts])
         if check:
@@ -368,13 +378,16 @@ class cHiCdataset(HiCdataset):
         Ureads = self.metadata['010_UniqueMappedReads']
         ligSeq = self.metadata['020_LigationCounts']
         selfLig = self.metadata['122_SelfLigationReads']
+        dangling = self.metadata['124_DanglingReads']
         longrange = self.metadata['412_IntraLongRangeReads(>=20Kb)']
         contacts = self.metadata['400_TotalContacts']
         
         Uratio = float(Ureads) / Total
         Lratio = float(ligSeq) / Total
         Fratio = float(selfLig) / Total
+        Dratio = float(dangling) / Total
         longRatio = float(longrange) / contacts
+        usage = float(contacts) / Total
         
         with open(saveTo, 'w') as myfile:
             for i in sorted(self.metadata):
@@ -390,7 +403,9 @@ class cHiCdataset(HiCdataset):
             myfile.write('Unique-Mapping Ratio = %d / %d = %.4f\n' % (Ureads, Total, Uratio))
             myfile.write('Ligation-Junction Ratio = %d / %d = %.4f\n' % (ligSeq, Total, Lratio))
             myfile.write('Self-Ligation Ratio = %d / %d = %.4f\n' % (selfLig, Total, Fratio))
+            myfile.write('Dangling-Reads Ratio = %d / %d = %.4f\n' % (dangling, Total, Dratio))
             myfile.write('Long-Range Ratio = %d / %d = %.4f\n' % (longrange, contacts, longRatio))
+            myfile.write('Data Usage = %d / %d = %.4f\n' % (contacts, Total, usage))
                 
     def saveHeatmap(self, filename, resolution, countDiagonalReads = 'Once'):
 
