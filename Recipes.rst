@@ -93,7 +93,7 @@ distance at which it is meaningful to examine Hi-C contact patterns.
 
 Visualization
 *************
-You could plot the heatmap through *visualize*::
+Call *visualize* if you want to view the contacts::
 
     $ runHiC visualize -p ../data -g hg19 -S Raw-hg19/Test-HindIII-allReps-filtered-200K.hm --RegionA 1 0 10000000 --RegionB X 0 10000000
 
