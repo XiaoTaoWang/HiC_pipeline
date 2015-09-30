@@ -21,14 +21,23 @@ begin and end at any stage using certain subcommands.
 
 7 subcommands are available:
 
-:mapping:        Iteratively map pair-end sequencing reads to a supplied genome
-:filtering:      Remove noises at the level of aligned read pairs and restriction fragments
-:binning:        Generate original contact matrices
-:correcting:     Perform iterative corrections on original contact matrices
-:tosparse:       Convert intra-chromosomal contact matrices to sparse ones
-:pileup:         Streamline all stages from *mapping* to *correcting*
-:quality:        Assess the quality of your experiments
-:visualize:      Plot the heatmap for given interval
++------------+------------------------------------------------------------------------------+
+| mapping    | Iteratively map pair-end sequencing reads to a supplied genome               |
++------------+------------------------------------------------------------------------------+
+| filtering  | Remove noises at the level of aligned read pairs and restriction fragments   |
++------------+------------------------------------------------------------------------------+
+| binning    | Generate original contact matrices                                           |
++------------+------------------------------------------------------------------------------+
+| correcting | Perform iterative corrections on original contact matrices                   |
++------------+------------------------------------------------------------------------------+
+| tosparse   | Convert intra-chromosomal contact matrices to sparse ones                    |
++------------+------------------------------------------------------------------------------+
+| pileup     | Streamline all stages from *mapping* to *correcting*                         |
++------------+------------------------------------------------------------------------------+
+| quality    | Assess the quality of your experiments                                       |
++------------+------------------------------------------------------------------------------+
+| visualize  | Plot the heatmap for given interval                                          |
++------------+------------------------------------------------------------------------------+
 
 Preparation
 ===========

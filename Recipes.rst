@@ -78,6 +78,100 @@ Statistic Table
 ````````````````
 Statistic tables on sequencing reads for each SRA/FASTQ (level 1), biological
 replicate (level 2) and cell type (level 3) will be generated under filtered-hg19.
+Here's a snapshot:
+
+.. figure:: images/stats.png
+   :align:  center
+
+The following table lists possible statistic names and their meanings:
+
++-------------------------------+---------------------------------------------------+
+| Statistic Name                | Meaning                                           |
++===============================+===================================================+
+| 000_SequencedReads            | Total number of sequenced read pairs              |
++-------------------------------+---------------------------------------------------+
+| 010_UniqueMappedReads         | Number of read pairs of which one read or both    |
+|                               | reads can be uniquely mapped to reference genome  |
++-------------------------------+---------------------------------------------------+
+| 020_LigationCounts            | Number of read pairs containing so-called         |
+|                               | "ligation junction". A ligation junction is       |
+|                               | the sequence created when the ends of two         |
+|                               | filled-in restriction fragments ligate to one     |
+|								| another. For HindIII, the sequence is AAGCTAGCTT, |
+|                               | and for MboI, it's GATCGATC. Obviously, this      |
+|                               | statistic is dependent on sequence read length    |
+|                               | and your library size. For 300~500bp library and  |
+|                               | 101bp PE reads, it always falls into the 30%~40%  |
+|                               | range. A low value suggests that the ligation     |
+|                               | failed.                                           |
++-------------------------------+---------------------------------------------------+
+| 100_NormalPairs               | Number of read pairs of which both reads can be   |
+|                               | uniquely mapped.                                  |
++-------------------------------+---------------------------------------------------+
+| 110_AfterFilteringReads       | Number of read pairs that have passed all         |
+|                               | filtering criteria.                               |
++-------------------------------+---------------------------------------------------+
+| 120_SameFragmentReads         | Number of read pairs of which both reads are      |
+|                               | mapped to the same restriction fragment. Such     |
+|                               | read pairs are filtered in our pipeline.          |
++-------------------------------+---------------------------------------------------+
+| 122_SelfLigationReads         | Number of read pairs deriving from                |
+|                               | self-circularized ligation product. The two reads |
+|                               | are mapped to the same restriction fragment and   |
+|                               | face in opposite directions.                      |
++-------------------------------+---------------------------------------------------+
+| 124_DanglingReads             | Both reads of these read pairs are mapped to the  |
+|                               | same fragment and face toward each other. There   |
+|                               | can be many causes of such products, ranging from |
+|                               | low ligation efficiency to poor streptavidin      |
+|                               | specificity.                                      |
++-------------------------------+---------------------------------------------------+
+| 126_UnknownMechanism          | Unknown sources of "120_SameFragmentReads". Both  |
+|                               | reads are mapped to the same strand.              |
++-------------------------------+---------------------------------------------------+
+| 210_ExtraDanglingReads        | The two reads of these read pairs are mapped to   |
+|                               | different restriction fragments but face toward   |
+|                               | each other and are separated by less than the     |
+|                               | library size (500bp) interval. Such read pairs    |
+|                               | may contain true contacts, but are largely        |
+|                               | contaminated, so we also remove these read pairs  |
+|                               | from our analysis.                                |
++-------------------------------+---------------------------------------------------+
+| 310_DuplicatedRemoved         | Number of read pairs from PCR products. We treat  |
+|                               | two read pairs to be duplicated from one another  |
+|                               | if both reads of them are mapped to the same      |
+|                               | position of the genome. Such redundant read pairs |
+|                               | are also filtered from our analysis.              |
++-------------------------------+---------------------------------------------------+
+| 320_StartNearRsiteReads       | Number of read pairs of which at least one read   |
+|                               | starts within 5 bp near a restriction site. Such  |
+|                               | read pairs reflect insufficient digestion during  |
+|                               | restriction enzyme treatment, and the two         |
+|                               | involved fragments may very large, so they can not|
+|                               | be really generated from physical contacts. This  |
+|                               | filtering is optional. ("--startNearRsite")       |
++-------------------------------+---------------------------------------------------+
+| 400_TotalContacts             | Number of read pairs from true contacts, i.e.,    |
+|                               | the remaining read pairs after all filtering      |
+|                               | processes                                         |
++-------------------------------+---------------------------------------------------+
+| 410_IntraChromosomalReads     | Number of intra-chromosomal contacts              |
++-------------------------------+---------------------------------------------------+
+| 412_IntraLongRangeReads       | Number of long-range contacts (genomic distance   |
+|                               | >= 20Kb)                                          |
++-------------------------------+---------------------------------------------------+
+| 412_IntraShortRangeReads      | Number of short-range contacts (genomic distance  |
+|                               | < 20Kb)                                           |
++-------------------------------+---------------------------------------------------+
+| 420_InterChromosomalReads     | Number of inter-chromosomal contacts              |
++-------------------------------+---------------------------------------------------+
+| 500_IntraMitochondrial        | Number of intra-mitochondrial contacts            |
++-------------------------------+---------------------------------------------------+
+| 600_InterNuclearMitochondrial | Number of contacts between mitochondrial genome   |
+|                               | and the nuclear genome. This indicator has        |
+|                               | potential to assess the random ligation level of  |
+|                               | your library.                                     |
++-------------------------------+---------------------------------------------------+    
 
 Read-pair Type Plotting
 ````````````````````````
@@ -86,7 +180,7 @@ replicate (level 2) and cell type (level 3) under filtered-hg19 too. Intra-chrom
 contacts are broken down into four types: "left" pair (both reads map to the reverse
 strand), "right" pair (both reads map to the forward strand), "inner" pair (reads map
 to different strands and point towards each other) and "outer" pair (reads map to
-different strands and point away from one another). If the reads come from proximity
+different strands and point away from one another). If reads come from proximity
 ligation, each pair type should account for roughly 25% of contacts. Thus, distance
 at which the percentage of each type converges to 25% is a good indication of the minimum
 distance at which it is meaningful to examine Hi-C contact patterns.
@@ -100,7 +194,7 @@ Call *visualize* if you want to view the contacts::
 A heatmap of contact matrix between "chr1: 0 ~ 10000000bp" and "chrX: 0 ~ 10000000bp" will be plotted
 under Raw-hg19.
 
-To view the self-chromosomal contact information::
+To view self-chromosomal contact information::
 
     $ runHiC visualize -p ../data -g hg19 -S Raw-hg19/Test-HindIII-allReps-filtered-200K.hm --RegionA 1 0 -1 --RegionB 1 0 -1
     
