@@ -97,7 +97,7 @@ The following table lists possible statistic names and their meanings:
 |                               | "ligation junction". A ligation junction is       |
 |                               | the sequence created when the ends of two         |
 |                               | filled-in restriction fragments ligate to one     |
-|								| another. For HindIII, the sequence is AAGCTAGCTT, |
+|			        | another. For HindIII, the sequence is AAGCTAGCTT, |
 |                               | and for MboI, it's GATCGATC. Obviously, this      |
 |                               | statistic is dependent on sequence read length    |
 |                               | and your library size. For 300~500bp library and  |
