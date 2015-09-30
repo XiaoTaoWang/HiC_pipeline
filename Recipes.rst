@@ -80,8 +80,8 @@ Statistic tables on sequencing reads for each SRA/FASTQ (level 1), biological
 replicate (level 2) and cell type (level 3) will be generated under filtered-hg19.
 Here's a snapshot:
 
-.. figure:: images/stats.png
-   :align:  center
+.. image:: ./images/stats.png
+        :align: center
 
 The following table lists possible statistic names and their meanings:
 
@@ -97,7 +97,7 @@ The following table lists possible statistic names and their meanings:
 |                               | "ligation junction". A ligation junction is       |
 |                               | the sequence created when the ends of two         |
 |                               | filled-in restriction fragments ligate to one     |
-|			        | another. For HindIII, the sequence is AAGCTAGCTT, |
+|			                    | another. For HindIII, the sequence is AAGCTAGCTT, |
 |                               | and for MboI, it's GATCGATC. Obviously, this      |
 |                               | statistic is dependent on sequence read length    |
 |                               | and your library size. For 300~500bp library and  |
@@ -171,7 +171,12 @@ The following table lists possible statistic names and their meanings:
 |                               | and the nuclear genome. This indicator has        |
 |                               | potential to assess the random ligation level of  |
 |                               | your library.                                     |
-+-------------------------------+---------------------------------------------------+    
++-------------------------------+---------------------------------------------------+
+
+Note that we try to organize these statistics hierarchically using indentation,
+so "010_UniqueMappedReads" and "020_LigationCounts" are parts of "000_SequencedReads",
+similarly, "122_SelfLigationReads", "124_DanglingReads" and "126_UnknownMechanism"
+constitute "120_SameFragmentReads".
 
 Read-pair Type Plotting
 ````````````````````````
@@ -183,7 +188,15 @@ to different strands and point towards each other) and "outer" pair (reads map t
 different strands and point away from one another). If reads come from proximity
 ligation, each pair type should account for roughly 25% of contacts. Thus, distance
 at which the percentage of each type converges to 25% is a good indication of the minimum
-distance at which it is meaningful to examine Hi-C contact patterns.
+distance at which it is meaningful to examine Hi-C contact patterns. Here's an example
+below:
+
+.. image:: ./images/PairType.png
+        :align: center
+
+We can see a distinct turning point around 5Kb. While there may be several unknown mechanisms
+making biases below this point, we should only consider contacts whose genomic distances
+are greater than 5Kb in the following analysis.
 
 Visualization
 *************
