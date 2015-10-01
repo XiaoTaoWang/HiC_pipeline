@@ -178,6 +178,31 @@ so "010_UniqueMappedReads" and "020_LigationCounts" are parts of "000_SequencedR
 similarly, "122_SelfLigationReads", "124_DanglingReads" and "126_UnknownMechanism"
 constitute "120_SameFragmentReads".
 
+Library-size Estimation
+```````````````````````
+Dangling reads can be applied to estimate your library size in nature. Here's an example
+of size distribution of dangling read molecules for normal 300~500bp library:
+
+.. image:: ./images/librarySize.png
+        :align: center
+
+The inconsistency between this distribution and the experimental library size suggests
+a failure in DNA size selection step.
+
+Ligation Efficiency
+```````````````````
+Excessive dangling reads may result from low ligation efficiency or poor streptavidin
+specificity. Can we further discriminate these two mechanisms? Intuitively, if one of the
+read of most read pairs locates near a restriction site, the former (low ligation efficiency)
+is more likely to be the cause, so we also plot the distribution of the relative start
+site for dangling reads:
+
+.. image:: ./images/danglingStart.png
+        :align: center
+
+Here, the majority of these read pairs have one of their read starting near a restriction
+site, therefore, ligation efficiency could be a good explain.
+
 Read-pair Type Plotting
 ````````````````````````
 Read-pair type ratios will be reported in line-plot manner for each biological
