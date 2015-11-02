@@ -36,31 +36,6 @@ def getargs():
     parser.add_argument('-v', '--version', action = 'version', version = '%(prog)s 0.6.5',
                         help = 'Print version number and exit')
     
-    ## One for all
-    common = argparse.ArgumentParser(add_help = False)
-    common.add_argument('-p', '--dataFolder', default = '.',
-                        help = '''Root directory of original data. We recommend placing sequencing
-                        and genome data here.''')
-    common.add_argument('-g', '--genomeName',
-                        help = '''Genome folder name. This folder must be placed under dataFolder.
-                        Genome sequences should be stored chromosome by chromosome in FASTA format.
-                        If gap file is not contained, we will generate a dummy one.''')
-    common.add_argument('-C', '--chroms', nargs = '*', default = ['#', 'X', 'Y', 'M'],
-                       help = '''Which chromosomes will be involved. Specially, "#" stands for
-                       chromosomes with numerical labels. "--chroms" with zero argument will
-                       generate an empty list, in which case all chromosome data will be loaded.''')
-    common.add_argument('-T', '--template', default = 'chr%s.fa',
-                        help = '''Template of FASTA file names''')
-    common.add_argument('-G', '--gapFile', default = 'gap.txt', help = '''Gap file name.''')
-    common.add_argument('-m', '--metadata', default = 'datasets.tsv',
-                        help = '''Metadata file describing each SRA file. You should place
-                        it under current working directory. Four columns are required: prefix
-                        of SRA file name, cell line name, biological replicate label, and
-                        restriction enzyme name. An example file is distributed along with
-                        this software, please check it.''')
-    common.add_argument('--logFile', default = 'runHiC.log',
-                        help = '''Logging file name.''')
-    
     ## Sub-commands
     subparser = parser.add_subparsers(title = 'sub-commands',
                                       description = '''Read pair mapping, filtering, binning
@@ -70,7 +45,6 @@ def getargs():
                                       dest = 'subcommand')
     ## Iterative Mapping
     iterM = subparser.add_parser('mapping',
-                                 parents = [common],
                                  help = '''Map raw pair-end sequencing data to a supplied
                                  genome. Both SRA and FASTQ format are admissible.''',
                                  description = '''An iterative mapping schema is used. The
@@ -84,6 +58,25 @@ def getargs():
                                  hdf5 (dict-like structure format) files for library of matched
                                  Hi-C reads are created under current working directory.''',
                                  formatter_class = argparse.ArgumentDefaultsHelpFormatter)
+    iterM.add_argument('-m', '--metadata', default = 'datasets.tsv',
+                       help = '''Metadata file describing each SRA file. You should place
+                       it under current working directory. Four columns are required: prefix
+                       of SRA file name, cell line name, biological replicate label, and
+                       restriction enzyme name. An example file is distributed along with
+                       this software, please check it.''')
+    iterM.add_argument('-p', '--dataFolder', default = '.',
+                       help = '''Root directory of original data. We recommend placing sequencing
+                       and genome data here.''')
+    iterM.add_argument('-g', '--genomeName',
+                       help = '''Genome folder name. This folder must be placed under dataFolder.
+                       Genome sequences should be stored chromosome by chromosome in FASTA format.
+                       If gap file is not contained, we will generate a dummy one.''')
+    iterM.add_argument('-C', '--chroms', nargs = '*', default = ['#', 'X', 'Y', 'M'],
+                       help = '''Which chromosomes will be involved. Specially, "#" stands for
+                       chromosomes with numerical labels. "--chroms" with zero argument will
+                       generate an empty list, in which case all chromosome data will be loaded.''')
+    iterM.add_argument('-T', '--template', default = 'chr%s.fa', help = '''Template of FASTA file names''')
+    iterM.add_argument('-G', '--gapFile', default = 'gap.txt', help = '''Gap file name.''')
     iterM.add_argument('-f', '--fastqDir', help = 'Sequencing data folder. Relative path to dataFolder')
     iterM.add_argument('-F', '--Format', default = 'SRA', choices = ['SRA', 'FASTQ'],
                        help = 'Format of the sequencing data.')
@@ -104,11 +97,11 @@ def getargs():
                        say, 1500000 (Rao, 2014). By default, no split is performed.''')
     iterM.add_argument('--removeInters', action = 'store_true',
                        help = '''If specified, remove intermediate results, only final hdf5 file retained.''')
+    iterM.add_argument('--logFile', default = 'runHiC.log', help = '''Logging file name.''')
     iterM.set_defaults(func = mapping)
     
     ## Merging and Filtering
     removeNoise = subparser.add_parser('filtering',
-                                       parents = [common],
                                        help = '''Filtering at the level of aligned read pairs
                                        and restriction fragments. Files from the same experiment
                                        or the same cell line (optional) will be merged together
@@ -117,6 +110,12 @@ def getargs():
                                        fragment-level information are generated under current working
                                        directory after this command is called.''',
                                        formatter_class = argparse.ArgumentDefaultsHelpFormatter)
+    removeNoise.add_argument('-m', '--metadata', default = 'datasets.tsv',
+                             help = '''Metadata file describing each SRA file. You should place
+                             it under current working directory. Four columns are required: prefix
+                             of SRA file name, cell line name, biological replicate label, and
+                             restriction enzyme name. An example file is distributed along with
+                             this software, please check it.''')
     removeNoise.add_argument('--HDF5',
                              help = '''Path to the folder with hdf5 files which are generated by
                              mapping command.''')
@@ -130,11 +129,11 @@ def getargs():
                              help = '''Set merging level. 1: hdf5 files from the same biological
                              replicate will be merged, 2: hdf5 files from the same cell line will also be
                              merged.''')
+    removeNoise.add_argument('--logFile', default = 'runHiC.log', help = '''Logging file name.''')
     removeNoise.set_defaults(func = filtering)
     
     ## Binning
     binReads = subparser.add_parser('binning',
-                                    parents = [common],
                                     help = '''Bin filtered reads at certain resolution.''',
                                     epilog = '''After calling this command, a folder with
                                     contact matrices (in HDF5 format) is created under current
@@ -152,11 +151,11 @@ def getargs():
     binReads.add_argument('--includeTrans', action = 'store_true',
                           help = '''Whether to include inter-chromosomal interactions in "byChromosome"
                           mode.''')
+    binReads.add_argument('--logFile', default = 'runHiC.log', help = '''Logging file name.''')
     binReads.set_defaults(func = binning)
     
     ## Iterative Correction
     iterC = subparser.add_parser('correcting',
-                                 parents = [common],
                                  help = '''Perform iterative corrections on original contact matrices.''',
                                  description = '''Two modes are provided for different resolutions.
                                  The program will choose a better one for you according to the data
@@ -170,11 +169,11 @@ def getargs():
                        can point to a folder or certain files (wild cards are allowed). If a folder
                        name is provided, we will perform iterative corrections for all contact matrices in
                        that folder.''')
+    iterC.add_argument('--logFile', default = 'runHiC.log', help = '''Logging file name.''')
     iterC.set_defaults(func = correcting)
     
     ## Sparse Matrix Conversion
     sMatrix = subparser.add_parser('tosparse',
-                                  parents = [common],
                                   help = '''Convert intra-chromosomal contact matrices to sparse ones.
                                   ''',
                                   formatter_class = argparse.ArgumentDefaultsHelpFormatter)
@@ -185,22 +184,27 @@ def getargs():
     sMatrix.add_argument('--csr', action = 'store_true',
                          help = '''If specified, matrices are converted into CSR (Compressed Row Storage)
                          format. By default, a customized numpy structured array is applied.''')
+    sMatrix.add_argument('--logFile', default = 'runHiC.log', help = '''Logging file name.''')
     sMatrix.set_defaults(func = tosparse)
     
     ## Quality Assessment
     QA = subparser.add_parser('quality',
-                              parents = [common],
                               help = '''Quality assessment for Hi-C experiments. Do not call this
                               command before filtering!''',
                               formatter_class = argparse.ArgumentDefaultsHelpFormatter)
+    QA.add_argument('-m', '--metadata', default = 'datasets.tsv',
+                    help = '''Metadata file describing each SRA file. You should place
+                    it under current working directory. Four columns are required: prefix
+                    of SRA file name, cell line name, biological replicate label, and
+                    restriction enzyme name. An example file is distributed along with
+                    this software, please check it.''')
+    QA.add_argument('--logFile', default = 'runHiC.log', help = '''Logging file name.''')
     QA.set_defaults(func = quality)
     
     ## Hi-C Map Visualization
     Draw = subparser.add_parser('visualize',
                                 help = '''Plot the heatmap for given interval.''',
-                                parents = [common],
                                 formatter_class = argparse.ArgumentDefaultsHelpFormatter)
-    
     Draw.add_argument('-S', '--Source', help = '''Path to the contact matrix source file.
                        All Files generated by "binning", "correcting" and "tosparse" are supported.''')
     Draw.add_argument('--RegionA', nargs = 3, metavar = ('ChromID', 'Start', 'End'),
@@ -212,6 +216,7 @@ def getargs():
                       for the whole genome.''')
     Draw.add_argument('--RegionB', nargs = 3, metavar = ('ChromID', 'Start', 'End'),
                       help = '''The second linear region to participate interactions.''')
+    Draw.add_argument('--logFile', default = 'runHiC.log', help = '''Logging file name.''')
     Draw.set_defaults(func = visualize)
                     
     ## Pile Up
@@ -228,7 +233,7 @@ def getargs():
     streamline.add_argument('-M', '--mode', default = 'wholeGenome', choices = ['wholeGenome', 'byChromosome'],
                             help = '''Mode for building contact matrices.''')
     streamline.add_argument('-R', '--resolution', type = int, default = 200000,
-                          help = 'Resolution of a contact matrix. Unit: bp')
+                          help = 'Resolution of the contact matrix. Unit: bp')
     streamline.set_defaults(func = pileup)
     
      ## Parse the command-line arguments
