@@ -248,12 +248,13 @@ def getargs():
 
 def run(args, commands):
     
-    tempName = os.path.dirname(args.genomeName)
-    if tempName:
-        args.genomeName = tempName
     # Improve the performance if you don't want to run it
     if commands[-1] not in ['-h', '-v', '--help', '--version']:
         
+        tempName = os.path.dirname(args.genomeName)
+        if tempName:
+            args.genomeName = tempName
+            
         # Define a special level name
         logging.addLevelName(21, 'main')
         ## Root Logger Configuration
@@ -275,26 +276,27 @@ def run(args, commands):
         ## Logging for argument setting
         arglist = ['# ARGUMENT LIST:',
                    '# Sub-Command Name = %s' % commands[0],
-                   '# Data Root Directory = %s' % args.dataFolder,
-                   '# Genome Name = %s' % args.genomeName,
-                   '# Chromosomes = %s' % args.chroms,
-                   '# FASTA template = %s' % args.template,
-                   '# Gap File = %s' % args.gapFile
                    ]
         if (commands[0] == 'mapping') or (commands[0] == 'pileup'):
-            arglist.extend(['# Sequencing data = %s' % args.fastqDir,
+            arglist.extend(['# MetaData = %s' % args.metadata, 
+                            '# Data Root Directory = %s' % args.dataFolder,
+                            '# Genome Name = %s' % args.genomeName,
+                            '# Chromosomes = %s' % args.chroms,
+                            '# FASTA template = %s' % args.template,
+                            '# Gap File = %s' % args.gapFile,
+                            '# Sequencing data = %s' % args.fastqDir,
                             '# Sequencing Format = %s' % args.Format,
                             '# Bowtie2 Path = %s' % args.bowtiePath,
-                            '# Bowtie2 Threads = %s' % args.threads,
-                            '# MetaData = %s' % args.metadata,
-                            '# Remove Intermediate Results = %s' % args.removeInters
+                            '# Bowtie2 Threads = %s' % args.threads
                             ])
             if '--bowtieIndex' in commands:
                 arglist.extend(['# Bowtie2 Genome Index = %s' % args.bowtieIndex])
             if args.chunkSize != None:
                 arglist.extend(['# Maximum Chunk Size = %d' % args.chunkSize])
                 
-            arglist.extend(['# Cache Folder = %s' % args.cache])
+            arglist.extend(['# Cache Folder = %s' % args.cache,
+                            '# Remove Intermediate Results = %s' % args.removeInters])
+                            
         if commands[0] == 'filtering':
             arglist.extend(['# Source Files = %s' % args.HDF5,
                             '# MetaData = %s' % args.metadata,
@@ -305,7 +307,8 @@ def run(args, commands):
         if commands[0] == 'binning':
             arglist.extend(['# Source Files = %s' % args.filteredDir,
                             '# Building Mode = %s' % args.mode,
-                            '# Resolution = %s' % args.resolution])
+                            '# Resolution = %s' % args.resolution,
+                            '# Include Inter-chromosomal Interactions = %s' % args.includeTrans])
         if commands[0] == 'correcting':
             arglist.extend(['# Source Matrix = %s' % args.HeatMap])
         
