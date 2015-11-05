@@ -6,7 +6,7 @@
 # Organization: HuaZhong Agricultural University
 
 ## Required Modules
-import os, sys, argparse, logging, logging.handlers, glob, atexit, traceback
+import os, sys, argparse, logging, logging.handlers, glob, atexit, traceback, cPickle
 
 try:
     import numpy as np
@@ -381,7 +381,7 @@ def initialize(args):
 
 def mapping(args, commands):
     ## Import necessary modules
-    import cPickle, gzip
+    import gzip
     import hiclib.mapping as iterM
     from mirnylib import h5dict
     from runHiC.utilities import juncSeqCountSRA, splitSRA, splitSingleFastq, \
@@ -389,6 +389,11 @@ def mapping(args, commands):
     
      # Initialization
     dataLocation, genomeFolder, genome_db = initialize(args)
+    
+    ## Reference Genome Information
+    gInfo = {'dataFolder': args.dataFolder, 'genomeName': args.genomeName,
+             'gapFile': args.gapFile, 'chroms': args.chroms,
+             'template': args.template}
     
     # Construct bowtie2 genome index
     def buildIndex(genomeFolder):
@@ -491,9 +496,9 @@ def mapping(args, commands):
     hdf5F = 'hdf5-%s' % args.genomeName
     args.HDF5 = hdf5F # To communicate with next processing step (merge)
     if not os.path.exists(bamFolder):
-        os.mkdir(bamFolder)
+        os.makedirs(bamFolder)
     if not os.path.exists(hdf5F):
-        os.mkdir(hdf5F)
+        os.makedirs(hdf5F)
     
     logging.log(21, 'Bowtie2 alignment results will be saved in bam format under %s',
                 bamFolder)
@@ -664,6 +669,7 @@ def mapping(args, commands):
         Read_level['Ligation-Counts'] = Count
             
         cPickle.dump(Read_level, open(os.path.join(subhdf5F, 'Read-Level-Stats'), 'wb'))
+        cPickle.dump(gInfo, open(os.path.join(subhdf5F, 'referenceGenome'), 'wb'))
             
         if args.removeInters:
             for folder in [chunkFolder, subbamFolder]:
@@ -678,7 +684,7 @@ def mapping(args, commands):
 def filtering(args, commands):
     # Necessary Modules
     from runHiC.chiclib import cHiCdataset
-    import cPickle
+    from mirnylib.h5dict import h5dict
     
     ## Validity of arguments
     Sources = os.path.abspath(os.path.expanduser(args.HDF5))
@@ -693,9 +699,9 @@ def filtering(args, commands):
         sys.exit(1)
     
     # Output Folder
-    filteredFolder = 'filtered-%s' % args.genomeName
+    filteredFolder = os.path.split(Sources)[-1].replace('hdf5-', 'filtered-')
     if not os.path.exists(filteredFolder):
-        os.mkdir(filteredFolder)
+        os.makedirs(filteredFolder)
     
     logging.log(21, 'Filtered files will be saved under %s', filteredFolder)
     
@@ -725,6 +731,10 @@ def filtering(args, commands):
         if not os.path.exists(os.path.join(subHDF5, '%s.completed' % SRR)):
             logging.log(21, '%s is still in mapping stage, skipping ...', SRR)
             continue
+        
+        ## Read-in Corresponding Genome Information
+        gInfo = cPickle.load(open(os.path.join(subHDF5, 'referenceGenome'),'rb'))
+        args.__dict__.update(gInfo)
         
         subFilter = os.path.join(filteredFolder, SRR)
         
@@ -829,6 +839,10 @@ def filtering(args, commands):
         fragments.h5dict['InnerType'] = binCount_I
         fragments.h5dict['OuterType'] = binCount_O
         
+        # Save ref-genome information
+        gInfo['enzyme'] = enzyme
+        fragments.h5dict['genomeInformation'] = gInfo
+        
         logging.log(21, 'Done!')
         
         completed = open(Indicator, 'wb')
@@ -866,6 +880,10 @@ def filtering(args, commands):
                     if ((i[1], i[3], i[2]) == rep)]
         outfile = os.path.join(filteredFolder, '%s-%s-%s-filtered.hdf5' % rep)
         args.filteredDir.append(outfile)
+        
+        # Genome information from HDF5
+        gInfo = h5dict(filenames[0], 'r')['genomeInformation']
+        args.__dict__.update(gInfo)
         enzyme = rep[1]
         
         dataLocation, genomeFolder, genome_db = initialize(args)
@@ -916,6 +934,10 @@ def filtering(args, commands):
                          if ((i[0], i[1]) == cell)]
             outfile = os.path.join(filteredFolder, '%s-%s-allReps-filtered.hdf5' % cell)
             args.filteredDir.append(outfile)
+            
+            # Genome information from HDF5
+            gInfo = h5dict(filenames[0], 'r')['genomeInformation']
+            args.__dict__.update(gInfo)
             enzyme = cell[-1]
             
             dataLocation, genomeFolder, genome_db = initialize(args)
@@ -934,20 +956,12 @@ def filtering(args, commands):
 def binning(args, commands):
     # Necessary Modules
     from runHiC.chiclib import cHiCdataset
+    from mirnylib.h5dict import h5dict
     
     Sources = [os.path.abspath(os.path.expanduser(i)) for i in args.filteredDir]
     
-    # Output Dir
-    hFolder = 'Raw-%s' % args.genomeName
-    if not os.path.exists(hFolder):
-        os.mkdir(hFolder)
     # To communicate with next processing step (correcting)
     args.HeatMap = []
-    
-    logging.log(21, 'Contact Matrices will be saved in hdf5 format under %s', hFolder)
-    
-    mFile = args.metadata
-    enzymes = set([l.rstrip().split()[-1] for l in open(mFile) if not l.isspace()])
     
     ## Generate Matrices
     for S in Sources:
@@ -958,6 +972,11 @@ def binning(args, commands):
             parse = os.path.split(S)
             sFolder = parse[0]
             queue = [os.path.join(sFolder, i) for i in glob.glob(S) if i.endswith('-filtered.hdf5')]
+        
+        # Output Dir
+        hFolder = os.path.split(sFolder)[-1].replace('filtered-', 'Raw-')
+        if not os.path.exists(hFolder):
+            os.makedirs(hFolder)
     
         # Appropriate Units
         unit, denominator = ('K', 1000) if (args.resolution / 1000 < 1000) else ('M', 1000000)
@@ -991,20 +1010,23 @@ def binning(args, commands):
             
             logging.log(21, 'Constructing ...')
             
+            gInfo = h5dict(f, 'r')['genomeInformation']
+            args.__dict__.update(gInfo)
+            
             hFile = os.path.join(hFolder, os.path.basename(f).replace('.hdf5', '-%s.hm' % nLabel))
             args.HeatMap.append(hFile)
-            # Parse restriction enzyme name from the file name
-            enzyme = [i for i in enzymes if i in os.path.basename(f).split('-')][0]
             # Initialize a Genome Object
             dataLocation, genomeFolder, genome_db = initialize(args)
-            genome_db.setEnzyme(enzyme)
+            genome_db.setEnzyme(args.enzyme)
             fragments = cHiCdataset(f, genome = genome_db, mode = 'r', inMemory = False)
             ## Different Modes
             if args.mode == 'wholeGenome':
-                fragments.saveHeatmap(hFile, resolution = args.resolution)
+                fragments.saveHeatmap(hFile, resolution = args.resolution,
+                                      gInfo = gInfo)
             if args.mode == 'byChromosome':
                 fragments.saveByChromosomeHeatmap(hFile, resolution = args.resolution,
-                                                  includeTrans = args.includeTrans)
+                                                  includeTrans = args.includeTrans,
+                                                  gInfo = gInfo)
             
             completed = open(Indicator, 'wb')
             completed.close()
@@ -1015,13 +1037,10 @@ def binning(args, commands):
 
 def correcting(args, commands):
     ## Necessary Modules
-    from mirnylib import h5dict
-    
-    # Initialization
-    dataLocation, genomeFolder, genome_db = initialize(args)
+    from mirnylib.h5dict import h5dict
     
     ## Two modes
-    def Lcore(inFile, outFile, resolution):
+    def Lcore(inFile, outFile, resolution, genome_db):
         # Necessary Modules
         from hiclib import binnedData
         # Create a binnedData object, load the data.
@@ -1049,7 +1068,7 @@ def correcting(args, commands):
         BD.export(name, outFile)
         logging.log(21, 'Done!')
 
-    def Hcore(inFile, outFile, resolution):
+    def Hcore(inFile, outFile, resolution, genome_db):
         # Necessary Modules
         from runHiC.chiclib import cHiResHiC
         import tempfile
@@ -1070,15 +1089,8 @@ def correcting(args, commands):
         
     Sources = [os.path.abspath(os.path.expanduser(i)) for i in args.HeatMap]
     
-    ## Output Dir
-    cFolder = 'Corrected-%s' % args.genomeName
-    if not os.path.exists(cFolder):
-        os.mkdir(cFolder)
-    
     # To communicate with next processing step
     args.cHeatMap = []
-    
-    logging.log(21, 'Corrected Matrices will be generated under %s', cFolder)
     
     ## Corrections start
     for S in Sources:
@@ -1089,6 +1101,11 @@ def correcting(args, commands):
             parse = os.path.split(S)
             sFolder = parse[0]
             queue = [os.path.join(sFolder, i) for i in glob.glob(S) if i.endswith('.hm')]
+        
+        ## Output Dir
+        cFolder = os.path.split(sFolder)[-1].replace('Raw-', 'Corrected-')
+        if not os.path.exists(cFolder):
+            os.makedirs(cFolder)
         
         if len(queue) == 0:
             logging.warning(21, 'No matched file under %s, suffix ".hm" is required!', sFolder)
@@ -1116,17 +1133,27 @@ def correcting(args, commands):
             lock.close()
             
             atexit.register(cleanFile, lockFile)
+            
+            gInfo = h5dict(f, 'r')['genomeInformation']
+            args.__dict__.update(gInfo)
+            
+            dataLocation, genomeFolder, genome_db = initialize(args)
+            
             # Output file
             cFile = os.path.join(cFolder, os.path.basename(f)[:-3] + '_c.hm')
             args.cHeatMap.append(cFile)
             # Raw Data
-            raw = h5dict.h5dict(f, mode = 'r')
+            raw = h5dict(f, mode = 'r')
             Keys = raw.keys()
             resolution = int(raw['resolution'])
             if 'heatmap' in Keys: # Low resolution case
-                Lcore(f, cFile, resolution)
+                Lcore(f, cFile, resolution, genome_db)
             else: # High resolution case
-                Hcore(f, cFile, resolution)
+                Hcore(f, cFile, resolution, genome_db)
+            
+            # Add genome information
+            reRead = h5dict(cFile)
+            reRead['genomeInformation'] = gInfo
             
             completed = open(Indicator, 'wb')
             completed.close()

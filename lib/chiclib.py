@@ -369,6 +369,10 @@ class cHiCdataset(HiCdataset):
             self.h5dict['InnerType'] = InnerType
             self.h5dict['OuterType'] = OuterType
         
+        self.h5dict['genomeInformation'] = {}
+        for mydict in h5dicts:
+            self.h5dict['genomeInformation'].update(mydict['genomeInformation'])
+        
     
     def printMetadata(self, saveTo):
         
@@ -416,7 +420,7 @@ class cHiCdataset(HiCdataset):
             if check:
                 myfile.write('Data Usage = %d / %d = %.4f\n' % (contacts, Total, usage))
                 
-    def saveHeatmap(self, filename, resolution, countDiagonalReads = 'Once'):
+    def saveHeatmap(self, filename, resolution, gInfo, countDiagonalReads = 'Once'):
 
         try:
             os.remove(filename)
@@ -438,8 +442,9 @@ class cHiCdataset(HiCdataset):
         tosave['genomeBinNum'] = numBins
         tosave['genomeIdxToLabel'] = self.genome.idx2label
         tosave['chromosomeStarts'] = chromosomeStarts
+        tosave['genomeInformation'] = gInfo
     
-    def saveByChromosomeHeatmap(self, filename, resolution = 40000,
+    def saveByChromosomeHeatmap(self, filename, gInfo, resolution = 40000,
                                 includeTrans = False,
                                 countDiagonalReads = "Once"):
         """
@@ -522,6 +527,7 @@ class cHiCdataset(HiCdataset):
                 mydict["%d %d" % (chrom, chrom2)] = mymap
         
         mydict['resolution'] = resolution
+        mydict['genomeInformation'] = gInfo
 
         return
     
