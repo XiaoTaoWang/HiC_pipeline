@@ -385,7 +385,7 @@ def toSparse(source, csr = False):
     count = 0
     
     for i in lib:
-        if (i != 'resolution') and (i != 'gInfo') and (len(set(i.split())) == 1):
+        if (i != 'resolution') and (i != 'genomeInformation') and (len(set(i.split())) == 1):
             # Used for the dict-like key
             key = lib['genomeInformation']['idx2label'][int(i.split()[0])]
             

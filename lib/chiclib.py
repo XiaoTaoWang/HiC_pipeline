@@ -369,9 +369,11 @@ class cHiCdataset(HiCdataset):
             self.h5dict['InnerType'] = InnerType
             self.h5dict['OuterType'] = OuterType
         
-        self.h5dict['genomeInformation'] = {}
+        tempDict = {}
         for mydict in h5dicts:
-            self.h5dict['genomeInformation'].update(mydict['genomeInformation'])
+            if 'genomeInformation' in mydict:
+                tempDict.update(mydict['genomeInformation'])
+        self.h5dict['genomeInformation'] = tempDict
         
     
     def printMetadata(self, saveTo):

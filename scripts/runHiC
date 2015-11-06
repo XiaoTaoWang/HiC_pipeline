@@ -18,9 +18,9 @@ except ImportError:
 currentVersion = runHiC.__version__
 pypi = xmlrpclib.ServerProxy('http://pypi.python.org/pypi')
 available = pypi.package_releases('runHiC')
-if currentVersion != available:
+if currentVersion != available[0]:
     print '*'*75
-    print 'Version %s is out of date, Version %s is available.' % (currentVersion, available)
+    print 'Version %s is out of date, Version %s is available.' % (currentVersion, available[0])
     print 'Run `pip install -U runHiC` or `easy_install -U runHiC` for update.'
     print
     print '*'*75
@@ -266,9 +266,9 @@ def run(args, commands):
     # Improve the performance if you don't want to run it
     if commands[-1] not in ['-h', '-v', '--help', '--version']:
         
-        tempName = os.path.dirname(args.genomeName)
-        if tempName:
-            args.genomeName = tempName
+        if 'genomeName' in args:
+            if args.genomeName.endswith(os.path.sep):
+                args.genomeName = args.genomeName.rpartition(os.path.sep)[0]
             
         # Define a special level name
         logging.addLevelName(21, 'main')
@@ -792,6 +792,10 @@ def filtering(args, commands):
             
             if args.startNearRsite:
                 parseF.filterRsiteStart(offset=5)
+            
+            # Save ref-genome information
+            gInfo['enzyme'] = enzyme
+            parseF.h5dict['genomeInformation'] = gInfo
          
         poolName = os.path.join(subFilter, SRR + '-filtered.hdf5')
         # Merge chunks
@@ -854,10 +858,6 @@ def filtering(args, commands):
         fragments.h5dict['RightType'] = binCount_R
         fragments.h5dict['InnerType'] = binCount_I
         fragments.h5dict['OuterType'] = binCount_O
-        
-        # Save ref-genome information
-        gInfo['enzyme'] = enzyme
-        fragments.h5dict['genomeInformation'] = gInfo
         
         logging.log(21, 'Done!')
         
@@ -998,9 +998,6 @@ def binning(args, commands):
         # Appropriate Units
         unit, denominator = ('K', 1000) if (args.resolution / 1000 < 1000) else ('M', 1000000)
         nLabel = str(args.resolution / denominator) + unit
-        
-        if len(queue) == 0:
-            logging.warning('No matched file under %s, suffix "-filtered.hdf5" is required!', sFolder)
             
         for f in queue:
             logging.log(21, 'Current source file: %s', f)
@@ -1126,9 +1123,6 @@ def correcting(args, commands):
         cFolder = os.path.split(sFolder)[-1].replace('Raw-', 'Corrected-')
         if not os.path.exists(cFolder):
             os.makedirs(cFolder)
-        
-        if len(queue) == 0:
-            logging.warning(21, 'No matched file under %s, suffix ".hm" is required!', sFolder)
     
         for f in queue:
             logging.log(21, 'Current source file: %s', f)
@@ -1201,9 +1195,6 @@ def tosparse(args, commands):
             sFolder = parse[0]
             queue = [os.path.join(sFolder, i) for i in glob.glob(S) if i.endswith('.hm')]
         
-        if len(queue) == 0:
-            logging.warning('No matched file under %s, suffix ".hm" is required!', sFolder)
-        
         for f in queue:
             logging.log(21, 'Current Matrix file: %s', f)
             
@@ -1233,7 +1224,7 @@ def tosparse(args, commands):
             atexit.register(cleanFile, lockFile)
             
             # Check if it is by-chromosome contact matrix
-            raw = h5dict.h5dict(f, mode = 'r')
+            raw = h5dict(f, mode = 'r')
             Keys = raw.keys()
             if 'heatmap' in Keys:
                 logging.warning('%s is a whole-genome contact matrix, skipping ...', f)
@@ -1390,7 +1381,7 @@ def visualize(args, commands):
     B = args.RegionB
     
     if Source.endswith('.hm'):
-        lib = h5dict.h5dict(Source, 'r')
+        lib = h5dict(Source, 'r')
         idx2label = lib['genomeInformation']['idx2label']
         label2idx = lib['genomeInformation']['label2idx']
         if 'heatmap' in lib:
