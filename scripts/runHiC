@@ -6,12 +6,24 @@
 # Organization: HuaZhong Agricultural University
 
 ## Required Modules
-import os, sys, argparse, logging, logging.handlers, glob, atexit, traceback, cPickle
+import os, sys, argparse, logging, logging.handlers, glob, atexit, \
+       traceback, cPickle, xmlrpclib, runHiC
 
 try:
     import numpy as np
 except ImportError:
     pass
+
+## Check for update
+currentVersion = runHiC.__version__
+pypi = xmlrpclib.ServerProxy('http://pypi.python.org/pypi')
+available = pypi.package_releases('runHiC')
+if currentVersion != available:
+    print '*'*75
+    print 'Version %s is out of date, Version %s is available.' % (currentVersion, available)
+    print 'Run `pip install -U runHiC` or `easy_install -U runHiC` for update.'
+    print
+    print '*'*75
 
 def getargs():
     ## Construct an ArgumentParser object for command-line arguments
@@ -33,7 +45,8 @@ def getargs():
                                     along with this software, please check it.''',
                                     formatter_class = argparse.ArgumentDefaultsHelpFormatter)
     # Version
-    parser.add_argument('-v', '--version', action = 'version', version = '%(prog)s 0.6.5',
+    parser.add_argument('-v', '--version', action = 'version',
+                        version = ' '.join(['%(prog)s', currentVersion]),
                         help = 'Print version number and exit')
     
     ## Sub-commands
