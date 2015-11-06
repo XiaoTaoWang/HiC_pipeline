@@ -341,7 +341,7 @@ def splitSingleFastq(filename, folder, splitBy = 4000000):
     return counters
     
 # Convert Matrix to Scipy Sparse Matrix
-def toSparse(source, idx2label, csr = False):
+def toSparse(source, csr = False):
     """
     Convert intra-chromosomal contact matrices to sparse ones.
     
@@ -385,9 +385,9 @@ def toSparse(source, idx2label, csr = False):
     count = 0
     
     for i in lib:
-        if (i != 'resolution') and (len(set(i.split())) == 1):
+        if (i != 'resolution') and (i != 'gInfo') and (len(set(i.split())) == 1):
             # Used for the dict-like key
-            key = idx2label[int(i.split()[0])]
+            key = lib['genomeInformation']['idx2label'][int(i.split()[0])]
             
             log.log(21, 'Chromosome %s ...', key)
             # 2D-Matrix
@@ -420,22 +420,22 @@ def toSparse(source, idx2label, csr = False):
             log.log(21, 'Done!')
             
             count += 1
+    
+    if count == 0:
+        log.warning('Empty source file!')
             
-    # Store the resolution information
-    if 'resolution' in lib:
-        fname = 'resolution.npy'
+    # Other information
+    for i in ['resolution', 'genomeInformation']:
+        fname = '.'.join([i, 'npy'])
         fid = open(tmpfile, 'wb')
         try:
-            write_array(fid, np.asanyarray(lib['resolution']))
+            write_array(fid, np.asanyarray(lib[i]))
             fid.close()
             fid = None
             Zip.write(tmpfile, arcname = fname)
         finally:
             if fid:
                 fid.close()
-    
-    if count == 0:
-        log.warning('Empty source file!')
     
     os.remove(tmpfile)
     

@@ -192,6 +192,8 @@ def getargs():
                               help = '''Quality assessment for Hi-C experiments. Do not call this
                               command before filtering!''',
                               formatter_class = argparse.ArgumentDefaultsHelpFormatter)
+    QA.add_argument('-L', '--Locator', help = '''Path to the folder containing filtered HDF5 files. This
+                    argument is supposed to be "filtered-hg19" given reference genome name "hg19".''')
     QA.add_argument('-m', '--metadata', default = 'datasets.tsv',
                     help = '''Metadata file describing each SRA file. You should place
                     it under current working directory. Four columns are required: prefix
@@ -393,7 +395,8 @@ def mapping(args, commands):
     ## Reference Genome Information
     gInfo = {'dataFolder': args.dataFolder, 'genomeName': args.genomeName,
              'gapFile': args.gapFile, 'chroms': args.chroms,
-             'template': args.template}
+             'template': args.template, 'label2idx': genome_db.label2idx,
+             'idx2label': genome_db.idx2label}
     
     # Construct bowtie2 genome index
     def buildIndex(genomeFolder):
@@ -977,6 +980,7 @@ def binning(args, commands):
         hFolder = os.path.split(sFolder)[-1].replace('filtered-', 'Raw-')
         if not os.path.exists(hFolder):
             os.makedirs(hFolder)
+        
     
         # Appropriate Units
         unit, denominator = ('K', 1000) if (args.resolution / 1000 < 1000) else ('M', 1000000)
@@ -1007,6 +1011,8 @@ def binning(args, commands):
             lock.close()
             
             atexit.register(cleanFile, lockFile)
+            
+            logging.log(21, 'Contact Matrices will be saved in hdf5 format under %s', hFolder)
             
             logging.log(21, 'Constructing ...')
             
@@ -1049,7 +1055,6 @@ def correcting(args, commands):
         name = '-'.join(os.path.basename(inFile).split('-')[:3])
         BD.simpleLoad(inFile, name)
         logging.log(21, 'Done!')
-        ## Perform ICE
         # Remove the contacts between loci located within the same bin.
         BD.removeDiagonal(m = 0)
         # Remove bins with less than half of a bin sequenced.
@@ -1059,11 +1064,9 @@ def correcting(args, commands):
         BD.removePoorRegions(cutoff = 0.5, coverage = False)
         # Truncate top 0.05% of inter-chromosomal counts (possibly, PCR blowouts).
         BD.truncTrans(high = 0.0005)
-        # Perform iterative correction.
         logging.log(21, 'Perform ICE ...')
         BD.iterativeCorrectWithoutSS()
         logging.log(21, 'Done!')
-        # Save the iteratively corrected matrix.
         logging.log(21, 'Exporting Corrected Matrix ...')
         BD.export(name, outFile)
         logging.log(21, 'Done!')
@@ -1077,15 +1080,19 @@ def correcting(args, commands):
         os.close(fd)
         BD = cHiResHiC(genome = genome_db, resolution = resolution,
                        storageFile = tempHDF5, mode = 'w')
-        # Load Raw Matrix
+        logging.log(21, 'Loading Intra-chromosomal Matrices ...')
         BD.loadData(dictLike = inFile, mode = 'cis')
+        logging.log(21, 'Done!')
         
         BD.removeDiagonal(m = 0)
         BD.removePoorRegions(percent = 0.5)
         
-        ## Perform ICE ...
+        logging.log(21, 'Perform ICE ...')
         BD.iterativeCorrection()
+        logging.log(21, 'Done!')
+        logging.log(21, 'Exporting Corrected Matrix ...')
         BD.export(outFile, mode = 'cis')
+        logging.log(21, 'Done!')
         
     Sources = [os.path.abspath(os.path.expanduser(i)) for i in args.HeatMap]
     
@@ -1134,6 +1141,8 @@ def correcting(args, commands):
             
             atexit.register(cleanFile, lockFile)
             
+            logging.log(21, 'Corrected Matrices will be generated under %s', cFolder)
+            
             gInfo = h5dict(f, 'r')['genomeInformation']
             args.__dict__.update(gInfo)
             
@@ -1163,11 +1172,8 @@ def correcting(args, commands):
 
 def tosparse(args, commands):
     # Necessary Modules
-    from mirnylib import h5dict
+    from mirnylib.h5dict import h5dict
     from runHiC.utilities import toSparse
-    
-    # Initialization
-    dataLocation, genomeFolder, genome_db = initialize(args)
     
     Sources = [os.path.abspath(os.path.expanduser(i)) for i in args.cHeatMap]
     
@@ -1212,6 +1218,7 @@ def tosparse(args, commands):
             lock.close()
             
             atexit.register(cleanFile, lockFile)
+            
             # Check if it is by-chromosome contact matrix
             raw = h5dict.h5dict(f, mode = 'r')
             Keys = raw.keys()
@@ -1219,7 +1226,7 @@ def tosparse(args, commands):
                 logging.warning('%s is a whole-genome contact matrix, skipping ...', f)
                 continue
             else:
-                toSparse(source = f, idx2label = genome_db.idx2label, csr = args.csr)
+                toSparse(source = f, csr = args.csr)
             
             completed = open(Indicator, 'wb')
             completed.close()
@@ -1229,11 +1236,9 @@ def tosparse(args, commands):
 def quality(args, commands):
     
     from runHiC.chiclib import cHiCdataset
+    from mirnylib.h5dict import h5dict
     
-    # Initialization
-    dataLocation, genomeFolder, genome_db = initialize(args)
-    
-    locator = os.path.abspath('filtered-' + args.genomeName)
+    locator = os.path.abspath(os.path.expanduser(args.Locator))
     if not os.path.exists(locator):
         logging.error('%s can not be found! Filter your data before quality assessment!',
                       locator)
@@ -1254,6 +1259,10 @@ def quality(args, commands):
         checkFile_2 = os.path.join(locator, lane[0], lane[0] + '-filtered.hdf5')
         if os.path.exists(checkFile_1) and os.path.exists(checkFile_2):
             logging.log(21, 'Generate statistic table ...')
+            ## Read genome information in
+            gInfo = h5dict(checkFile_2, 'r')['genomeInformation']
+            args.__dict__.update(gInfo)
+            dataLocation, genomeFolder, genome_db = initialize(args)
             fragments = cHiCdataset(checkFile_2, genome = genome_db,
                                     mode = 'r', inMemory = False)
             parsePath = os.path.split(checkFile_2)
@@ -1274,6 +1283,9 @@ def quality(args, commands):
         checkFile_2= os.path.join(locator, '%s-%s-%s-filtered.hdf5' % rep)
         if os.path.exists(checkFile_1) and os.path.exists(checkFile_2):
             logging.log(21, 'Generate statistic table ...')
+            gInfo = h5dict(checkFile_2, 'r')['genomeInformation']
+            args.__dict__.update(gInfo)
+            dataLocation, genomeFolder, genome_db = initialize(args)
             fragments = cHiCdataset(checkFile_2, genome = genome_db,
                                     mode = 'r', inMemory = False)
             parsePath = os.path.split(checkFile_2)
@@ -1310,6 +1322,9 @@ def quality(args, commands):
         checkFile_2= os.path.join(locator, '%s-%s-allReps-filtered.hdf5' % cell)
         if os.path.exists(checkFile_1) and os.path.exists(checkFile_2):
             logging.log(21, 'Generate statistic table ...')
+            gInfo = h5dict(checkFile_2, 'r')['genomeInformation']
+            args.__dict__.update(gInfo)
+            dataLocation, genomeFolder, genome_db = initialize(args)
             fragments = cHiCdataset(checkFile_2, genome = genome_db,
                                     mode = 'r', inMemory = False)
             parsePath = os.path.split(checkFile_2)
@@ -1348,20 +1363,13 @@ def visualize(args, commands):
     matplotlib.rcParams['xtick.direction'] = 'out'
     matplotlib.rcParams['ytick.direction'] = 'out'
     
-    from mirnylib import h5dict
+    from mirnylib.h5dict import h5dict
     import matplotlib.pyplot as plt
     colormap = plt.cm.RdYlBu_r
-    
-    # Initialization
-    dataLocation, genomeFolder, genome_db = initialize(args)
     
     Source = os.path.abspath(args.Source)
     des = os.path.split(Source)[0]
     filename = os.path.split(Source)[1]
-    
-    template = '.'.join(args.template.split('.')[:-1])
-    idx2label = {i:(template % genome_db.idx2label[i]) for i in genome_db.idx2label}
-    label2idx = genome_db.label2idx
     
     ## Region A
     A = args.RegionA
@@ -1370,21 +1378,23 @@ def visualize(args, commands):
     
     if Source.endswith('.hm'):
         lib = h5dict.h5dict(Source, 'r')
+        idx2label = lib['genomeInformation']['idx2label']
+        label2idx = lib['genomeInformation']['label2idx']
         if 'heatmap' in lib:
             H = lib['heatmap']
             ticks = list(lib['chromosomeStarts'])
             labels = [idx2label[i] for i in range(len(ticks))]
             intervals = ticks + [H.shape[0]]
         res = lib['resolution']
-    elif Source.endswith('-sparse.npz'):
-        lib = np.load(Source)
-        res = lib['resolution'][()]
-    elif Source.endswith('-csrsparse.npz'):
-        lib = np.load(Source)
-        res = lib['resolution'][()]
     else:
-        logging.error('Invalid source format. Exit ...')
-        sys.exit(1)
+        if Source.endswith('.npz'):
+            lib = np.load(Source)
+            res = lib['resolution'][()]
+            idx2label = lib['genomeInformation'][()]['idx2label']
+            label2idx = lib['genomeInformation'][()]['label2idx']
+        else:
+            logging.error('Invalid source format. Exit ...')
+            sys.exit(1)
     
     ## Whole-Genome Contact Matrix Required
     if A == None or B == None:
@@ -1423,7 +1433,7 @@ def visualize(args, commands):
                         fig = plt.figure()
                         ax = fig.add_subplot(111)
                         sc = ax.imshow(col, origin = 'lower', interpolation = 'none', cmap = colormap, vmax = p)
-                        plt.xlabel(template % C[0])
+                        plt.xlabel(C[0])
                         xticks = ax.get_xticks()
                         ax.set_xticklabels([str(int(x + int(C[1]) // res)) for x in xticks])
                         ax.set_yticks(ticks); ax.set_yticklabels(labels)
@@ -1512,8 +1522,8 @@ def visualize(args, commands):
             fig = plt.figure()
             ax = fig.add_subplot(111)
             sc = ax.imshow(local, origin = 'lower', interpolation = 'none', cmap = colormap, vmax = p)
-            plt.xlabel(template % A[0])
-            plt.ylabel(template % B[0])
+            plt.xlabel(A[0])
+            plt.ylabel(B[0])
             xticks = ax.get_xticks()
             ax.set_xticklabels([str(int(x + A_Start)) for x in xticks])
             yticks = ax.get_yticks()
