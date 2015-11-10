@@ -17,14 +17,17 @@ except ImportError:
 
 ## Check for update
 currentVersion = runHiC.__version__
-pypi = xmlrpclib.ServerProxy('http://pypi.python.org/pypi')
-available = pypi.package_releases('runHiC')
-if V(currentVersion) < V(available[0]):
-    print '*'*75
-    print 'Version %s is out of date, Version %s is available.' % (currentVersion, available[0])
-    print 'Run `pip install -U runHiC` or `easy_install -U runHiC` for update.'
-    print
-    print '*'*75
+try:
+    pypi = xmlrpclib.ServerProxy('http://pypi.python.org/pypi')
+    available = pypi.package_releases('runHiC')
+    if V(currentVersion) < V(available[0]):
+        print '*'*75
+        print 'Version %s is out of date, Version %s is available.' % (currentVersion, available[0])
+        print 'Run `pip install -U runHiC` or `easy_install -U runHiC` for update.'
+        print
+        print '*'*75
+except:
+    pass
 
 def getargs():
     ## Construct an ArgumentParser object for command-line arguments
