@@ -326,8 +326,10 @@ def run(args, commands):
         if commands[0] == 'binning':
             arglist.extend(['# Source Files = %s' % args.filteredDir,
                             '# Building Mode = %s' % args.mode,
-                            '# Resolution = %s' % args.resolution,
-                            '# Include Inter-chromosomal Interactions = %s' % args.includeTrans])
+                            '# Resolution = %s' % args.resolution])
+            if args.mode == 'byChromosome':
+                arglist.extend(['# Include Inter-chromosomal Interactions = %s' % args.includeTrans])
+                
         if commands[0] == 'correcting':
             arglist.extend(['# Source Matrix = %s' % args.HeatMap])
         
@@ -385,7 +387,7 @@ def initialize(args):
     if not os.path.exists(gapFile):
         logging.log(21, 'No gap file can be found at %s, generating a dummy one ...',
                     genomeFolder)
-        tempfile = open(gapFile, 'w')
+        tempfile = open(gapFile, 'wb')
         tempfile.write('0\tNA1000\t0\t0\t0\tN\t0\tcentromere\tno\n')
         tempfile.flush()
         tempfile.close()
@@ -393,7 +395,7 @@ def initialize(args):
     
     # Python Genome Object
     genome_db = myGenome(genomeFolder, readChrms = args.chroms,
-                         chrmFileTemplate = args.template)
+                         chrmFileTemplate = args.template, gapFile = args.gapFile)
     
     return dataLocation, genomeFolder, genome_db
     
