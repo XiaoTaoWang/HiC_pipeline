@@ -1594,3 +1594,4 @@ if __name__ == '__main__':
         run(args, commands)
     except:
         traceback.print_exc(file = open(args.logFile, 'a'))
+        sys.exit(1)
