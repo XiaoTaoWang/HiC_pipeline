@@ -22,19 +22,19 @@ Mapping::
 
 Filtering::
 
-    $ runHiC filtering -p ../data -g hg19 --HDF5 hdf5-hg19 -m datasets.tsv --libSize 500 --duplicates --startNearRsite --level 2
+    $ runHiC filtering --HDF5 hdf5-hg19 -m datasets.tsv --libSize 500 --duplicates --level 2
 
 Binning::
 
-    $ runHiC binning -p ../data -g hg19 --filteredDir filtered-hg19 -m datasets.tsv --mode wholeGenome --resolution 200000
+    $ runHiC binning --filteredDir filtered-hg19 --mode wholeGenome --resolution 200000
 
 Correcting::
 
-    $ runHiC correcting -p ../data -g hg19 --HeatMap Raw-hg19
+    $ runHiC correcting --HeatMap Raw-hg19
 	
 Convert to sparse format::
 
-    $ runHiC tosparse -p ../data -g hg19 --cHeatMap Corrected-hg19
+    $ runHiC tosparse --cHeatMap Corrected-hg19
 
 Parallel Tasks
 **************
@@ -72,7 +72,7 @@ Experiment Quality Assessment
 *****************************
 Call *quality* after *filtering* or *pileup*::
 
-    $ runHiC quality -p ../data -g hg19 -m datasets.tsv
+    $ runHiC quality -m datasets.tsv -L filtered-hg19
 
 Statistic Table
 ````````````````
@@ -227,24 +227,24 @@ Visualization
 *************
 Call *visualize* if you want to view the contacts::
 
-    $ runHiC visualize -p ../data -g hg19 -S Raw-hg19/Test-HindIII-allReps-filtered-200K.hm --RegionA 1 0 10000000 --RegionB X 0 10000000
+    $ runHiC visualize -S Raw-hg19/Test-HindIII-allReps-filtered-200K.hm --RegionA 1 0 10000000 --RegionB X 0 10000000
 
 A heatmap of contact matrix between "chr1: 0 ~ 10000000bp" and "chrX: 0 ~ 10000000bp" will be plotted
 under Raw-hg19.
 
 To view self-chromosomal contact information::
 
-    $ runHiC visualize -p ../data -g hg19 -S Raw-hg19/Test-HindIII-allReps-filtered-200K.hm --RegionA 1 0 -1 --RegionB 1 0 -1
+    $ runHiC visualize -S Raw-hg19/Test-HindIII-allReps-filtered-200K.hm --RegionA 1 0 -1 --RegionB 1 0 -1
     
 Note that the End Site of a region is allowed to be negative. "-1" indicates the end of a chromosome.
 
 Similarly, to view the contact matrix between two chromosomes::
 
-    $ runHiC visualize -p ../data -g hg19 -S Raw-hg19/Test-HindIII-allReps-filtered-200K.hm --RegionA 1 0 -1 --RegionB X 0 -1
+    $ runHiC visualize -S Raw-hg19/Test-HindIII-allReps-filtered-200K.hm --RegionA 1 0 -1 --RegionB X 0 -1
 
 Furthermore, you may want to plot the whole-genome heatmap::
 
-    $ runHiC visualize -p ../data -g hg19 -S Raw-hg19/Test-HindIII-allReps-filtered-200K.hm
+    $ runHiC visualize -S Raw-hg19/Test-HindIII-allReps-filtered-200K.hm
 
 Data Access
 ***********
