@@ -269,7 +269,7 @@ Now, open a Python Interpreter:
  u'heatmap',
  u'resolution']
  >>> # Output the contact matrix into a TXT file
- >>> np.savetxt('Test-HindIII-allReps-filtered-200K.txt', Matrix['heatmap'], fmt = '%d', header = 'Resolution: %d' % lib['resolution'])
+ >>> np.savetxt('Test-HindIII-allReps-filtered-200K.txt', Matrix['heatmap'], fmt = '%d', header = 'Resolution: %d' % Matrix['resolution'])
  
 >>> import numpy as np
 >>> Lib_1 = np.load('Test-HindIII-allReps-filtered-10K_c-sparse.npz')
