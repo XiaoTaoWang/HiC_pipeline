@@ -278,7 +278,7 @@ Now, open a Python Interpreter:
 >>> chr1.dtype
 dtype([('bin1', '<i8'), ('bin2', '<i8'), ('IF', '<f8')])
 >>> # Write the sparse matrix into a TXT file
->>> np.savetxt('Test-HindIII-allReps-filtered-10K_c-sparse.chr1.txt', chr1, fmt = ['%d', '%d', '%.4f'], header = 'Resolution: %d' % lib['resolution'][()])
+>>> np.savetxt('Test-HindIII-allReps-filtered-10K_c-sparse.chr1.txt', chr1, fmt = ['%d', '%d', '%.4f'], header = 'Resolution: %d' % Lib_1['resolution'][()])
 
 >>> Lib_2 = np.load('Test-HindIII-allReps-filtered-10K_c-csrsparse.npz')
 >>> chr1 = Lib_2['1'][()]
@@ -289,4 +289,4 @@ dtype([('bin1', '<i8'), ('bin2', '<i8'), ('IF', '<f8')])
 >>> x, y = chr1.nonzero()
 >>> z = np.array(chr1[x,y]).ravel()
 >>> cols = np.r_['1,2,0', x, y, z]
->>> np.savetxt('Test-HindIII-allReps-filtered-10K_c-csrsparse.chr1.txt', cols, fmt = ['%d', '%d', '%.4f'], header = 'Resolution: %d' % lib['resolution'][()])
+>>> np.savetxt('Test-HindIII-allReps-filtered-10K_c-csrsparse.chr1.txt', cols, fmt = ['%d', '%d', '%.4f'], header = 'Resolution: %d' % Lib_2['resolution'][()])
