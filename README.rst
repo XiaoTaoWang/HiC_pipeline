@@ -73,3 +73,7 @@ software, please check it.
 Usage
 =====
 Open a terminal, type ``runHiC -h`` and ``runHiC <subcommand> -h`` for help information.
+
+Citation
+========
+Xiaotao Wang. (2016). runHiC: A user-friendly Hi-C data processing software based on hiclib. Zenodo. 10.5281/zenodo.55324
