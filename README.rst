@@ -1,3 +1,8 @@
+runHiC
+******
+.. image:: https://zenodo.org/badge/doi/10.5281/zenodo.55324.svg
+   :target: http://dx.doi.org/10.5281/zenodo.55324
+
 Introduction
 ============
 runHiC is a easy-to-use Hi-C processing software based on hiclib (https://bitbucket.org/mirnylab/hiclib)
