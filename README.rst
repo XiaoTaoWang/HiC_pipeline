@@ -76,4 +76,5 @@ Open a terminal, type ``runHiC -h`` and ``runHiC <subcommand> -h`` for help info
 
 Citation
 ========
-Xiaotao Wang. (2016). runHiC: A user-friendly Hi-C data processing software based on hiclib. Zenodo. 10.5281/zenodo.55324
+Xiaotao Wang. (2016). runHiC: A user-friendly Hi-C data processing software based on hiclib. Zenodo.
+`10.5281/zenodo.55324 <http://dx.doi.org/10.5281/zenodo.55324>`_
