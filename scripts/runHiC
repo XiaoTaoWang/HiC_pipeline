@@ -88,7 +88,7 @@ def getargs():
                        help = '''Genome folder name. This folder must be placed under dataFolder.
                        Genome sequences should be stored chromosome by chromosome in FASTA format.
                        If gap file is not contained, we will generate a dummy one.''')
-    iterM.add_argument('-C', '--chroms', nargs = '*', default = ['#', 'X', 'Y', 'M'],
+    iterM.add_argument('-C', '--chroms', nargs = '*', default = ['#', 'X'],
                        help = '''Which chromosomes will be involved. Specially, "#" stands for
                        chromosomes with numerical labels. "--chroms" with zero argument will
                        generate an empty list, in which case all chromosome data will be loaded.''')
@@ -110,8 +110,7 @@ def getargs():
                        help = ''''Set the cache folder. Absolute path is needed.''')
     iterM.add_argument('--chunkSize', type = int, help = '''On low-memory machine, it's better
                        to split raw read file into chunks and map them separatively. This parameter
-                       specifies the size of each chunk. If necessary, please set a moderate value,
-                       say, 1500000 (Rao, 2014). By default, no split is performed.''')
+                       specifies the size of each chunk. By default, no split is performed.''')
     iterM.add_argument('--removeInters', action = 'store_true',
                        help = '''If specified, remove intermediate results, only final hdf5 file retained.''')
     iterM.add_argument('--logFile', default = 'runHiC.log', help = '''Logging file name.''')
