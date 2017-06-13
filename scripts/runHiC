@@ -164,9 +164,6 @@ def getargs():
                           help = 'Mode for building contact matrices.')
     binReads.add_argument('-R', '--resolution', type = int, default = 200000,
                           help = 'Resolution of a contact matrix. Unit: bp')
-    binReads.add_argument('--includeTrans', action = 'store_true',
-                          help = '''Whether to include inter-chromosomal interactions in "byChromosome"
-                          mode.''')
     binReads.add_argument('--logFile', default = 'runHiC.log', help = '''Logging file name.''')
     binReads.set_defaults(func = binning)
     
@@ -326,8 +323,6 @@ def run(args, commands):
             arglist.extend(['# Source Files = %s' % args.filteredDir,
                             '# Building Mode = %s' % args.mode,
                             '# Resolution = %s' % args.resolution])
-            if args.mode == 'byChromosome':
-                arglist.extend(['# Include Inter-chromosomal Interactions = %s' % args.includeTrans])
                 
         if commands[0] == 'correcting':
             arglist.extend(['# Source Matrix = %s' % args.HeatMap])
@@ -386,10 +381,10 @@ def initialize(args):
     if not os.path.exists(gapFile):
         logging.log(21, 'No gap file can be found at %s, generating a dummy one ...',
                     genomeFolder)
-        tempfile = open(gapFile, 'wb')
-        tempfile.write('0\tNA1000\t0\t0\t0\tN\t0\tcentromere\tno\n')
-        tempfile.flush()
-        tempfile.close()
+        tmpfil = open(gapFile, 'wb')
+        tmpfil.write('0\tNA1000\t0\t0\t0\tN\t0\tcentromere\tno\n')
+        tmpfil.flush()
+        tmpfil.close()
         logging.log(21, 'Done!')
     
     # Python Genome Object
@@ -801,7 +796,7 @@ def filtering(args, commands):
             
             # Save ref-genome information
             gInfo['enzyme'] = enzyme
-            parseF.h5dict['_genomeInformation'] = gInfo
+            parseF.h5dict['genomeInformation'] = gInfo
          
         poolName = os.path.join(subFilter, SRR + '-filtered.hdf5')
         # Merge chunks
@@ -902,7 +897,7 @@ def filtering(args, commands):
         args.filteredDir.append(outfile)
         
         # Genome information from HDF5
-        gInfo = h5dict(filenames[0], 'r')['_genomeInformation']
+        gInfo = h5dict(filenames[0], 'r')['genomeInformation']
         args.__dict__.update(gInfo)
         enzyme = rep[1]
         
@@ -956,7 +951,7 @@ def filtering(args, commands):
             args.filteredDir.append(outfile)
             
             # Genome information from HDF5
-            gInfo = h5dict(filenames[0], 'r')['_genomeInformation']
+            gInfo = h5dict(filenames[0], 'r')['genomeInformation']
             args.__dict__.update(gInfo)
             enzyme = cell[-1]
             
@@ -1030,7 +1025,7 @@ def binning(args, commands):
             
             logging.log(21, 'Constructing ...')
             
-            gInfo = h5dict(f, 'r')['_genomeInformation']
+            gInfo = h5dict(f, 'r')['genomeInformation']
             args.__dict__.update(gInfo)
             
             hFile = os.path.join(hFolder, os.path.basename(f).replace('.hdf5', '-%s.hm' % nLabel))
@@ -1045,7 +1040,7 @@ def binning(args, commands):
                                       gInfo = gInfo)
             if args.mode == 'byChromosome':
                 fragments.saveByChromosomeHeatmap(hFile, resolution = args.resolution,
-                                                  includeTrans = args.includeTrans,
+                                                  includeTrans = False,
                                                   gInfo = gInfo)
             
             completed = open(Indicator, 'wb')
@@ -1062,10 +1057,10 @@ def correcting(args, commands):
     ## Two modes
     def Lcore(inFile, outFile, resolution, genome_db):
         # Necessary Modules
-        from hiclib import binnedData
+        from runHiC.chiclib import cBinnedData
         # Create a binnedData object, load the data.
         logging.log(21, 'Loading Contact Matrix of the Whole Genome ...')
-        BD = binnedData.binnedData(resolution, genome_db)
+        BD = cBinnedData(resolution, genome_db)
         name = '-'.join(os.path.basename(inFile).split('-')[:3])
         BD.simpleLoad(inFile, name)
         logging.log(21, 'Done!')
@@ -1087,25 +1082,11 @@ def correcting(args, commands):
 
     def Hcore(inFile, outFile, resolution, genome_db):
         # Necessary Modules
-        from runHiC.chiclib import cHiResHiC
-        import tempfile
+        from runHiC.chiclib import HiResHiC
         # Create a HiResHiC object
-        fd, tempHDF5 = tempfile.mkstemp(suffix = '.hdf5')
-        os.close(fd)
-        BD = cHiResHiC(genome = genome_db, resolution = resolution,
-                       storageFile = tempHDF5, mode = 'w')
-        logging.log(21, 'Loading Intra-chromosomal Matrices ...')
-        BD.loadData(dictLike = inFile, mode = 'cis')
-        logging.log(21, 'Done!')
-        
-        BD.removeDiagonal(m = 0)
-        BD.removePoorRegions(percent = 0.5)
-        
-        logging.log(21, 'Perform ICE ...')
-        BD.iterativeCorrection()
-        logging.log(21, 'Done!')
-        logging.log(21, 'Exporting Corrected Matrix ...')
-        BD.export(outFile, mode = 'cis')
+        BD = HiResHiC(genome_db, resolution, inFile)
+        logging.log(21, 'Perform ICE for Intra-chromosomal Matrices ...')
+        BD.iterativeCorrection(outFile)
         logging.log(21, 'Done!')
         
     Sources = [os.path.abspath(os.path.expanduser(i)) for i in args.HeatMap]
@@ -1154,7 +1135,7 @@ def correcting(args, commands):
             
             logging.log(21, 'Corrected Matrices will be generated under %s', cFolder)
             
-            gInfo = h5dict(f, 'r')['_genomeInformation']
+            gInfo = h5dict(f, 'r')['genomeInformation']
             args.__dict__.update(gInfo)
             
             dataLocation, genomeFolder, genome_db = initialize(args)
@@ -1173,7 +1154,7 @@ def correcting(args, commands):
             
             # Add genome information
             reRead = h5dict(cFile)
-            reRead['_genomeInformation'] = gInfo
+            reRead['genomeInformation'] = gInfo
             
             completed = open(Indicator, 'wb')
             completed.close()
@@ -1268,7 +1249,7 @@ def quality(args, commands):
         if os.path.exists(checkFile_1) and os.path.exists(checkFile_2):
             logging.log(21, 'Generate statistic table ...')
             ## Read genome information in
-            gInfo = h5dict(checkFile_2, 'r')['_genomeInformation']
+            gInfo = h5dict(checkFile_2, 'r')['genomeInformation']
             args.__dict__.update(gInfo)
             dataLocation, genomeFolder, genome_db = initialize(args)
             fragments = cHiCdataset(checkFile_2, genome = genome_db,
@@ -1291,7 +1272,7 @@ def quality(args, commands):
         checkFile_2= os.path.join(locator, '%s-%s-%s-filtered.hdf5' % rep)
         if os.path.exists(checkFile_1) and os.path.exists(checkFile_2):
             logging.log(21, 'Generate statistic table ...')
-            gInfo = h5dict(checkFile_2, 'r')['_genomeInformation']
+            gInfo = h5dict(checkFile_2, 'r')['genomeInformation']
             args.__dict__.update(gInfo)
             dataLocation, genomeFolder, genome_db = initialize(args)
             fragments = cHiCdataset(checkFile_2, genome = genome_db,
@@ -1330,7 +1311,7 @@ def quality(args, commands):
         checkFile_2= os.path.join(locator, '%s-%s-allReps-filtered.hdf5' % cell)
         if os.path.exists(checkFile_1) and os.path.exists(checkFile_2):
             logging.log(21, 'Generate statistic table ...')
-            gInfo = h5dict(checkFile_2, 'r')['_genomeInformation']
+            gInfo = h5dict(checkFile_2, 'r')['genomeInformation']
             args.__dict__.update(gInfo)
             dataLocation, genomeFolder, genome_db = initialize(args)
             fragments = cHiCdataset(checkFile_2, genome = genome_db,
@@ -1386,8 +1367,8 @@ def visualize(args, commands):
     
     if Source.endswith('.hm'):
         lib = h5dict(Source, 'r')
-        idx2label = lib['_genomeInformation']['idx2label']
-        label2idx = lib['_genomeInformation']['label2idx']
+        idx2label = lib['genomeInformation']['idx2label']
+        label2idx = lib['genomeInformation']['label2idx']
         if 'heatmap' in lib:
             H = lib['heatmap']
             ticks = list(lib['chromosomeStarts'])
@@ -1398,8 +1379,8 @@ def visualize(args, commands):
         if Source.endswith('.npz'):
             lib = np.load(Source)
             res = lib['resolution'][()]
-            idx2label = lib['_genomeInformation'][()]['idx2label']
-            label2idx = lib['_genomeInformation'][()]['label2idx']
+            idx2label = lib['genomeInformation'][()]['idx2label']
+            label2idx = lib['genomeInformation'][()]['label2idx']
         else:
             logging.error('Invalid source format. Exit ...')
             sys.exit(1)
@@ -1574,7 +1555,6 @@ def pileup(args, commands):
     args.duplicates = True
     args.startNearRsite = False
     filtering(args, commands)
-    args.includeTrans = False
     binning(args, commands)
     correcting(args, commands)
     if args.mode == 'wholeGenome':

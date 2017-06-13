@@ -11,6 +11,7 @@ import numpy as np
 from mirnylib.genome import Genome
 from hiclib.fragmentHiC import HiCdataset
 from hiclib.hicShared import mydtype, mydtypeSorter, searchsorted, h5dictBinarySearch
+from hiclib.binnedData import binnedData
 from mirnylib import numutils
 from mirnylib.numutils import uniqueIndex, fillDiagonal, externalMergeSort, completeIC
 from mirnylib.h5dict import h5dict
@@ -463,9 +464,9 @@ class cHiCdataset(HiCdataset):
         
         tempDict = {}
         for mydict in h5dicts:
-            if '_genomeInformation' in mydict:
-                tempDict.update(mydict['_genomeInformation'])
-        self.h5dict['_genomeInformation'] = tempDict
+            if 'genomeInformation' in mydict:
+                tempDict.update(mydict['genomeInformation'])
+        self.h5dict['genomeInformation'] = tempDict
         
     
     def printMetadata(self, saveTo):
@@ -528,15 +529,12 @@ class cHiCdataset(HiCdataset):
         del heatmap
         
         chromosomeStarts = np.array(self.genome.chrmStartsBinCont)
-        numBins = self.genome.numBins
             
         tosave['resolution'] = resolution
-        tosave['genomeBinNum'] = numBins
-        tosave['genomeIdxToLabel'] = self.genome.idx2label
         tosave['chromosomeStarts'] = chromosomeStarts
         tosave['genomeInformation'] = gInfo
     
-    def saveByChromosomeHeatmap(self, filename, gInfo, resolution,
+    def saveByChromosomeHeatmap(self, filename, resolution, gInfo,
                                 includeTrans=False):
         
         self.genome.setResolution(resolution)
@@ -697,16 +695,34 @@ class cHiCdataset(HiCdataset):
         plt.savefig('-'.join([prefix, 'librarySize']) + '.png', dpi = dpi)
         plt.close()
 
+class cBinnedData(binnedData):
+    
+    def export(self, name, outFilename):
+
+        if not name in self.dataDict:
+            raise ValueError("No data {name}".format(name=name))
+            
+        toexport = {}
+        toexport["heatmap"] = self.dataDict[name]
+        toexport["resolution"] = self.resolution
+        toexport["chromosomeStarts"] = self.chromosomeStarts
+        myh5dict = h5dict(outFilename, mode="w")
+        myh5dict.update(toexport)
+
 class HiResHiC(object):
     
-    def export(self, filename, mode = 'cis'):
-        mydict = h5dict(filename)
-        if mode == 'cis':
-            for i in self.cisKeys:
-                data = self.data[i].getData()
-                mydict["%d %d" % i] = data
-        else:
-            for i in self.allKeys:
-                data = self.data[i].getData()
-                mydict["%d %d" % i] = data
+    def __init__(self, genome, resolution, raw):
+        
+        self.genome = genome
+        self.resolution = resolution
+        self.rawdata = h5dict(raw, 'r')
+        self.cisKeys = ['{0} {0}'.format(i) for i in self.genome.idx2label]
+    
+    def iterativeCorrection(self, outname):
+        
+        mydict = h5dict(outname)
+        for key in self.cisKeys:
+            bychr = self.rawdata[key]
+            corrected = completeIC(bychr, returnBias=False)
+            mydict[key] = corrected
         mydict["resolution"] = self.resolution
