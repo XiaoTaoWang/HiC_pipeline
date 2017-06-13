@@ -624,7 +624,7 @@ def mapping(args, commands):
             
         logging.log(21, 'Mapping ...')
         Read_level = {}
-        uniquely_mapped = 0
+        umapped_1 = umapped_2 = 0
         for r1, r2, out in Assignments:
             ## The first side ...
             if r1.endswith('_1.fastq.gz'):
@@ -669,11 +669,13 @@ def mapping(args, commands):
                             genome_db = genome_db,
                             enzyme_name = database[i])
                                 
-            uniquely_mapped += len(lib['chrms1'])
+            umapped_1 += (lib['chrms1']>=0).sum()
+            umapped_2 += (lib['chrms2']>=0).sum()
         
         logging.log(21, 'Done!')
         
-        Read_level['Unique-Reads'] = uniquely_mapped
+        Read_level['Unique-Reads_1'] = umapped_1
+        Read_level['Unique-Reads_2'] = umapped_2
             
         ## Count Ligation Junctions
         logging.log(21, 'Scan each read for ligation junction sequence ...')
@@ -799,69 +801,67 @@ def filtering(args, commands):
             
             # Save ref-genome information
             gInfo['enzyme'] = enzyme
-            parseF.h5dict['genomeInformation'] = gInfo
+            parseF.h5dict['_genomeInformation'] = gInfo
          
         poolName = os.path.join(subFilter, SRR + '-filtered.hdf5')
         # Merge chunks
-        fragments = cHiCdataset(filename = poolName, genome = genome_db,
-                                mode = 'w', inMemory = False)
-        fragments.merge(outFiles)
+        frags = cHiCdataset(filename = poolName, genome = genome_db,
+                            mode = 'w', inMemory = False)
+        frags.merge(outFiles)
          
         ## Additional filtering
         if args.duplicates:
-            fragments.filterDuplicates()
+            frags.filterDuplicates()
         
         ## Other Stats
         if os.path.exists(os.path.join(subHDF5, 'Read-Level-Stats')):
             oriStats = cPickle.load(open(os.path.join(subHDF5, 'Read-Level-Stats'),'rb'))
-            fragments.metadata['000_SequencedReads'] = oriStats['Sequenced-Reads']
-            fragments.metadata['010_UniqueMappedReads'] = oriStats['Unique-Reads']
-            fragments.metadata['020_LigationCounts'] = oriStats['Ligation-Counts']
+            frags.metadata['000_SequencedReads'] = oriStats['Sequenced-Reads']
+            frags.metadata['010_UniqueMappedReads_1'] = oriStats['Unique-Reads_1']
+            frags.metadata['020_UniqueMappedReads_2'] = oriStats['Unique-Reads_2']
+            frags.metadata['030_LigationCounts'] = oriStats['Ligation-Counts']
             
-        fragments.metadata['110_AfterFilteringReads'] = fragments.N
-        fragments.metadata['400_TotalContacts'] = fragments.N
-        sameChrom = (fragments.chrms1 == fragments.chrms2)
+        frags.metadata['110_AfterFilteringReads'] = frags.N
+        frags.metadata['400_TotalContacts'] = frags.N
+        sameChrom = (frags.chrms1 == frags.chrms2)
         sameChromNum = sameChrom.sum()
-        fragments.metadata['410_IntraChromosomalReads'] = sameChromNum
-        fragments.metadata['420_InterChromosomalReads'] = fragments.N - sameChromNum
-        shortRange = sameChrom & (np.abs(fragments.mids1 - fragments.mids2) < 20000)
+        frags.metadata['410_IntraChromosomalReads'] = sameChromNum
+        frags.metadata['420_InterChromosomalReads'] = frags.N - sameChromNum
+        shortRange = sameChrom & (np.abs(frags.mids1 - frags.mids2) < 20000)
         shortRangeNum = shortRange.sum()
-        fragments.metadata['412_IntraShortRangeReads(<20Kb)'] = shortRangeNum
-        fragments.metadata['412_IntraLongRangeReads(>=20Kb)'] = sameChromNum - shortRangeNum
+        frags.metadata['412_IntraShortRangeReads(<20Kb)'] = shortRangeNum
+        frags.metadata['412_IntraLongRangeReads(>=20Kb)'] = sameChromNum - shortRangeNum
         
         if 'M' in genome_db.label2idx:
             MChromIdx = genome_db.label2idx['M']
-            IntraM = (fragments.chrms1==MChromIdx) & (fragments.chrms2==MChromIdx)
-            fragments.metadata['500_IntraMitochondrial'] = IntraM.sum()
-            InterMN = np.logical_or((fragments.chrms1!=MChromIdx) & (fragments.chrms2==MChromIdx),
-                                    (fragments.chrms1==MChromIdx) & (fragments.chrms2!=MChromIdx))
-            fragments.metadata['600_InterNuclearMitochondrial'] = InterMN.sum()
+            IntraM = (frags.chrms1==MChromIdx) & (frags.chrms2==MChromIdx)
+            frags.metadata['500_IntraMitochondrial'] = IntraM.sum()
+            InterMN = np.logical_or((frags.chrms1!=MChromIdx) & (frags.chrms2==MChromIdx),
+                                    (frags.chrms1==MChromIdx) & (frags.chrms2!=MChromIdx))
+            frags.metadata['600_InterNuclearMitochondrial'] = InterMN.sum()
         
-        fragments.h5dict['metadata'] = fragments.metadata
+        frags.h5dict['metadata'] = frags.metadata
         
         ## Read pair types
-        genomeDis = np.abs(fragments.mids1[sameChrom] - fragments.mids2[sameChrom])
-        cuts1 = fragments.cuts1[sameChrom]
-        cuts2 = fragments.cuts2[sameChrom]
-        strands1 = fragments.strands1[sameChrom]
-        strands2 = fragments.strands2[sameChrom]
-        RightType = (strands1 == 1) & (strands2 == 1)
-        LeftType = (strands1 == 0) & (strands2 == 0)
+        pool = {}
+        genomeDis = np.abs(frags.mids1[sameChrom] - frags.mids2[sameChrom])
+        cuts1 = frags.cuts1[sameChrom]
+        cuts2 = frags.cuts2[sameChrom]
+        strands1 = frags.strands1[sameChrom]
+        strands2 = frags.strands2[sameChrom]
+        RightType = (strands1==1) & (strands2==1)
+        LeftType = (strands1==0) & (strands2==0)
         InnerType = np.logical_or((strands1 > strands2) & (cuts1 > cuts2),
                                   (strands1 < strands2) & (cuts1 < cuts2))
         OuterType = np.logical_or((strands1 > strands2) & (cuts1 < cuts2),
                                   (strands1 < strands2) & (cuts1 > cuts2))
         
         binDis = genomeDis // 1000 # Bin Size: 1000
-        binCount_R = np.bincount(binDis[RightType])[:50]
-        binCount_L = np.bincount(binDis[LeftType])[:50]
-        binCount_I = np.bincount(binDis[InnerType])[:50]
-        binCount_O = np.bincount(binDis[OuterType])[:50]
-        
-        fragments.h5dict['LeftType'] = binCount_L
-        fragments.h5dict['RightType'] = binCount_R
-        fragments.h5dict['InnerType'] = binCount_I
-        fragments.h5dict['OuterType'] = binCount_O
+        pool = {'LeftType':np.bincount(binDis[LeftType])[:50],
+                'RightType':np.bincount(binDis[RightType])[:50],
+                'InnerType':np.bincount(binDis[InnerType])[:50],
+                'OuterType':np.bincount(binDis[OuterType])[:50]}
+        frags.h5dict['_DirectionTypeStats'] = pool
         
         logging.log(21, 'Done!')
         
@@ -902,7 +902,7 @@ def filtering(args, commands):
         args.filteredDir.append(outfile)
         
         # Genome information from HDF5
-        gInfo = h5dict(filenames[0], 'r')['genomeInformation']
+        gInfo = h5dict(filenames[0], 'r')['_genomeInformation']
         args.__dict__.update(gInfo)
         enzyme = rep[1]
         
@@ -956,7 +956,7 @@ def filtering(args, commands):
             args.filteredDir.append(outfile)
             
             # Genome information from HDF5
-            gInfo = h5dict(filenames[0], 'r')['genomeInformation']
+            gInfo = h5dict(filenames[0], 'r')['_genomeInformation']
             args.__dict__.update(gInfo)
             enzyme = cell[-1]
             
@@ -1030,7 +1030,7 @@ def binning(args, commands):
             
             logging.log(21, 'Constructing ...')
             
-            gInfo = h5dict(f, 'r')['genomeInformation']
+            gInfo = h5dict(f, 'r')['_genomeInformation']
             args.__dict__.update(gInfo)
             
             hFile = os.path.join(hFolder, os.path.basename(f).replace('.hdf5', '-%s.hm' % nLabel))
@@ -1154,7 +1154,7 @@ def correcting(args, commands):
             
             logging.log(21, 'Corrected Matrices will be generated under %s', cFolder)
             
-            gInfo = h5dict(f, 'r')['genomeInformation']
+            gInfo = h5dict(f, 'r')['_genomeInformation']
             args.__dict__.update(gInfo)
             
             dataLocation, genomeFolder, genome_db = initialize(args)
@@ -1173,7 +1173,7 @@ def correcting(args, commands):
             
             # Add genome information
             reRead = h5dict(cFile)
-            reRead['genomeInformation'] = gInfo
+            reRead['_genomeInformation'] = gInfo
             
             completed = open(Indicator, 'wb')
             completed.close()
@@ -1268,7 +1268,7 @@ def quality(args, commands):
         if os.path.exists(checkFile_1) and os.path.exists(checkFile_2):
             logging.log(21, 'Generate statistic table ...')
             ## Read genome information in
-            gInfo = h5dict(checkFile_2, 'r')['genomeInformation']
+            gInfo = h5dict(checkFile_2, 'r')['_genomeInformation']
             args.__dict__.update(gInfo)
             dataLocation, genomeFolder, genome_db = initialize(args)
             fragments = cHiCdataset(checkFile_2, genome = genome_db,
@@ -1291,7 +1291,7 @@ def quality(args, commands):
         checkFile_2= os.path.join(locator, '%s-%s-%s-filtered.hdf5' % rep)
         if os.path.exists(checkFile_1) and os.path.exists(checkFile_2):
             logging.log(21, 'Generate statistic table ...')
-            gInfo = h5dict(checkFile_2, 'r')['genomeInformation']
+            gInfo = h5dict(checkFile_2, 'r')['_genomeInformation']
             args.__dict__.update(gInfo)
             dataLocation, genomeFolder, genome_db = initialize(args)
             fragments = cHiCdataset(checkFile_2, genome = genome_db,
@@ -1330,7 +1330,7 @@ def quality(args, commands):
         checkFile_2= os.path.join(locator, '%s-%s-allReps-filtered.hdf5' % cell)
         if os.path.exists(checkFile_1) and os.path.exists(checkFile_2):
             logging.log(21, 'Generate statistic table ...')
-            gInfo = h5dict(checkFile_2, 'r')['genomeInformation']
+            gInfo = h5dict(checkFile_2, 'r')['_genomeInformation']
             args.__dict__.update(gInfo)
             dataLocation, genomeFolder, genome_db = initialize(args)
             fragments = cHiCdataset(checkFile_2, genome = genome_db,
@@ -1386,8 +1386,8 @@ def visualize(args, commands):
     
     if Source.endswith('.hm'):
         lib = h5dict(Source, 'r')
-        idx2label = lib['genomeInformation']['idx2label']
-        label2idx = lib['genomeInformation']['label2idx']
+        idx2label = lib['_genomeInformation']['idx2label']
+        label2idx = lib['_genomeInformation']['label2idx']
         if 'heatmap' in lib:
             H = lib['heatmap']
             ticks = list(lib['chromosomeStarts'])
@@ -1398,8 +1398,8 @@ def visualize(args, commands):
         if Source.endswith('.npz'):
             lib = np.load(Source)
             res = lib['resolution'][()]
-            idx2label = lib['genomeInformation'][()]['idx2label']
-            label2idx = lib['genomeInformation'][()]['label2idx']
+            idx2label = lib['_genomeInformation'][()]['idx2label']
+            label2idx = lib['_genomeInformation'][()]['label2idx']
         else:
             logging.error('Invalid source format. Exit ...')
             sys.exit(1)
