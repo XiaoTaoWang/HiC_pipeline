@@ -422,14 +422,14 @@ def mapping(args, commands):
     import gzip
     import hiclib.mapping as iterM
     from mirnylib.h5dict import h5dict
-    from runHiC.utilities import juncSeqCountSRA, splitSRA, uncompressSRA, \
-        splitFASTQ, linkRawFASTQ, juncSeqCountFASTQ
+    from runHiC.utilities import splitSRA, splitFASTQ, uncompressSRA, \
+        linkRawFASTQ, juncSeqCountFASTQ
     from runHiC.parallel import ppLocal, ppServer
     
      # Initialization
     dataLocation, genomeFolder, genome_db = initialize(args)
     
-    ## Reference Genome Information
+    # Reference Genome Information
     gInfo = {'dataFolder': args.dataFolder, 'genomeName': args.genomeName,
              'gapFile': args.gapFile, 'chroms': args.chroms,
              'template': args.template, 'label2idx': genome_db.label2idx,
@@ -483,7 +483,53 @@ def mapping(args, commands):
 
         return minlen, actualStep
     
+    def genchunks(chunkFolder, subbamFolder, subhdf5F, query, Format, pool):
+        
+        if Format == 'sra':
+            sra = os.path.join(fastqDir, query + '.sra')
+            if not os.path.exists(sra):
+                logging.warning('%s can not be found on your system!', sra)
+                logging.warning('Skipping ...')
+                return
+            if not args.chunkSize:
+                queue = uncompressSRA(sra, chunkFolder, subbamFolder, subhdf5F)
+            else:
+                queue = splitSRA(sra, chunkFolder, subbamFolder, subhdf5F,
+                                 splitBy=args.chunkSize)
+        else:
+            try_1 = os.path.join(fastqDir, query + '_1.fastq')
+            try_2 = os.path.join(fastqDir, query + '_1.fastq.gz')
+            try_3 = os.path.join(fastqDir, query + '_2.fastq')
+            try_4 = os.path.join(fastqDir, query + '_2.fastq.gz')
+            if os.path.exists(try_1) and os.path.exists(try_3):
+                Fq_1 = try_1
+                Fq_2 = try_3
+            elif os.path.exists(try_1) and os.path.exists(try_4):
+                Fq_1 = try_1
+                Fq_2 = try_4
+            elif os.path.exists(try_2) and os.path.exists(try_3):
+                Fq_1 = try_2
+                Fq_2 = try_3
+            elif os.path.exists(try_2) and os.path.exists(try_4):
+                Fq_1 = try_2
+                Fq_2 = try_4
+            else:
+                logging.warning('No proper FASTQ pairs can be found for %s!',query)
+                logging.warning('Skipping ...')
+                return
+            if not args.chunkSize:
+                queue = linkRawFASTQ(Fq_1, Fq_2, subbamFolder, subhdf5F)
+            else:
+                queue = splitFASTQ(Fq_1, Fq_2, chunkFolder, subbamFolder,
+                                   subhdf5F, splitBy=args.chunkSize)
+        pool[query] = []
+        for pre in queue:
+            values = pre + (database[query],)
+            pool[query].append(values)
+    
     def mapping_core(fq1, fq2, bam1, bam2, hdf5, enzyme, genome_db, Parameters):
+        ## Count Ligation Junctions
+        seqlen, ligcount = juncSeqCountFASTQ(fq1, fq2, enzyme)
         ## The first side ...
         if fq1.endswith('_1.fastq.gz'):
             temp = gzip.open(fq1, 'r')
@@ -522,7 +568,7 @@ def mapping(args, commands):
         umapped_1 = (lib['chrms1']>=0).sum()
         umapped_2 = (lib['chrms2']>=0).sum()
         
-        return umapped_1, umapped_2
+        return seqlen, ligcount, umapped_1, umapped_2
     
     ## Validity of arguments
     bowtiePath = os.path.abspath(os.path.expanduser(args.bowtiePath))
@@ -565,7 +611,7 @@ def mapping(args, commands):
             bowtieIndex = buildIndex(genomeFolder)
             logging.log(21, 'Done!')
             
-    ## Sequencing Data Format
+    # Sequencing Data Format
     Format = args.Format.lower()
     
     ## Output Folders
@@ -587,102 +633,79 @@ def mapping(args, commands):
     else:
         server = ppServer(args.threads, args.nworker, port=60000)
     
+    # Common Parameters for Mapping
+    Params = {'bowtie_path': bowtiePath, 'bowtie_index_path': bowtieIndex,
+              'nthreads': args.threads, 'temp_dir': cache,
+              'bowtie_flags': '--very-sensitive'}
+    
     logging.log(21, 'Launching %d processes for mapping ...')
-    jobs = []
     # Read Metadata
     metadata = [l.rstrip().split() for l in open(mFile) if not l.isspace()]
     database = dict([(i[0], i[-1]) for i in metadata])
+    ## Generate the task queue
+    rmFolders = []
+    pre_jobs = []
+    pre_pool = {}
     for i in database:
-        logging.log(21, 'Current SRR: %s', i)
         
         chunkFolder = os.path.join(fastqDir, i)
         subbamFolder = os.path.join(bamFolder, i)
+        rmFolders.extend([chunkFolder,subbamFolder])
         subhdf5F = os.path.join(hdf5F, i)
-        
-        if Format == 'sra':
-            sra = os.path.join(fastqDir, i + '.sra')
-            if not os.path.exists(sra):
-                logging.warning('%s can not be found on your system!', sra)
-                logging.warning('Skipping ...')
-                continue
-        else:
-            tryFile_1 = os.path.join(fastqDir, i + '_1.fastq')
-            tryFile_2 = os.path.join(fastqDir, i + '_1.fastq.gz')
-            tryFile_3 = os.path.join(fastqDir, i + '_2.fastq')
-            tryFile_4 = os.path.join(fastqDir, i + '_2.fastq.gz')
-            if os.path.exists(tryFile_1) and os.path.exists(tryFile_3):
-                Fq_1 = tryFile_1
-                Fq_2 = tryFile_3
-            elif os.path.exists(tryFile_1) and os.path.exists(tryFile_4):
-                Fq_1 = tryFile_1
-                Fq_2 = tryFile_4
-            elif os.path.exists(tryFile_2) and os.path.exists(tryFile_3):
-                Fq_1 = tryFile_2
-                Fq_2 = tryFile_3
-            elif os.path.exists(tryFile_2) and os.path.exists(tryFile_4):
-                Fq_1 = tryFile_2
-                Fq_2 = tryFile_4
-            else:
-                logging.warning('No proper FASTQ pairs can be found!')
-                logging.warning('Skipping ...')
-                continue
         
         for folder in [chunkFolder, subbamFolder, subhdf5F]:
             if not os.path.exists(folder):
                 os.makedirs(folder)
+            
+        cPickle.dump(gInfo,
+                     open(os.path.join(subhdf5F,'referenceGenome'),'wb'))
         
-        ## Iterative Mapping
-        # Common Parameters
-        Params = {'bowtie_path': bowtiePath, 'bowtie_index_path': bowtieIndex,
-                  'nthreads': args.threads, 'temp_dir': cache,
-                  'bowtie_flags': '--very-sensitive'}
-        if Format == 'sra':
-            if not args.chunkSize:
-                queue = uncompressSRA(sra, chunkFolder, subbamFolder, subhdf5F)
-            else:
-                queue = splitSRA(sra, chunkFolder, subbamFolder, subhdf5F,
-                                 splitBy=args.chunkSize)
-        else:
-            if not args.chunkSize:
-                queue = linkRawFASTQ(Fq_1, Fq_2, subbamFolder, subhdf5F)
-            else:
-                queue = splitFASTQ(Fq_1, Fq_2, chunkFolder, subbamFolder,
-                                   subhdf5F, splitBy=args.chunkSize)
-                
-        for fq1, outb1, fq2, outb2, hdf5 in queue:
+        pre = server.sumbit(genchunks,
+                            (chunkFolder,subbamFolder,subhdf5F,i,Format,pre_pool),
+                            (uncompressSRA,splitSRA,linkRawFASTQ,splitFASTQ),
+                            ('os','logging'))
+        pre_jobs.append(pre)
+    
+    for pre in pre_jobs:
+        pre()
+    
+    jobs = []
+    pool = {'seqlen':{}, 'ligcount':{}, 'umapped_1':{}, 'umapped_2':{}}
+    for query in pre_pool:
+        for pre_params in pre_pool[query]:
             job = server.submit(mapping_core,
-                      (fq1,fq2,outb1,outb2,hdf5,database[i],genome_db,Params),
-                      (calculateStep,),
-                      ('gzip','hiclib.mapping as iterM'),
-                      globals=locals())
-            jobs.append(job)
-            job()
+                                pre_params+(genome_db,Params),
+                                (calculateStep,),
+                                ('gzip','hiclib.mapping as iterM'),
+                                globals=locals())
+            tmp = pre_params + (query,)
+            jobs.append((tmp,job))
+            for key in pool:
+                pool[key][query] = {}
+                
+    for (fq1, fq2, outb1, outb2, hdf5, enzyme, query), job in jobs:
+        seqlen, ligcount, umapped_1, umapped_2 = job()
+        pool['seqlen'][query][hdf5] = seqlen
+        pool['ligcount'][query][hdf5] = ligcount
+        pool['umapped_1'][query][hdf5] = umapped_1
+        pool['umapped_2'][query][hdf5] = umapped_2
+    
+    for query in pre_pool:
+        Read_level = {}
+        Read_level['seqlen'] = sum(pool['seqlen'][query].values())
+        Read_level['ligcount'] = sum(pool['ligcount'][query].values())
+        Read_level['umapped_1'] = sum(pool['umapped_1'][query].values())
+        Read_level['umapped_2'] = sum(pool['umapped_2'][query].values())
+        subhdf5F = os.path.split(pool['seqlen'][query].keys()[0])[0]
+        cPickle.dump(Read_level,
+                     open(os.path.join(subhdf5F,'Read-Level-Stats'),'wb'))
+    
+    logging.log(21, 'The Mapping Stage is Finished.')
             
-            
-        
-        Read_level['Unique-Reads_1'] = umapped_1
-        Read_level['Unique-Reads_2'] = umapped_2
-            
-        ## Count Ligation Junctions
-        logging.log(21, 'Scan each read for ligation junction sequence ...')
-        if Format == 'sra':
-            bash_reader = 'fastq-dump -Z --split-files'
-            Len, Count = juncSeqCountSRA(sra, bash_reader, enzyme = database[i])
-        else:
-            Len, Count = juncSeqCountFASTQ(Fastq_1, Fastq_2, enzyme = database[i])
-            
-        logging.log(21, 'Done!')
-            
-        Read_level['Sequenced-Reads'] = Len
-        Read_level['Ligation-Counts'] = Count
-            
-        cPickle.dump(Read_level, open(os.path.join(subhdf5F, 'Read-Level-Stats'), 'wb'))
-        cPickle.dump(gInfo, open(os.path.join(subhdf5F, 'referenceGenome'), 'wb'))
-            
-        if args.removeInters:
-            for folder in [chunkFolder, subbamFolder]:
-                rmcommand = ['rm', '-rf', folder]
-                os.system(' '.join(rmcommand))
+    if args.removeInters:
+        for folder in rmFolders:
+            rmcommand = ['rm', '-rf', folder]
+            os.system(' '.join(rmcommand))
 
 def filtering(args, commands):
     # Necessary Modules
