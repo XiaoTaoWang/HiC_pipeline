@@ -62,7 +62,7 @@ class myGenome(Genome):
 class cHiCdataset(HiCdataset):
     
     def __init__(self, filename, genome, maximumMoleculeLength=500,
-                 mode="a", tmpFolder="/tmp", dictToStoreIDs="dict",
+                 mode="a", tmpFolder="/tmp", dictToStoreIDs="h5dict",
                  compression="gzip", compression_opts=3):
         
         self.vectors = {
@@ -193,8 +193,8 @@ class cHiCdataset(HiCdataset):
         extSpace = dist[sameFragMask][DM]
         
         self.h5dict['_DanglingDetials'] = {'extLen':extLen,
-                                          'extD':extD,
-                                          'extSpace':extSpace}
+                                           'extD':extD,
+                                           'extSpace':extSpace}
         
         del sameFragMask
 
@@ -209,7 +209,7 @@ class cHiCdataset(HiCdataset):
         extraDE = mask.sum()
         self.metadata['210_ExtraDanglingReads'] = -extraDE + noSameFrag
         if mask.sum() == 0:
-            raise Exception('No reads left after filtering. Please, check the input data')
+            raise Exception('No reads left after filtering. Please check the input data')
 
         del dist, readsMolecules
         
@@ -395,12 +395,13 @@ class cHiCdataset(HiCdataset):
             os.remove(tmpfil)
             gc.collect()
     
-    def _getChunks(self):
+    def _getChunks(self, chunkSize="default"):
         
-        chunkSize = self.chunksize
-        if chunkSize > 0.5*self.N:
+        if chunkSize == "default":
+            chunkSize = self.chunksize
+        if chunkSize > 0.5 * self.N:
             return [(0, self.N)]
-        points = list(range(0, self.N-chunkSize//2, chunkSize)) + [self.N]
+        points = list(range(0,self.N-chunkSize//2,chunkSize)) + [self.N]
         
         return list(zip(points[:-1], points[1:]))
     
@@ -662,7 +663,10 @@ class cHiCdataset(HiCdataset):
         extLen = self.h5dict['_DanglingDetials']['extLen']
         extSpace = self.h5dict['_DanglingDetials']['extSpace']
         
-        m = extD.min()
+        m = int(np.percentile(extD[extD<0],0.5))
+        extLen = extLen[extD>=m]
+        extSpace = extSpace[extD>=m]
+        extD = extD[extD>=m]
         if offset < -m:
             offset = -m
         

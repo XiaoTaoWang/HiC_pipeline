@@ -16,7 +16,7 @@ def sleep():
     gc.collect()
     for _ in range(3):
         time.sleep(0.1)
-
+        
 def juncSeqCountSRA(fastqPath, bash_reader, enzyme):
     """
     Scan each read to match so-called junction sequence.
@@ -151,7 +151,6 @@ def juncSeqCountFASTQ(Fastq_1, Fastq_2, enzyme):
             
             try:
                 assert line[0] == '@'
-                
             except IndexError:
                 break
             
@@ -198,21 +197,24 @@ def gzipWriter(filename):
                                   bufsize = -1)
     return pwrite
 
-def uncompressSRA(filename, folder):
+def uncompressSRA(sra, fastqF, bamF, hdf5F):
     
     if not commandExists('fastq-dump'):
         raise ValueError('Please install fastq-dump first!')
     
-    inFile = os.path.abspath(filename)
-    
-    pread = subprocess.Popen(['fastq-dump', inFile, "-Z", "--split-files"],
+    pread = subprocess.Popen(['fastq-dump', sra, "-Z", "--split-files"],
                               stdout = subprocess.PIPE, bufsize = -1)
     
     inStream = pread.stdout
     
-    outFile = os.path.split(filename)[1].replace('.sra', '') + '_{0}.fastq.gz'
-    outProc1 = gzipWriter(os.path.join(folder, outFile).format(1))
-    outProc2 = gzipWriter(os.path.join(folder, outFile).format(2))
+    outname = os.path.split(sra)[1].replace('.sra', '') + '_{0}.fastq.gz'
+    outf1 = os.path.join(fastqF,outname).format(1)
+    outf2 = os.path.join(fastqF,outname).format(2)
+    outb1 = os.path.join(bamF,os.path.split(outf1)[1].replace('.fastq.gz','.bam'))
+    outb2 = os.path.join(bamF,os.path.split(outf2)[1].replace('.fastq.gz','.bam'))
+    hdf5 = os.path.join(hdf5F,os.path.split(sra)[1].replace('.sra','.hdf5'))
+    outProc1 = gzipWriter(outf1)
+    outProc2 = gzipWriter(outf2)
     outStream1 = outProc1.stdin
     outStream2 = outProc2.stdin
     
@@ -223,7 +225,7 @@ def uncompressSRA(filename, folder):
         try:
             assert line[0] == '@'
         except AssertionError:
-            raise IOError('{0} is an invalid fastq file'.format(filename))
+            raise IOError('Invalid fastq file')
         except IndexError:
             break
         
@@ -239,24 +241,43 @@ def uncompressSRA(filename, folder):
     
     outProc1.communicate()
     outProc2.communicate()
+    
+    yield outf1, outb1, outf2, outb2, hdf5
 
-def splitSRA(filename, folder, splitBy = 4000000):
+def linkRawFASTQ(fq1, fq2, bamF, hdf5F):
+    
+    if fq1.endswith('.fastq'):
+        outb1 = os.path.join(bamF,os.path.split(fq1)[1].replace('.fastq','.bam'))
+        hdf5 = os.path.join(hdf5F,os.path.split(fq1)[1].replace('_1.fastq','.hdf5'))
+    else:
+        outb1 = os.path.join(bamF,os.path.split(fq1)[1].replace('.fastq.gz','.bam'))
+        hdf5 = os.path.join(hdf5F,os.path.split(fq1)[1].replace('_1.fastq.gz','.hdf5'))
+    if fq2.endswith('.fastq'):
+        outb2 = os.path.join(bamF,os.path.split(fq2)[1].replace('.fastq','.bam'))
+    else:
+        outb2 = os.path.join(bamF,os.path.split(fq2)[1].replace('.fastq.gz','.bam'))
+    
+    yield fq1, outb1, fq2, outb2, hdf5
+
+def splitSRA(sra, chunkF, bamF, hdf5F, splitBy=4000000):
     
     if not commandExists('fastq-dump'):
         raise ValueError('Please install fastq-dump first!')
 
-    inFile = os.path.abspath(filename)
-    outFile = os.path.split(inFile)[1].replace('.sra', '') + '_chunk{0}_{1}.fastq.gz'
-    pread = subprocess.Popen(['fastq-dump', inFile, "-Z", "--split-files"],
+    outname = os.path.split(sra)[1].replace('.sra', '') + '_chunk{0}_{1}.fastq.gz'
+    pread = subprocess.Popen(['fastq-dump', sra, "-Z", "--split-files"],
                               stdout = subprocess.PIPE, bufsize = -1)
     inStream = pread.stdout
 
     halted = False
-    counters = []
     for counter in xrange(1000000):
-
-        outProc1 = gzipWriter(os.path.join(folder, outFile).format(counter, 1))
-        outProc2 = gzipWriter(os.path.join(folder, outFile).format(counter, 2))
+        outf1 = os.path.join(chunkF,outname).format(counter,1)
+        outf2 = os.path.join(chunkF,outname).format(counter,2)
+        outb1 = os.path.join(bamF,os.path.split(outf1)[1].replace('.fastq.gz','.bam'))
+        outb2 = os.path.join(bamF,os.path.split(outf2)[1].replace('.fastq.gz','.bam'))
+        hdf5 = os.path.join(hdf5F,os.path.split(outf1)[1].replace('_1.fastq.gz','.hdf5'))
+        outProc1 = gzipWriter(outf1)
+        outProc2 = gzipWriter(outf2)
         outStream1 = outProc1.stdin
         outStream2 = outProc2.stdin
 
@@ -267,12 +288,10 @@ def splitSRA(filename, folder, splitBy = 4000000):
             try:
                 assert line[0] == '@'
             except AssertionError:
-                raise IOError('{0} is an invalid fastq file'.format(filename))
+                raise IOError('Invalid fastq file')
             except IndexError:
                 halted = True
-                counters.append(j)
                 break
-
 
             fastq_entry = (line, inStream.readline(),
                            inStream.readline(), inStream.readline())
@@ -283,62 +302,76 @@ def splitSRA(filename, folder, splitBy = 4000000):
 
         outProc1.communicate()
         outProc2.communicate()
+        
+        yield outf1, outb1, outf2, outb2, hdf5
+        
         if halted:
-            return counters
-        counters.append(splitBy)
-    return counters
+            break
 
-
-def splitSingleFastq(filename, folder, splitBy = 4000000):
-
-    inFile = os.path.abspath(filename)
+def splitFASTQ(fq1, fq2, chunkF, bamF, hdf5F, splitBy=4000000):
     
-    parse = os.path.split(inFile)[1].split('.')[0].split('_')
-    outFile = '_'.join(parse[:-1]) + '_chunk{0}_{1}.fastq.gz'
+    p1 = os.path.split(fq1)[1].split('.')[0].split('_')
+    outname1 = '_'.join(p1[:-1]) + '_chunk{0}_{1}.fastq.gz'
+    p2 = os.path.split(fq2)[1].split('.')[0].split('_')
+    outname2 = '_'.join(p2[:-1]) + '_chunk{0}_{1}.fastq.gz'
+    outname = '_'.join(p2[:-1]) + '_chunk{0}.hdf5'
     
-    if inFile.endswith('.fastq.gz'):
-        pread = subprocess.Popen(['gunzip', inFile, '-c'],
-                                  stdout = subprocess.PIPE, bufsize = -1)
+    if fq1.endswith('.fastq.gz'):
+        pread_1 = subprocess.Popen(['gunzip', fq1, '-c'],
+                                    stdout = subprocess.PIPE, bufsize = -1)
     else:
-        pread = subprocess.Popen(['cat', inFile],
-                                  stdout = subprocess.PIPE, bufsize = -1)
+        pread_1 = subprocess.Popen(['cat', fq1],
+                                    stdout = subprocess.PIPE, bufsize = -1)
+    if fq2.endswith('.fastq.gz'):
+        pread_2 = subprocess.Popen(['gunzip', fq2, '-c'],
+                                    stdout = subprocess.PIPE, bufsize = -1)
+    else:
+        pread_2 = subprocess.Popen(['cat', fq2],
+                                    stdout = subprocess.PIPE, bufsize = -1)
                                   
-    inStream = pread.stdout
-
+    inStream_1 = pread_1.stdout
+    inStream_2 = pread_2.stdout
+    
     halted = False
-    counters = []
     for counter in xrange(1000000):
-
-        outProc1 = gzipWriter(os.path.join(folder, outFile).format(counter, parse[-1]))
+        outf1 = os.path.join(chunkF,outname1).format(counter,p1[-1])
+        outb1 = os.path.join(bamF,os.path.split(outf1)[1].replace('.fastq.gz','.bam'))
+        outf2 = os.path.join(chunkF,outname2).format(counter,p2[-1])
+        outb2 = os.path.join(bamF,os.path.split(outf2)[1].replace('.fastq.gz','.bam'))
+        hdf5 = os.path.join(hdf5F,outname).format(counter)
+        outProc1 = gzipWriter(outf1)
+        outProc2 = gzipWriter(outf2)
         outStream1 = outProc1.stdin
+        outStream2 = outProc2.stdin
 
         for j in xrange(splitBy):
 
-            line = inStream.readline()
+            line = inStream_1.readline()
 
             try:
                 assert line[0] == '@'
             except AssertionError:
-                raise IOError('{0} is not a fastq file'.format(filename))
+                raise IOError('Invalid fastq file')
             except IndexError:
                 halted = True
-                counters.append(j)
                 break
 
 
-            fastq_entry = (line, inStream.readline(), inStream.readline(),
-                           inStream.readline())
+            fastq_entry_1 = (line, inStream_1.readline(), inStream_1.readline(),
+                             inStream_1.readline())
+            fastq_entry_2 = (inStream_2.readline(), inStream_2.readline(),
+                             inStream_2.readline(), inStream_2.readline())
 
-            outStream1.writelines(fastq_entry)
+            outStream1.writelines(fastq_entry_1)
+            outStream2.writelines(fastq_entry_2)
 
         outProc1.communicate()
-        counters.append(splitBy)
+        outProc2.communicate()
+        
+        yield outf1, outb1, outf2, outb2, hdf5
         
         if halted:
-            return counters
-        counters.append(splitBy)
-        
-    return counters
+            break
     
 # Convert Matrix to Scipy Sparse Matrix
 def toSparse(source, csr = False):

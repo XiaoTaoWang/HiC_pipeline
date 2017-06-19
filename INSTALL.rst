@@ -1,44 +1,97 @@
-Python Packages
-===============
-I recommend using `conda <http://conda.pydata.org/miniconda.html>`_, an excellent Python package and
-environment manager.
+Install runHiC
+==============
+runHiC is developed and tested on UNIX-like operating system, and following packages
+or softwares are required:
 
-Open a terminal and type::
+Python Packages:
 
-    $ conda install numpy numexpr scipy matplotlib statsmodels cython biopython h5py pysam pip
+- Python (2.7, not compatible with 3.x for now)
+- numpy
+- numexpr 
+- scipy
+- statsmodels
+- matplotlib
+- h5py
+- cython
+- biopython
+- bx-python
+- pysam
+- joblib
+- pp
+- mirnylib
+- hiclib
 
-Install *bx-python* and *joblib* using pip::
+Other Packages:
 
-    $ pip install joblib bx-python
+- gcc (>= 4.8.5)
+- sra-tools
+- bowtie2
+- samtools
 
-Install *mirnylib* and *hiclib* from source code:
+Install Conda
+-------------
+All above requirements except for mirnylib and hiclib can be installed through the
+conda package manager.
 
-Download `mirnylib <https://bitbucket.org/mirnylab/mirnylib/downloads>`_ and `hiclib <https://bitbucket.org/mirnylab/hiclib/downloads>`_,
-and run install_linux.py contained in the unpacked folder, respectively.
+.. note:: If you have the Anaconda Distribution installed, you already have it, feel free to jump to
+   the `Set up Channels`_ section.
 
-Other dependencies
-==================
-Install *fastq-dump*:
+Download the lastest `Linux Miniconda installer for Python 2.7 <https://conda.io/miniconda.html>`_,
+then in your terminal window type the following and follow the prompts on the installer screens::
 
-I have included it in our distribution. Just make it accessible to your system. (Via the environment variable
-*PATH*)
+    $ bash Miniconda2-latest-Linux-x86_64.sh
 
-Install *samtools*:
+After that, update the environment variables to finish the Conda installation::
 
-Download `samtools <http://sourceforge.net/projects/samtools/files/>`_, unpack it, change to the extracted
-directory::
+    $ source ~/.bashrc
 
-    $ make
+Set up Channels
+---------------
+Conda allows separation of packages into separate repositories, or channels. The main *defaults*
+channel has a large amount of common packages including *numpy*, *numexpr*, *scipy*, *statsmodels*,
+*matplotlib*, *h5py*, *cython* and *biopython* listed above. *bx-python*, *pysam*, *joblib*, *pp*,
+*sra-tools*, *bowtie2* and *samtools* are not available in the *defaults* channel but included in
+the *bioconda* channel, and to make them accessible, you will need to add the *bioconda* channel
+as well as the other channels bioconda depends on (note that the order is important to guarantee
+the correct priority)::
 
-Make *samtools* accessible to your system.
+    $ conda config --add channels conda-forge
+    $ conda config --add channels defaults
+    $ conda config --add channels r
+    $ conda config --add channels bioconda
 
-Install *Bowtie2*:
+Install Packages through Conda
+------------------------------
+Then it's straightforward to install all the required packages except *mirnylib* and *hiclib*
+through the following one-line command::
 
-Download the `source code <http://sourceforge.net/projects/bowtie-bio/files/bowtie2/>`_, unzip it and
-add the path to the extracted directory to *PATH*.
+    conda install numpy numexpr scipy statsmodels matplotlib h5py cython biopython bx-python pysam joblib pp sra-tools bowtie2 samtools gcc=4.8.5
 
-runHiC
-======
-Use easy_install::
+Install mirnylib and hiclib
+---------------------------
+To make it easy, I have included *mirnylib* and *hiclib* source code in the *runHiC* distribution
+under the "mirnylab" sub-foler since 0.7.0::
 
-    $ easy_install runHiC
+    $ cd mirnylab
+
+To install *mirnylib*::
+
+    $ unzip mirnylib.zip
+	$ cd mirnylib
+    $ python setup.py install
+
+To install *hiclib*::
+
+    $ unzip hiclib.zip
+	$ cd hiclib
+	$ python setup.py install
+
+Install runHiC
+--------------
+Now just run the setup.py script under the distribution root directory to finish the installation.
+Suppose you are still in the extracted hiclib folder::
+
+    $ cd ../..
+	$ python setup.py install
+
+runHiC has been installed successfully if no exception occurs in the above processes.
