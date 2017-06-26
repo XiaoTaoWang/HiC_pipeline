@@ -3,81 +3,51 @@
 # Author: XiaoTao Wang
 # Organization: HuaZhong Agricultural University
 
-import logging, os, subprocess, time, gc
+import logging, os, subprocess
 import numpy as np
 from mirnylib.h5dict import h5dict
 
 log = logging.getLogger(__name__)
 
-def sleep():
+def initialize(dataFolder, genomeName, gapName, chroms, template):
+    ## Necessary Modules
+    from runHiC.chiclib import myGenome
     
-    for _ in range(3):
-        time.sleep(0.1)
-    gc.collect()
-    for _ in range(3):
-        time.sleep(0.1)
-        
-def juncSeqCountSRA(fastqPath, bash_reader, enzyme):
+    dataLocation = os.path.abspath(os.path.expanduser(dataFolder))
+    genomeFolder = os.path.join(dataLocation, genomeName)
+    ## Generate a dummy gap file under genome folder if there's no one yet
+    gapFile = os.path.join(genomeFolder, gapName)
+    if not os.path.exists(gapFile):
+        tmpfil = open(gapFile, 'wb')
+        tmpfil.write('0\tNA1000\t0\t0\t0\tN\t0\tcentromere\tno\n')
+        tmpfil.flush()
+        tmpfil.close()
+    
+    # Python Genome Object
+    genome_db = myGenome(genomeFolder, readChrms = chroms,
+                         chrmFileTemplate = template, gapFile = gapName)
+    
+    return dataLocation, genomeFolder, genome_db
+
+def calculateStep(length, minlen, approxStep=10, maxSteps=4):
     """
-    Scan each read to match so-called junction sequence.
-    
-    A paucity of ligation junctions in a Hi-C library suggests that the
-    ligation failed.
-    
+    Returns minimum length and step based on the length of sequence and
+    proposed minimum length.
     """
-    import Bio.Restriction
+    actualDif = length - minlen
+    if actualDif < approxStep * 0.6:
+        return length, 100
     
-    enzyme_site = eval('Bio.Restriction.%s.site' % enzyme)
-    cutsite = eval('Bio.Restriction.%s.charac' % enzyme)[:2]
+    numIter = np.array(np.around(actualDif / float(approxStep)), dtype=int)
+    if numIter == 0:
+        numIter = 1
+    if numIter > maxSteps:
+        numIter = maxSteps
+    actualStep = actualDif / numIter
     
-    Dict = {'A':'T', 'C':'G', 'G':'C', 'T':'A'}
-    reverse = ''.join([Dict[i] for i in enzyme_site])
+    minlen = length - actualStep * numIter
     
-    if cutsite[-1]:
-        jplus = enzyme_site[:cutsite[-1]] + enzyme_site[cutsite[0]:]
-        jminus = reverse[:cutsite[-1]] + reverse[cutsite[0]:]
-        jminus = jminus[::-1]
-    else:
-        jplus = enzyme_site[:None] + enzyme_site[cutsite[0]:]
-        jminus = reverse[:None] + reverse[cutsite[0]:]
-        jminus = jminus[::-1]
-    
-    
-    reading_command = bash_reader.split() + [fastqPath,]
-    reading_process = subprocess.Popen(reading_command,
-                                       stdout = subprocess.PIPE,
-                                       bufsize = -1)
-    
-    Len = 0
-    Count = 0
-    lineNum = 0
-    
-    if jplus == jminus:
-        for line in reading_process.stdout:
-            if (lineNum % 8 == 1): 
-                Len += 1
-                check_1 = (jplus in line)
-            if (lineNum % 8 == 5):
-                check_2 = (jplus in line)
-                check = check_1 or check_2
-                if check:
-                    Count += 1
-            lineNum += 1
-    else:
-        for line in reading_process.stdout:
-            if (lineNum % 8 == 1): 
-                Len += 1
-                check_1 = (jplus in line) or (jminus in line)
-            if (lineNum % 8 == 5):
-                check_2 = (jplus in line) or (jminus in line)
-                check = check_1 or check_2
-                if check:
-                    Count += 1
-            lineNum += 1
-    
-    sleep()
-    
-    return Len, Count
+    return minlen, actualStep
 
 def juncSeqCountFASTQ(Fastq_1, Fastq_2, enzyme):
     """
@@ -166,8 +136,8 @@ def juncSeqCountFASTQ(Fastq_1, Fastq_2, enzyme):
             Len += 1
             if check_1 or check_2:
                 Count += 1
-    
-    sleep()
+    pread_1.communicate()
+    pread_2.communicate()
     
     return Len, Count
 
@@ -244,8 +214,12 @@ def uncompressSRA(sra, fastqF, bamF, hdf5F):
     
     yield outf1, outb1, outf2, outb2, hdf5
 
-def linkRawFASTQ(fq1, fq2, bamF, hdf5F):
+def linkRawFASTQ(fq1, fq2, chunkF, bamF, hdf5F):
     
+    nfq1 = os.path.join(chunkF, os.path.split(fq1)[1])
+    nfq2 = os.path.join(chunkF, os.path.split(fq2)[1])
+    os.symlink(fq1, nfq1)
+    os.symlink(fq2, nfq2)
     if fq1.endswith('.fastq'):
         outb1 = os.path.join(bamF,os.path.split(fq1)[1].replace('.fastq','.bam'))
         hdf5 = os.path.join(hdf5F,os.path.split(fq1)[1].replace('_1.fastq','.hdf5'))
@@ -257,7 +231,7 @@ def linkRawFASTQ(fq1, fq2, bamF, hdf5F):
     else:
         outb2 = os.path.join(bamF,os.path.split(fq2)[1].replace('.fastq.gz','.bam'))
     
-    yield fq1, outb1, fq2, outb2, hdf5
+    yield nfq1, outb1, nfq2, outb2, hdf5
 
 def splitSRA(sra, chunkF, bamF, hdf5F, splitBy=4000000):
     

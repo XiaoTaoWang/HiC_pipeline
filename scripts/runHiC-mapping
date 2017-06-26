@@ -1,0 +1,89 @@
+#!/usr/bin/env python
+
+# Created on Wed Jun 21 14:58:44 2017
+
+# Author: XiaoTao Wang
+# Organization: HuaZhong Agricultural University
+
+## Required Modules
+import runHiC, argparse, sys, gzip
+
+## Check for update
+currentVersion = runHiC.__version__
+
+def getargs():
+    ## Construct an ArgumentParser object for command-line arguments
+    parser = argparse.ArgumentParser(description = '''A stand-alone wrapper for iteratively
+                                     mapping pair-end sequencing reads to the reference genome.''',
+                                     formatter_class = argparse.ArgumentDefaultsHelpFormatter)
+    # Version
+    parser.add_argument('-v', '--version', action = 'version',
+                        version = ' '.join(['%(prog)s', currentVersion]),
+                        help = 'Print version number and exit')
+    parser.add_argument('--fq1', help = '''Path to the FASTQ file containing the sequenced
+                        side-1 reads.''')
+    parser.add_argument('--fq2', help = '''Path to the FASTQ file containing the sequenced
+                        side-2 reads.''')
+    parser.add_argument('--bam1', help = '''Path to the output BAM file corresponding to
+                        the side-1 reads.''')
+    parser.add_argument('--bam2', help = '''Path to the output BAM file corresponding to
+                        the side-2 reads.''')
+    parser.add_argument('-b', '--bowtiePath', help = 'Path to bowtie2 executable program file.')
+    parser.add_argument('-t', '--threads', type = int, default = 4, help = 'Number bowtie2 threads.')
+    parser.add_argument('-i', '--bowtieIndex', help = '''Path to the bowtie2 genome index.''')
+    parser.add_argument('--cache', default = '/tmp', help = '''Ccache folder.''')
+    
+    
+    ## Parse the command-line arguments
+    commands = sys.argv[1:]
+    if not commands:
+        commands.append('-h')
+    args = parser.parse_args(commands)
+    
+    return args, commands
+
+def run():
+    # Parse Arguments
+    args, commands = getargs()
+    # Improve the performance if you don't want to run it
+    if commands[0] not in ['-h', '-v', '--help', '--version']:
+        
+        from runHiC.utilities import calculateStep
+        import hiclib.mapping as iterM
+        
+        Params = {'bowtie_path': args.bowtiePath,
+                  'bowtie_index_path': args.bowtieIndex,
+                  'nthreads': args.threads, 'temp_dir': args.cache,
+                  'bowtie_flags': '--very-sensitive'}
+        ## The first side ...
+        if args.fq1.endswith('_1.fastq.gz'):
+            temp = gzip.open(args.fq1, 'r')
+        else:
+            temp = open(args.fq1, 'r')
+        temp.readline()
+        length = len(temp.readline()) - 1
+        minlen, step = calculateStep(length, 25)
+        
+        iterM.iterative_mapping(fastq_path = args.fq1,
+                                out_sam_path = args.bam1,
+                                min_seq_len = minlen,
+                                len_step = step,
+                                **Params)
+        
+        ## The second side ...
+        if args.fq2.endswith('_2.fastq.gz'):
+            temp = gzip.open(args.fq2, 'r')
+        else:
+            temp = open(args.fq2, 'r')
+        temp.readline()
+        length = len(temp.readline()) - 1
+        minlen, step = calculateStep(length, 25)
+        iterM.iterative_mapping(fastq_path = args.fq2,
+                                out_sam_path = args.bam2,
+                                min_seq_len = minlen,
+                                len_step = step,
+                                **Params)
+
+if __name__ == '__main__':
+    run()
+    

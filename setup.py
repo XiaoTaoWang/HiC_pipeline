@@ -17,6 +17,8 @@ if (sys.version_info.major != 2) or (sys.version_info.minor < 6):
 # Guarantee Unix Format
 text = open('scripts/runHiC', 'rb').read().replace('\r\n', '\n')
 open('scripts/runHiC', 'wb').write(text)
+text = open('scripts/runHiC-mapping', 'rb').read().replace('\r\n', '\n')
+open('scripts/runHiC-mapping', 'wb').write(text)
 
 setup(
     name = 'runHiC',
@@ -28,7 +30,7 @@ setup(
     keywords = 'Hi-C HiC ICE Contact',
     package_dir = {'runHiC':'lib'},
     packages = ['runHiC'],
-    scripts = ['scripts/runHiC'],
+    scripts = ['scripts/runHiC','scripts/runHiC-mapping'],
     long_description = read('README.rst'),
     classifiers = [
         'Programming Language :: Python :: 2.6',
