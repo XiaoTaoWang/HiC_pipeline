@@ -314,6 +314,9 @@ def run(args, commands):
                    '# Sub-Command Name = %s' % commands[0],
                    ]
         if (commands[0] == 'mapping') or (commands[0] == 'pileup'):
+            args.dataFolder = os.path.abspath(os.path.expanduser(args.dataFolder))
+            args.fastqDir = os.path.join(args.dataFolder, args.fastqDir)
+            args.bowtiePath = os.path.abspath(os.path.expanduser(args.bowtiePath))
             arglist.extend(['# MetaData = %s' % args.metadata,
                             '# Running Mode = %s' % args.running_mode,
                             '# Maximum Process Number = %s' % args.nworker,
@@ -328,10 +331,15 @@ def run(args, commands):
                             '# Bowtie2 Threads = %s' % args.threads
                             ])
             if ('--bowtieIndex' in commands) or ('-i' in commands):
+                args.bowtieIndex = os.path.abspath(os.path.expanduser(args.bowtieIndex))
                 arglist.extend(['# Bowtie2 Genome Index = %s' % args.bowtieIndex])
             if args.chunkSize != None:
                 arglist.extend(['# Chunk Size = %d' % args.chunkSize])
-                
+            
+            args.cache = os.path.abspath(os.path.expanduser(args.cache))
+            if not os.path.exists(args.cache):
+                os.makedirs(args.cache)
+            
             arglist.extend(['# Cache Folder = %s' % args.cache,
                             '# Remove Intermediate Results = %s' % args.removeInters])
                             
@@ -386,8 +394,7 @@ def initialize(dataFolder, genomeName, gapName, chroms, template):
     ## Necessary Modules
     from runHiC.chiclib import myGenome
     
-    dataLocation = os.path.abspath(os.path.expanduser(dataFolder))
-    genomeFolder = os.path.join(dataLocation, genomeName)
+    genomeFolder = os.path.join(dataFolder, genomeName)
     ## Generate a dummy gap file under genome folder if there's no one yet
     gapFile = os.path.join(genomeFolder, gapName)
     if not os.path.exists(gapFile):
@@ -400,7 +407,7 @@ def initialize(dataFolder, genomeName, gapName, chroms, template):
     genome_db = myGenome(genomeFolder, readChrms = chroms,
                          chrmFileTemplate = template, gapFile = gapName)
     
-    return dataLocation, genomeFolder, genome_db
+    return genomeFolder, genome_db
     
 
 def mapping(args, commands):
@@ -412,11 +419,11 @@ def mapping(args, commands):
     from runHiC.parallel import ppLocal, ppServer
     
      # Initialization
-    dataLocation, genomeFolder, genome_db = initialize(args.dataFolder,
-                                                       args.genomeName,
-                                                       args.gapFile,
-                                                       args.chroms,
-                                                       args.template)
+    genomeFolder, genome_db = initialize(args.dataFolder,
+                                         args.genomeName,
+                                         args.gapFile,
+                                         args.chroms,
+                                         args.template)
     
     # Reference Genome Information
     gInfo = {'dataFolder': args.dataFolder, 'genomeName': args.genomeName,
@@ -459,8 +466,6 @@ def mapping(args, commands):
         if Format == 'sra':
             sra = os.path.join(fastqDir, query + '.sra')
             if not os.path.exists(sra):
-                logging.warning('%s can not be found on your system!', sra)
-                logging.warning('Skipping ...')
                 return
             if not chunkSize:
                 queue = utilities.uncompressSRA(sra, chunkFolder,
@@ -486,8 +491,6 @@ def mapping(args, commands):
                 Fq_1 = try_2
                 Fq_2 = try_4
             else:
-                logging.warning('No proper FASTQ pairs can be found for %s!',query)
-                logging.warning('Skipping ...')
                 return
             if not chunkSize:
                 queue = utilities.linkRawFASTQ(Fq_1, Fq_2, chunkFolder,
@@ -505,11 +508,11 @@ def mapping(args, commands):
                      dataFolder, genomeName, gapName, chroms, template,
                      Parameters):
         
-        dataLocation, genomeFolder, genome_db = initialize(dataFolder,
-                                                           genomeName,
-                                                           gapName,
-                                                           chroms,
-                                                           template)
+        genomeFolder, genome_db = initialize(dataFolder,
+                                             genomeName,
+                                             gapName,
+                                             chroms,
+                                             template)
         ## Count Ligation Junctions
         seqlen, ligcount = utilities.juncSeqCountFASTQ(fq1, fq2, enzyme)
         ## Map pair-end reads to the reference genome
@@ -517,12 +520,17 @@ def mapping(args, commands):
                    bam1, '--bam2', bam2, '-b', Parameters['bowtie_path'],
                    '-t', str(Parameters['nthreads']), '-i',
                    Parameters['bowtie_index_path'], '--cache', Parameters['temp_dir']]
-        submapping = subprocess.Popen(command, bufsize=-1,
-                                      stdin=subprocess.PIPE,
-                                      stdout=subprocess.PIPE,
-                                      stderr=subprocess.PIPE,
+        out = open(hdf5.replace('.hdf5','.out'), 'wb')
+        err = open(hdf5.replace('.hdf5','.err'), 'wb')
+        submapping = subprocess.Popen(command,
+                                      stdout=out,
+                                      stderr=err,
                                       shell=False)
-        (stdout, stderr) = submapping.communicate()
+        submapping.communicate()
+        out.flush()
+        out.close()
+        err.flush()
+        err.close()
         ## Parse the mapped sequences into a Python data structure
         ## Assign the ultra-sonic fragments to restriction fragments
         '''
@@ -538,32 +546,16 @@ def mapping(args, commands):
         
         return seqlen, ligcount, umapped_1, umapped_2
         '''
+        return seqlen, ligcount
     
     ## Validity of arguments
-    bowtiePath = os.path.abspath(os.path.expanduser(args.bowtiePath))
-    if not os.path.exists(bowtiePath):
-        logging.error('Bowtie2 can not be found at %s', bowtiePath)
-        logging.error('Exit ...')
-        sys.exit(1)
-    fastqDir = os.path.join(dataLocation, args.fastqDir)
-    if not os.path.exists(fastqDir):
-        logging.error('%s should be placed under %s', args.fastqDir, dataLocation)
-        logging.error('Exit ...')
-        sys.exit(1)
+    fastqDir = args.fastqDir
     mFile = args.metadata
-    if not os.path.exists(mFile):
-        logging.error('Metadata file %s can not be found at current working directory!',
-                      mFile)
-        logging.error('Exit ...')
-        sys.exit(1)
-    cache = os.path.abspath(os.path.expanduser(args.cache))
-    if not os.path.exists(cache):
-        os.makedirs(cache)
     chunkSize = args.chunkSize
     
     ## Construct bowtie2 genome index if there's no one yet
     if '--bowtieIndex' in commands:
-        bowtieIndex = os.path.abspath(os.path.expanduser(args.bowtieIndex))
+        bowtieIndex = args.bowtieIndex
     else:
         logging.log(21, 'You haven\'t specify the Bowtie2 Genome Index Files.')
         logging.log(21, 'Try to find them at %s ...', genomeFolder)
@@ -585,9 +577,9 @@ def mapping(args, commands):
     Format = args.Format.lower()
     
     ## Output Folders
-    bamFolder = 'bams-%s' % args.genomeName
-    hdf5F = 'hdf5-%s' % args.genomeName
-    args.HDF5 = hdf5F # To communicate with next processing step (filtering)
+    bamFolder = os.path.abspath('bams-%s' % args.genomeName)
+    hdf5F = os.path.abspath('hdf5-%s' % args.genomeName)
+    args.HDF5 = hdf5F # To communicate with next step (filtering)
     if not os.path.exists(bamFolder):
         os.makedirs(bamFolder)
     if not os.path.exists(hdf5F):
@@ -598,8 +590,8 @@ def mapping(args, commands):
     logging.log(21, 'Bam files will be parsed into hdf5 format under %s', hdf5F)
     
     # Common Parameters for Mapping
-    Params = {'bowtie_path': bowtiePath, 'bowtie_index_path': bowtieIndex,
-              'nthreads': args.threads, 'temp_dir': cache,
+    Params = {'bowtie_path': args.bowtiePath, 'bowtie_index_path': bowtieIndex,
+              'nthreads': args.threads, 'temp_dir': args.cache,
               'bowtie_flags': '--very-sensitive'}
     
     # Read Metadata
@@ -669,7 +661,7 @@ def mapping(args, commands):
                                         args.chroms,
                                         args.template,
                                         Params)
-            mapping_modules = ('gzip','os','sys','logging','subprocess',
+            mapping_modules = ('subprocess',
                                'runHiC.utilities as utilities',
                                'hiclib.mapping as iterM',
                                'mirnylib.h5dict as h5dict')
@@ -681,9 +673,12 @@ def mapping(args, commands):
             jobs.append((tmp,job))
             for key in pool:
                 pool[key][query] = {}
-                
+    
+            
     for (fq1, outb1, fq2, outb2, hdf5, enzyme, query), job in jobs:
-        job()
+        print hdf5
+        seqlen, ligcount = job()
+        print seqlen, ligcount
     '''
         seqlen, ligcount, umapped_1, umapped_2 = job()
         pool['seqlen'][query][hdf5] = seqlen

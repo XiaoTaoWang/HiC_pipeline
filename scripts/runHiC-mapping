@@ -31,7 +31,7 @@ def getargs():
     parser.add_argument('-b', '--bowtiePath', help = 'Path to bowtie2 executable program file.')
     parser.add_argument('-t', '--threads', type = int, default = 4, help = 'Number bowtie2 threads.')
     parser.add_argument('-i', '--bowtieIndex', help = '''Path to the bowtie2 genome index.''')
-    parser.add_argument('--cache', default = '/tmp', help = '''Ccache folder.''')
+    parser.add_argument('--cache', default = '/tmp', help = '''Cache folder.''')
     
     
     ## Parse the command-line arguments
