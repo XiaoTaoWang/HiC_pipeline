@@ -7,7 +7,7 @@
 
 ## Required Modules
 import os, sys, argparse, logging, logging.handlers, glob, atexit, \
-       traceback, cPickle, xmlrpclib, runHiC
+       copy, traceback, cPickle, xmlrpclib, runHiC
 from runHiC.parallel import ppLocal, ppServer
 from pkg_resources import parse_version as V
 
@@ -607,7 +607,7 @@ def mapping(args, commands):
         
         tmp = os.path.join(subhdf5F, '%s.completed' % i)
         if os.path.exists(tmp):
-            logging.log(21, 'Completed work, skipping ...')
+            logging.log(21, 'Completed task, skipping ...')
             continue
         Indicators[i] = tmp
         
@@ -623,7 +623,7 @@ def mapping(args, commands):
         
         pre_params = (chunkFolder, subbamFolder, subhdf5F, i, Format,
                       database, chunkSize)
-        pre_modules = ('os','logging','runHiC.utilities as utilities')
+        pre_modules = ('os','runHiC.utilities as utilities')
         
         logging.log(21, 'Add %s into the queue ...', i)
         
@@ -699,7 +699,7 @@ def mapping(args, commands):
         completed = open(Indicators[query], 'wb')
         completed.close()
     
-    logging.log(21, 'The Mapping Stage is Finished.')
+    logging.log(21, 'The mapping stage is finished.')
         
     if args.removeInters:
         for folder in rmFolders:
@@ -708,105 +708,33 @@ def mapping(args, commands):
 
 def filtering(args, commands):
     # Necessary Modules
-    from runHiC.chiclib import cHiCdataset
-    from mirnylib.h5dict import h5dict
+    import runHiC.chiclib as hiclib
+    import mirnylib.h5dict as h5dict
     
-    ## Validity of arguments
-    Sources = args.HDF5
-    mFile = args.metadata
+    def preFilter(infile, outfile, gInfo, enzyme, libSize):
+        genomeFolder, genome_db = initialize(gInfo['dataFolder'],
+                                             gInfo['genomeName'],
+                                             gInfo['gapName'],
+                                             gInfo['chroms'],
+                                             gInfo['template'])
+        genome_db.setEnzyme(enzyme)
+        parseF = hiclib.cHiCdataset(filename=outfile, genome=genome_db,
+                                    maximumMoleculeLength=libSize,
+                                    mode='w')
+        parseF.parseInputData(infile)
+        gInfo['enzyme'] = enzyme
+        parseF.h5dict['genomeInformation'] = gInfo
     
-    # Output Folder
-    gpath, subfolder = os.path.split(Sources)
-    subfolder = subfolder.replace('hdf5-', 'filtered-')
-    filteredFolder = os.path.join(gpath, subfolder)
-    if not os.path.exists(filteredFolder):
-        os.makedirs(filteredFolder)
-    
-    logging.log(21, 'Filtered files will be saved under %s', filteredFolder)
-    
-    metadata = [l.rstrip().split() for l in open(mFile) if not l.isspace()]
-    database = dict([(i[0], i[-1]) for i in metadata])
-    ## Hierarchical merging tasks
-    bioReps = set((i[1], i[3], i[2]) for i in metadata if not os.path.exists(os.path.join(filteredFolder, '%s-%s-%s.completed' % (i[1], i[3], i[2]))))
-    cellLines = set((i[1], i[3]) for i in metadata if not os.path.exists(os.path.join(filteredFolder, '%s-%s-allReps.completed' % (i[1], i[3]))))
-    
-    preList1 = [i[0] for i in metadata if os.path.exists(os.path.join(filteredFolder, '%s-%s-%s.completed' % (i[1], i[3], i[2])))]
-    preList2 = [i[0] for i in metadata if os.path.exists(os.path.join(filteredFolder, '%s-%s-allReps.completed' % (i[1], i[3])))]
-    preSet = set(preList1) | set(preList2)
-    for ps in preSet:
-        if ps in database:
-            del database[ps]
-    
-    # To communicate with the next step (binning)
-    args.filteredDir = []
-    for i in glob.glob(os.path.join(filteredFolder, '*.completed')):
-        corHDF5 = i.replace('.completed', '-filtered.hdf5')
-        args.filteredDir.append(corHDF5)
-    
-    ## Initialize a pp Server for SRA-level filtering
-    if args.running_mode == 'pbs':
-        server = ppServer(1, args.nworker, port=60002)
-    else:
-        server = ppLocal(1, args.nworker)
-    
-    logging.log(21, 'Launching %d processes for chunk generating ...',
-                server.n_worker)
-    
-    logging.log(21, 'Filtering data at SRA level ...')
-    for SRR in database:
-        logging.log(21, 'Current SRR: %s ...', SRR)
-        subHDF5 = os.path.join(Sources, SRR)
-        if not os.path.exists(os.path.join(subHDF5, '%s.completed' % SRR)):
-            logging.log(21, '%s is still in mapping stage, skipping ...', SRR)
-            continue
-        
-        ## Read-in Corresponding Genome Information
-        gInfo = cPickle.load(open(os.path.join(subHDF5, 'referenceGenome'),'rb'))
-        args.__dict__.update(gInfo)
-        
-        subFilter = os.path.join(filteredFolder, SRR)
-        
-        Indicator = os.path.join(subFilter, '%s.completed' % SRR)
-        lockFile = os.path.join(subFilter, '%s.lock' % SRR)
-        
-        if os.path.exists(Indicator) and not os.path.exists(lockFile):
-            logging.log(21, 'Completed work, skipping ...')
-            continue
-        
-        if os.path.exists(lockFile):
-            logging.log(21, 'Someone is working on %s, skipping', SRR)
-            continue
-        
-        if not os.path.exists(subFilter):
-            os.makedirs(subFilter)
-        
-        lock = open(lockFile, 'w')
-        lock.close()
-        
-        atexit.register(cleanFile, lockFile)
-        
-        logging.log(21, 'Filtering ...')
-        inFiles = glob.glob(os.path.join(subHDF5, SRR + '*.hdf5'))
-        outFiles = []
-        for infile in inFiles:
-            dataLocation, genomeFolder, genome_db = initialize(args)
-            FileAlone = os.path.split(infile)[1]
-            outfile = os.path.join(subFilter, FileAlone.replace('.hdf5', '-parsed.hdf5'))
-            outFiles.append(outfile)
-            enzyme = database[SRR]
-            genome_db.setEnzyme(enzyme)
-            parseF = cHiCdataset(filename = outfile, genome = genome_db,
-                                 maximumMoleculeLength = args.libSize,
-                                 mode = 'w')
-            parseF.parseInputData(infile)
-            # Save ref-genome information
-            gInfo['enzyme'] = enzyme
-            parseF.h5dict['genomeInformation'] = gInfo
-         
-        poolName = os.path.join(subFilter, SRR + '-filtered.hdf5')
+    def sraFilter(poolName, outFiles, gInfo, enzyme, subHDF5, Indicator):
+        genomeFolder, genome_db = initialize(gInfo['dataFolder'],
+                                             gInfo['genomeName'],
+                                             gInfo['gapName'],
+                                             gInfo['chroms'],
+                                             gInfo['template'])
+        genome_db.setEnzyme(enzyme)
         # Merge chunks
-        frags = cHiCdataset(filename = poolName, genome = genome_db,
-                            mode = 'w')
+        frags = hiclib.cHiCdataset(filename=poolName, genome=genome_db,
+                                   mode = 'w')
         frags.merge(outFiles)
          
         ## Additional filtering
@@ -814,12 +742,11 @@ def filtering(args, commands):
             frags.filterDuplicates()
         
         ## Other Stats
-        if os.path.exists(os.path.join(subHDF5, 'Read-Level-Stats')):
-            oriStats = cPickle.load(open(os.path.join(subHDF5, 'Read-Level-Stats'),'rb'))
-            frags.metadata['000_SequencedReads'] = oriStats['Sequenced-Reads']
-            frags.metadata['010_UniqueMappedReads_1'] = oriStats['Unique-Reads_1']
-            frags.metadata['020_UniqueMappedReads_2'] = oriStats['Unique-Reads_2']
-            frags.metadata['030_LigationCounts'] = oriStats['Ligation-Counts']
+        oriStats = cPickle.load(open(os.path.join(subHDF5, 'Read-Level-Stats'),'rb'))
+        frags.metadata['000_SequencedReads'] = oriStats['seqlen']
+        frags.metadata['010_UniqueMappedReads_1'] = oriStats['umapped_1']
+        frags.metadata['020_UniqueMappedReads_2'] = oriStats['umapped_2']
+        frags.metadata['030_LigationCounts'] = oriStats['ligcount']
             
         frags.metadata['110_AfterFilteringReads'] = frags.N
         frags.metadata['400_TotalContacts'] = frags.N
@@ -827,7 +754,7 @@ def filtering(args, commands):
         sameChromNum = sameChrom.sum()
         frags.metadata['410_IntraChromosomalReads'] = sameChromNum
         frags.metadata['420_InterChromosomalReads'] = frags.N - sameChromNum
-        shortRange = sameChrom & (np.abs(frags.mids1 - frags.mids2) < 20000)
+        shortRange = sameChrom & (np.abs(frags.mids1-frags.mids2)<20000)
         shortRangeNum = shortRange.sum()
         frags.metadata['412_IntraShortRangeReads(<20Kb)'] = shortRangeNum
         frags.metadata['412_IntraLongRangeReads(>=20Kb)'] = sameChromNum - shortRangeNum
@@ -863,92 +790,206 @@ def filtering(args, commands):
                 'OuterType':np.bincount(binDis[OuterType])[:50]}
         frags.h5dict['_DirectionTypeStats'] = pool
         
-        logging.log(21, 'Done!')
-        
         completed = open(Indicator, 'wb')
         completed.close()
-                    
-        os.remove(lockFile)
     
-    ## The First level, biological replicates
+    def repMerge(infiles, outfile, gInfo, enzyme, Indicator):
+        
+        genomeFolder, genome_db = initialize(gInfo['dataFolder'],
+                                             gInfo['genomeName'],
+                                             gInfo['gapName'],
+                                             gInfo['chroms'],
+                                             gInfo['template'])
+        genome_db.setEnzyme(enzyme)
+        frags = hiclib.cHiCdataset(filename=outfile, genome=genome_db,
+                                    mode='w')
+        frags.merge(infiles)
+        completed = open(Indicator, 'wb')
+        completed.close()
+    
+    def cellMerge(infiles, outfile, gInfo, enzyme, Indicator):
+        
+        genomeFolder, genome_db = initialize(gInfo['dataFolder'],
+                                             gInfo['genomeName'],
+                                             gInfo['gapName'],
+                                             gInfo['chroms'],
+                                             gInfo['template'])
+        genome_db.setEnzyme(enzyme)
+        fragments = hiclib.cHiCdataset(filename=outfile, genome=genome_db,
+                                       mode='w')
+        fragments.merge(infiles)
+        completed = open(Indicator, 'wb')
+        completed.close()
+        
+    
+    Sources = args.HDF5
+    mFile = args.metadata
+    
+    gpath, subfolder = os.path.split(Sources)
+    subfolder = subfolder.replace('hdf5-', 'filtered-')
+    filteredFolder = os.path.join(gpath, subfolder)
+    if not os.path.exists(filteredFolder):
+        os.makedirs(filteredFolder)
+    
+    logging.log(21, 'Filtered files will be saved under %s', filteredFolder)
+    
+    metadata = [l.rstrip().split() for l in open(mFile) if not l.isspace()]
+    database = dict([(i[0], i[-1]) for i in metadata])
+    ## Hierarchical merging tasks
+    bioReps = set((i[1], i[3], i[2]) for i in metadata if not os.path.exists(os.path.join(filteredFolder, '%s-%s-%s.completed' % (i[1], i[3], i[2]))))
+    cellLines = set((i[1], i[3]) for i in metadata if not os.path.exists(os.path.join(filteredFolder, '%s-%s-allReps.completed' % (i[1], i[3]))))
+    
+    preList1 = [i[0] for i in metadata if os.path.exists(os.path.join(filteredFolder, '%s-%s-%s.completed' % (i[1], i[3], i[2])))]
+    preList2 = [i[0] for i in metadata if os.path.exists(os.path.join(filteredFolder, '%s-%s-allReps.completed' % (i[1], i[3])))]
+    preSet = set(preList1) | set(preList2)
+    for ps in preSet:
+        if ps in database:
+            del database[ps]
+    
+    # To communicate with the next step (binning)
+    args.filteredDir = []
+    for i in glob.glob(os.path.join(filteredFolder, '*.completed')):
+        corHDF5 = i.replace('.completed', '-filtered.hdf5')
+        args.filteredDir.append(corHDF5)
+    
+    if args.running_mode == 'pbs':
+        server = ppServer(1, args.nworker, port=60002)
+    else:
+        server = ppLocal(1, args.nworker)
+    
+    logging.log(21, 'Launching %d processes for chunk-level filtering ...',
+                server.n_worker)
+    
+    sra_pool = []
+    chunk_jobs = []
+    for SRR in database:
+        logging.log(21, 'Current SRA ID: %s', SRR)
+        
+        subHDF5 = os.path.join(Sources, SRR)
+        if not os.path.exists(os.path.join(subHDF5, '%s.completed' % SRR)):
+            logging.log(21, '%s is still in mapping stage, skipping ...', SRR)
+            continue
+        
+        subFilter = os.path.join(filteredFolder, SRR)
+        tmp = os.path.join(subFilter, '%s.completed' % SRR)
+        if os.path.exists(tmp):
+            logging.log(21, 'Completed task, skipping ...')
+            continue
+        
+        ## Load genome information
+        gInfo = cPickle.load(open(os.path.join(subHDF5, 'referenceGenome'),'rb'))
+        
+        if not os.path.exists(subFilter):
+            os.makedirs(subFilter)
+        cleanDirectory(subFilter)
+        
+        inFiles = glob.glob(os.path.join(subHDF5, SRR + '*.hdf5'))
+        outFiles = []
+        for infile in inFiles:
+            FileAlone = os.path.split(infile)[1]
+            outfile = os.path.join(subFilter, FileAlone.replace('.hdf5', '-parsed.hdf5'))
+            outFiles.append(outfile)
+            enzyme = database[SRR]
+            pre_params = (infile, outfile, copy.deepcopy(gInfo), enzyme,
+                          args.libSize)
+            pre_modules = ('runHiC.chiclib as hiclib')
+            Id = FileAlone.replace('.hdf5','')
+            logging.log(21, 'Add %s into the queue ...', Id)
+            job = server.submit(preFilter, pre_params, (initialize,), pre_modules)
+            chunk_jobs.append(job)
+            
+        poolName = os.path.join(subFilter, SRR + '-filtered.hdf5')
+        sra_params = (poolName, outFiles, gInfo, enzyme, subHDF5, tmp)
+        sra_pool.append(sra_params)
+    
+    for job in chunk_jobs:
+        job()
+    logging.log(21, 'Done!')
+    
+    if args.running_mode == 'pbs':
+        server = ppServer(1, args.nworker, port=60003)
+    else:
+        server = ppLocal(1, args.nworker)
+    
+    logging.log(21, 'Launching %d processes for sra-level filtering ...',
+                server.n_worker)
+    
+    sra_jobs = []
+    for sra_params in sra_pool:
+        sra_modules = ('runHiC.chiclib as hiclib','cPickle', 'os',
+                       'numpy as np')
+        Id = os.path.split(sra_params[0])[1].replace('-filtered.hdf5','')
+        logging.log(21, 'Add %s into the queue ...', Id)
+        job = server.submit(sraFilter, sra_params, (initialize,), sra_modules)
+        sra_jobs.append(job)
+    
+    for job in sra_jobs:
+        job()
+    logging.log(21, 'Done!')
+    
     logging.log(21, 'Merging data from the same biological replicates ...')
+    if args.running_mode == 'pbs':
+        server = ppServer(1, args.nworker, port=60004)
+    else:
+        server = ppLocal(1, args.nworker)
+    logging.log(21, 'Launching %d processes ...', server.n_worker)
+    
+    rep_jobs = []
     for rep in bioReps:
-        logging.log(21, 'Current work ID: %s-%s-%s' % rep)
+        logging.log(21, 'Current task ID: %s-%s-%s' % rep)
         checkComplete = [os.path.join(filteredFolder, i[0], '%s.completed' % i[0]) for i in metadata
                          if ((i[1], i[3], i[2]) == rep)]
         if not all([os.path.exists(i) for i in checkComplete]):
-            logging.log(21, 'Filtering for some SRR hasn\'t been completed, skipping ...')
+            logging.log(21, 'Filtering for some SRA hasn\'t been completed, skipping ...')
             continue
         
         Indicator = os.path.join(filteredFolder, '%s-%s-%s.completed' % rep)
-        lockFile = os.path.join(filteredFolder, '%s-%s-%s.lock' % rep)
         
-        if os.path.exists(Indicator) and not os.path.exists(lockFile):
-            logging.log(21, 'Completed work, skipping ...')
+        if os.path.exists(Indicator):
+            logging.log(21, 'Completed task, skipping ...')
             continue
-        
-        if os.path.exists(lockFile):
-            logging.log(21, 'Conflicted work, skipping ...')
-            continue
-        
-        lock = open(lockFile, 'w')
-        lock.close()
-        
-        atexit.register(cleanFile, lockFile)
         
         filenames = [os.path.join(filteredFolder, i[0], '%s-filtered.hdf5' % i[0]) for i in metadata
-                    if ((i[1], i[3], i[2]) == rep)]
+                    if ((i[1], i[3], i[2])==rep)]
         outfile = os.path.join(filteredFolder, '%s-%s-%s-filtered.hdf5' % rep)
         args.filteredDir.append(outfile)
         
         # Genome information from HDF5
         gInfo = h5dict(filenames[0], 'r')['genomeInformation']
-        args.__dict__.update(gInfo)
         enzyme = rep[1]
-        
-        dataLocation, genomeFolder, genome_db = initialize(args)
-        genome_db.setEnzyme(enzyme)
-        ## Merge lane data altogether
-        fragments = cHiCdataset(filename = outfile, genome = genome_db,
-                                mode = 'w')
-        fragments.merge(filenames)
-        
-        completed = open(Indicator, 'wb')
-        completed.close()
-               
-        os.remove(lockFile)
-        
-        logging.log(21, 'Done!')
+        rep_params = (filenames, outfile, gInfo, enzyme, Indicator)
+        rep_modules = ('runHiC.chiclib as hiclib',)
+        logging.log(21, 'Add %s-%s-%s into the queue ...' % rep)
+        job = server.submit(repMerge, rep_params, (initialize,), rep_modules)
+        rep_jobs.append(job)
+    
+    for job in rep_jobs:
+        job()
+    logging.log(21, 'Done!')  
     
     if args.level == 2:
-        ## The Second level, cell lines, optional
-        logging.log(21, 'Merging data of the same cell line using the same restriction enzyme ...')
+        logging.log(21, 'Merging data of the same cell line with the same restriction enzyme ...')
+        if args.running_mode == 'pbs':
+            server = ppServer(1, args.nworker, port=60005)
+        else:
+            server = ppLocal(1, args.nworker)
         
         bioList = set((i[1], i[3], i[2]) for i in metadata)
         
+        cell_jobs = []
         for cell in cellLines:
-            logging.log(21, 'Current work ID: %s-%s' % cell)
+            logging.log(21, 'Current task ID: %s-%s' % cell)
             checkComplete = [os.path.exists(os.path.join(filteredFolder, '%s-%s-%s.completed' % i)) for i in bioList
                              if ((i[0], i[1]) == cell)]
             if not all(checkComplete):
-                logging.log(21, 'Corresponding rep filtering hasn\'t been completed, skipping ...')
+                logging.log(21, 'Merging for some replicates hasn\'t been completed, skipping ...')
                 continue
             
             Indicator = os.path.join(filteredFolder, '%s-%s-allReps.completed' % cell)
-            lockFile = os.path.join(filteredFolder, '%s-%s.lock' % cell)
             
-            if os.path.exists(Indicator) and not os.path.exists(lockFile):
-                logging.log(21, 'Completed work, skipping ...')
+            if os.path.exists(Indicator):
+                logging.log(21, 'Completed task, skipping ...')
                 continue
-        
-            if os.path.exists(lockFile):
-                logging.log(21, 'Conflicted work, skipping ...')
-                continue
-            
-            lock = open(lockFile, 'w')
-            lock.close()
-            
-            atexit.register(cleanFile, lockFile)
             
             filenames = [os.path.join(filteredFolder, '%s-%s-%s-filtered.hdf5' % i) for i in bioList
                          if ((i[0], i[1]) == cell)]
@@ -957,21 +998,19 @@ def filtering(args, commands):
             
             # Genome information from HDF5
             gInfo = h5dict(filenames[0], 'r')['genomeInformation']
-            args.__dict__.update(gInfo)
             enzyme = cell[-1]
-            
-            dataLocation, genomeFolder, genome_db = initialize(args)
-            genome_db.setEnzyme(enzyme)
-            fragments = cHiCdataset(filename = outfile, genome = genome_db,
-                                    mode = 'w')
-            fragments.merge(filenames)
-            
-            completed = open(Indicator, 'wb')
-            completed.close()
-                    
-            os.remove(lockFile)
-            
-            logging.log(21, 'Done!')
+            cell_params = (filenames, outfile, gInfo, enzyme, Indicator)
+            cell_modules = ('runHiC.chiclib as hiclib',)
+            logging.log(21, 'Add %s-%s into the queue ...' % cell)
+            job = server.submit(cellMerge, cell_params,
+                                (initialize,), cell_modules)
+            cell_jobs.append(job)
+        
+        for job in cell_jobs:
+            job()
+        logging.log(21, 'Done!')
+    
+    logging.log(21, 'The filtering stage is finished.')
 
 def binning(args, commands):
     # Necessary Modules
