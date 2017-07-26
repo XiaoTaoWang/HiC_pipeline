@@ -1165,7 +1165,6 @@ def correcting(args, commands):
     for job in jobs:
         job()
     logging.log(21, 'The correcting stage is finished.')
-            
 
 def tosparse(args, commands):
     
@@ -1372,7 +1371,6 @@ def cleanDirectory(dirName):
 def pileup(args, commands):
     """
     A customized pipeline covering the whole process.
-    
     """
     mapping(args, commands)
     args.level = 2
