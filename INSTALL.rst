@@ -92,6 +92,6 @@ Now just run the setup.py script under the distribution root directory to finish
 Suppose you are still in the extracted hiclib folder::
 
     $ cd ../..
-	$ python setup.py install
+    $ python setup.py install
 
 runHiC has been installed successfully if no exception occurs in the above processes.
