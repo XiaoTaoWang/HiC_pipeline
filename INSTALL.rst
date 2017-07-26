@@ -77,14 +77,14 @@ under the "mirnylab" sub-foler since 0.7.0::
 To install *mirnylib*::
 
     $ unzip mirnylib.zip
-	$ cd mirnylib
+    $ cd mirnylib
     $ python setup.py install
 
 To install *hiclib*::
 
     $ unzip hiclib.zip
-	$ cd hiclib
-	$ python setup.py install
+    $ cd hiclib
+    $ python setup.py install
 
 Install runHiC
 --------------
