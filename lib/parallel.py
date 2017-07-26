@@ -68,7 +68,7 @@ class ppServer(pp.Server):
                 n_worker = 1
             n_worker = min(n_worker, self.maximum_worker)
             self.n_worker += n_worker
-            command = template.format(node, port, n_worker, secret, 3600, timeout)
+            command = template.format(node, port, n_worker, secret, 36000, timeout)
             subprocess.call(command, shell=True)
             
     def _genSecret(self):
