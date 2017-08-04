@@ -21,8 +21,7 @@ Please check the file "INSTALL.rst" in the distribution.
 Design Concepts
 ===============
 runHiC is able to perform the entire analysis from sequencing data to corrected contact matrices. It
-separates the whole process into 4 stages(*mapping*, *filtering*, *binning*, *correcting*). You can
-begin and end at any stage using certain subcommands.
+separates the whole process into 4 stages(*mapping*, *filtering*, *binning*, *correcting*).
 
 7 subcommands are available:
 
@@ -40,8 +39,6 @@ begin and end at any stage using certain subcommands.
 | pileup     | Streamline all stages from *mapping* to *correcting*                         |
 +------------+------------------------------------------------------------------------------+
 | quality    | Assess the quality of your experiments                                       |
-+------------+------------------------------------------------------------------------------+
-| visualize  | Plot the heatmap for given interval                                          |
 +------------+------------------------------------------------------------------------------+
 
 Preparation
