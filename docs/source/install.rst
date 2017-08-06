@@ -91,7 +91,7 @@ To install *hiclib*::
 
 Install runHiC
 --------------
-Now just run the setup.py script under the distribution root directory to finish the installation.
+Now just run the setup.py script under the distribution root folder to finish the installation.
 Suppose you are still in the extracted hiclib folder::
 
     $ cd ../..
