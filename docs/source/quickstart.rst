@@ -84,9 +84,8 @@ The first processing stage of *runHiC* is conducted by the *mapping* subcommand,
 which maps raw sequencing reads to the reference genome and assigns aligned
 reads to the restriction fragments.
 
-*runHiC* records the read-level statistics (total number of sequenced read pairs,
-) at this stage for quality assessment
-of your Hi-C data.
+*runHiC* also records the read-level statistics at this stage for quality
+assessment of your Hi-C data. (See ?)
 
 Usage
 -----
@@ -196,10 +195,13 @@ the aligned read pairs: [1]_
 1. Remove the read pair that maps to the same restriction fragment.
 2. Remove redundant PCR artifacts.
 
-During the filtering process, *runHiC* records some
+During the filtering process, *runHiC* also records the fragment-level and the
+contact-level statistics for quality assessment of your Hi-C data. (See ?)
 
 Data from the same biological replicate (or optionally all replicates of the same cell
-line) will be merged in this processing stage. 
+line) will be merged in this processing stage.
+
+
 
 
 Reference
