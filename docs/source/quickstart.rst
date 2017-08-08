@@ -161,7 +161,7 @@ Now type in the command below::
 
 - ``--removeInters``
 
-  Whether to remove intermediate results.
+  Remove intermediate results if specified.
 
 - ``--logFile``
 
@@ -179,6 +179,8 @@ runHiC uses a rotating file for logging. According to our settings, when the siz
 time, a new file "runHiC.log" is silently opened for output. In a word, the system saves
 old log files by appending the extensions ".1", ".2" etc., and the current log is always
 written to "runHiC.log".
+
+.. _access-HDF5
 
 Access Data from HDF5
 ---------------------
@@ -199,9 +201,39 @@ During the filtering process, *runHiC* also records the fragment-level and the
 contact-level statistics for quality assessment of your Hi-C data. (See ?)
 
 Data from the same biological replicate (or optionally all replicates of the same cell
-line) will be merged in this processing stage.
+line) are merged in this processing stage.
 
+Here's the command you should type in the terminal::
 
+    $ ?
+
+- ``-m/--metadata``
+
+  The metadata data file name.
+
+- ``--HDF5``
+
+  Path to the root folder containing HDF5 files generated in the *mapping* stage.
+
+- ``--libSize``
+
+  Maximum length of molecules in your Hi-C library.
+  
+- ``--duplicates``
+
+  Remove redundant PCR artifacts if specified.
+
+- ``-l/--level``
+
+  Merging level. 1: Merge data from the same biological replicate; 2: Merge data from
+  all replicates of the same cell line.
+
+That will create a new sub-folder named *filtered-hg19* in which the filtered data
+(stored in the HDF5 format, suffixed with .hdf5) reside. (See :ref:`access-HDF5` for
+data extraction)
+
+Binning
+=======
 
 
 Reference
