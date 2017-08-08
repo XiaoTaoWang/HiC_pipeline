@@ -512,10 +512,9 @@ def mapping(args, commands):
                         genome_db = genome_db,
                         enzyme_name = enzyme)
         
-        umapped_1 = (lib['chrms1']>=0).sum()
-        umapped_2 = (lib['chrms2']>=0).sum()
+        uniquely_mapped = len(lib['chrms1'])
         
-        return seqlen, ligcount, umapped_1, umapped_2
+        return seqlen, ligcount, uniquely_mapped
     
     ## Validity of arguments
     fastqDir = args.fastqDir
@@ -635,7 +634,7 @@ def mapping(args, commands):
     logging.log(21, 'Launching %d processes for mapping ...',
                 server.n_worker)
     jobs = []
-    pool = {'seqlen':{}, 'ligcount':{}, 'umapped_1':{}, 'umapped_2':{}}
+    pool = {'seqlen':{}, 'ligcount':{}, 'Unique-Reads':{}}
     
     for query in pre_pool:
         for pre_out in pre_pool[query]:
@@ -664,18 +663,16 @@ def mapping(args, commands):
     
             
     for (fq1, outb1, fq2, outb2, hdf5, enzyme, query), job in jobs:
-        seqlen, ligcount, umapped_1, umapped_2 = job()
+        seqlen, ligcount, uniquely_mapped = job()
         pool['seqlen'][query][hdf5] = seqlen
         pool['ligcount'][query][hdf5] = ligcount
-        pool['umapped_1'][query][hdf5] = umapped_1
-        pool['umapped_2'][query][hdf5] = umapped_2
+        pool['Unique-Reads'][query][hdf5] = uniquely_mapped
     
     for query in pre_pool:
         Read_level = {}
         Read_level['seqlen'] = sum(pool['seqlen'][query].values())
         Read_level['ligcount'] = sum(pool['ligcount'][query].values())
-        Read_level['umapped_1'] = sum(pool['umapped_1'][query].values())
-        Read_level['umapped_2'] = sum(pool['umapped_2'][query].values())
+        Read_level['Unique-Reads'] = sum(pool['Unique-Reads'][query].values())
         subhdf5F = os.path.split(pool['seqlen'][query].keys()[0])[0]
         cPickle.dump(Read_level,
                      open(os.path.join(subhdf5F,'Read-Level-Stats'),'wb'))
@@ -727,9 +724,8 @@ def filtering(args, commands):
         ## Other Stats
         oriStats = cPickle.load(open(os.path.join(subHDF5, 'Read-Level-Stats'),'rb'))
         frags.metadata['000_SequencedReads'] = oriStats['seqlen']
-        frags.metadata['010_UniqueMappedReads_1'] = oriStats['umapped_1']
-        frags.metadata['020_UniqueMappedReads_2'] = oriStats['umapped_2']
-        frags.metadata['030_LigationCounts'] = oriStats['ligcount']
+        frags.metadata['010_UniqueMappedReads'] = oriStats['Unique-Reads']
+        frags.metadata['020_LigationCounts'] = oriStats['ligcount']
             
         frags.metadata['110_AfterFilteringReads'] = frags.N
         frags.metadata['400_TotalContacts'] = frags.N

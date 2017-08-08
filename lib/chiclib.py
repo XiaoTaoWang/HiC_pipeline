@@ -478,8 +478,8 @@ class cHiCdataset(HiCdataset):
         contacts = self.metadata['400_TotalContacts']
         longRatio = float(longrange) / contacts
                          
-        fromMapping = ['000_SequencedReads', '010_UniqueMappedReads_1',
-                       '020_UniqueMappedReads_2', '030_LigationCounts']
+        fromMapping = ['000_SequencedReads', '010_UniqueMappedReads',
+                       '020_LigationCounts']
         
         check = all([m in self.metadata for m in fromMapping])
         if check:
