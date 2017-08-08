@@ -84,6 +84,10 @@ The first processing stage of *runHiC* is conducted by the *mapping* subcommand,
 which maps raw sequencing reads to the reference genome and assigns aligned
 reads to the restriction fragments.
 
+*runHiC* records the read-level statistics (total number of sequenced read pairs,
+) at this stage for quality assessment
+of your Hi-C data.
+
 Usage
 -----
 ``runHiC mapping [options]``
@@ -186,6 +190,16 @@ You can extract data from HDF5 files via *mirnylib*:
 
 Filtering
 =========
+The *filtering* subcommand of *runHiC* is designed to perform some basic filtering on
+the aligned read pairs: [1]_
+
+1. Remove the read pair that maps to the same restriction fragment.
+2. Remove redundant PCR artifacts.
+
+During the filtering process, *runHiC* records some
+
+Data from the same biological replicate (or optionally all replicates of the same cell
+line) will be merged in this processing stage. 
 
 
 Reference
