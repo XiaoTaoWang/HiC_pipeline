@@ -234,6 +234,22 @@ data extraction)
 
 Binning
 =======
+This processing stage is conducted by the *bnning* subcommand.
+
+By partitioning the linear genome into fixed-size bins (intervals), the number of contacts
+(the filtered read pairs) can be counted between any two bins (reads are assigned to bins
+by the centers of their fragments), which results in a "contact" matrix.
+
+*runHiC* supports two modes of binning: **wholeGenome** builds a single genome-versus-genome
+contact matrix, and **byChromosome** builds chromosome-versus-chromosome contact matrices.
+
+Type in the command below to carry on our analyzing on the example data::
+
+    $ ?
+
+- ``-f/--filteredDir``
+
+
 
 
 Reference
