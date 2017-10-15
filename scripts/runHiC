@@ -32,23 +32,9 @@ except:
 
 def getargs():
     ## Construct an ArgumentParser object for command-line arguments
-    parser = argparse.ArgumentParser(description = '''This software is based on hiclib
-                                    (https://bitbucket.org/mirnylab/hiclib), a comprehensive
-                                    Python package for Hi-C data analysis. Before running this
-                                    program, you should: 1.Install all required software or
-                                    libraries; 2.Re-organize your directory arrangements; (A
-                                    data folder with all genome and sequencing data , and
-                                    a separate working directory); 3.Place genome
-                                    data under the data folder, each named after the corresponding
-                                    genome name. Genome sequences should be stored chromosome
-                                    by chromosome in FASTA format. The gap file is also needed,
-                                    but if it is not provided, we will generate a dummy one;
-                                    4.Construct a metadata file describing your sequencing data
-                                    under the working directory. Four columns are required: prefix
-                                    of SRA file name, cell line name, biological replicate label,
-                                    and restriction enzyme name. An example file is distributed
-                                    along with this software, please check it.''',
-                                    formatter_class = argparse.ArgumentDefaultsHelpFormatter)
+    parser = argparse.ArgumentParser(description = '''A user-friendly Hi-C data processing software
+                                     based on hiclib.''',
+                                     formatter_class = argparse.ArgumentDefaultsHelpFormatter)
     # Version
     parser.add_argument('-v', '--version', action = 'version',
                         version = ' '.join(['%(prog)s', currentVersion]),
@@ -80,8 +66,7 @@ def getargs():
                        help='''Metadata file describing each SRA file. You should place
                        it under current working directory. Four columns are required: prefix
                        of SRA file name, cell line name, biological replicate label, and
-                       restriction enzyme name. An example file is distributed along with
-                       this software, please check it.''')
+                       restriction enzyme name.''')
     iterM.add_argument('-r', '--running-mode', default='local', choices=['local','pbs'],
                        help='''Running mode of the program. local -- Run on a local computer.
                        pbs -- Run on a PBS-based cluster.''')
@@ -92,77 +77,67 @@ def getargs():
                        should be placed under this directory.''')
     iterM.add_argument('-g', '--genomeName',
                        help = '''Genome folder name. Genome sequences (FASTA) should be split
-                       by chromosome (one chromosome, one file) and placed under this folder.
-                       If gap file is not contained, we will generate a dummy one.''')
+                       by chromosome and placed under this folder. If gap file is not contained,
+                       we will generate a dummy one.''')
     iterM.add_argument('-C', '--chroms', nargs = '*', default = ['#', 'X'],
                        help = '''List of chromosome labels. Only specified chromosomes will be
-                       involved. Specially, "#" stands for chromosomes with numerical labels.
-                       "--chroms" with zero argument will include all chromosome data.''')
-    iterM.add_argument('-T', '--template', default = 'chr%s.fa', help = '''Template of FASTA file names''')
+                       involved. Specially, "#" stands for chromosomes with numerical labels.''')
+    iterM.add_argument('-T', '--template', default = 'chr%s.fa', help = '''Template of the FASTA file names''')
     iterM.add_argument('-G', '--gapFile', default = 'gap.txt', help = '''Gap file name.''')
-    iterM.add_argument('-f', '--fastqDir', help = 'Sequencing data folder. Relative path to dataFolder')
+    iterM.add_argument('-f', '--fastqDir', help = 'Sequencing data folder name.')
     iterM.add_argument('-F', '--Format', default = 'SRA', choices = ['SRA', 'FASTQ'],
                        help = 'Format of the sequencing data.')
-    iterM.add_argument('-b', '--bowtiePath', help = 'Path to bowtie2 executable program file.')
-    iterM.add_argument('-t', '--threads', type = int, default = 4, help = 'Number bowtie2 threads.')
+    iterM.add_argument('-b', '--bowtiePath', help = 'Path to the bowtie2 executable program file.')
+    iterM.add_argument('-t', '--threads', type = int, default = 4, help = 'Number of bowtie2 threads.')
     iterM.add_argument('-i', '--bowtieIndex',
                        help = '''Path to the bowtie2 genome index. Since the index consists of
-                       several files with the different suffices (e.g., hg19.1.bt2, hg19.2.bt.2),
+                       several files with different suffices (e.g., hg19.1.bt2, hg19.2.bt.2),
                        provide only the common part. For example, if your genome data hg19.fa
-                       and corresponding index files are stored in ~/data/hg19, you need to
-                       specify --bowtieIndex as this "--bowtieIndex ~/data/hg19/hg19". When not
-                       specified, we will generate one under the genome folder.''')
+                       and corresponding index files are stored under ~/data/hg19, you should
+                       specify it as this "--bowtieIndex ~/data/hg19/hg19". If not specified,
+                       we will generate one under the genome folder.''')
     iterM.add_argument('--cache', default = '/tmp',
-                       help = '''Cache folder.''')
+                       help = '''Cache folder name.''')
     iterM.add_argument('--chunkSize', type = int, help = '''On a low-memory machine, it's better
-                       to split raw read file into chunks and map them separatively. This parameter
-                       specifies the size of each chunk. By default, no split is performed.''')
+                       to split the raw read file into chunks and map them separatively. This
+                       parameter specifies the size of each chunk. By default, no split is performed.''')
     iterM.add_argument('--removeInters', action = 'store_true',
-                       help = '''If specified, remove intermediate results, only final hdf5 file retained.''')
+                       help = '''If specified, remove intermediate results, and only the final hdf5
+                       files will be retained.''')
     iterM.add_argument('--logFile', default = 'runHiC.log', help = '''Logging file name.''')
     iterM.set_defaults(func = mapping)
     
     ## Merging and Filtering
     removeNoise = subparser.add_parser('filtering',
-                                       help = '''Filtering at the level of aligned read pairs
-                                       and restriction fragments. Files from the same experiment
-                                       or the same cell line (optional) will be merged together
-                                       at this stage.''',
-                                       epilog = '''A folder with one or more hdf5 files containing
-                                       fragment-level information are generated under current working
-                                       directory after this command is called.''',
+                                       help = '''Perform some basic filtering on the aligned read
+                                       pairs.''',
                                        formatter_class = argparse.ArgumentDefaultsHelpFormatter)
     removeNoise.add_argument('-m', '--metadata', default = 'datasets.tsv',
                              help = '''Metadata file describing each SRA file. You should place
                              it under current working directory. Four columns are required: prefix
                              of SRA file name, cell line name, biological replicate label, and
-                             restriction enzyme name. An example file is distributed along with
-                             this software, please check it.''')
+                             restriction enzyme name.''')
     removeNoise.add_argument('-r', '--running-mode', default='local', choices=['local','pbs'],
                              help='''Running mode of the program. local -- Run on a local computer.
                              pbs -- Run on a PBS-based cluster.''')
     removeNoise.add_argument('--nworker', default=1, type=int, help='''The maximum number of task
                              processes to launch on a single machine.''')
     removeNoise.add_argument('--HDF5',
-                             help = '''Path to the folder with hdf5 files which are generated by
-                             mapping command.''')
+                             help = '''Path to the root folder of hdf5 files generated during the
+                             mapping stage.''')
     removeNoise.add_argument('--libSize', type = int, default = 500,
                              help = '''Maximum length of molecules in your Hi-C library.''')
     removeNoise.add_argument('--duplicates', action = 'store_true',
-                             help = '''Remove read pairs resulting from PCR amplification.''')
+                             help = '''Remove redundant PCR artifacts if specified.''')
     removeNoise.add_argument('-l', '--level', type = int, default = 2, choices = [1, 2],
-                             help = '''Set merging level. 1: hdf5 files from the same biological
-                             replicate will be merged, 2: hdf5 files from the same cell line will also be
-                             merged.''')
+                             help = '''Merging level. 1: Merge data from the same biological
+                             replicate; 2: Merge data from all replicates of the same cell line.''')
     removeNoise.add_argument('--logFile', default = 'runHiC.log', help = '''Logging file name.''')
     removeNoise.set_defaults(func = filtering)
     
     ## Binning
     binReads = subparser.add_parser('binning',
                                     help = '''Bin filtered reads at certain resolution.''',
-                                    epilog = '''After calling this command, a folder with
-                                    contact matrices (in HDF5 format) is created under current
-                                    working directory.''',
                                     formatter_class = argparse.ArgumentDefaultsHelpFormatter)
     binReads.add_argument('-r', '--running-mode', default='local', choices=['local','pbs'],
                           help='''Running mode of the program. local -- Run on a local computer.

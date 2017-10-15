@@ -213,7 +213,7 @@ Here's the command you should type in the terminal::
 
 - ``--HDF5``
 
-  Path to the root folder containing HDF5 files generated in the *mapping* stage.
+  Path to the root folder of HDF5 files generated in the *mapping* stage.
 
 - ``--libSize``
 
@@ -234,7 +234,7 @@ data extraction)
 
 Binning
 =======
-This processing stage is conducted by the *bnning* subcommand.
+This processing stage is conducted by the *binning* subcommand.
 
 By partitioning the linear genome into fixed-size bins (intervals), the number of contacts
 (the filtered read pairs) can be counted between any two bins (reads are assigned to bins
