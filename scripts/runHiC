@@ -190,8 +190,8 @@ def getargs():
                          cards are allowed. If a folder name is provided, conversion will be performed
                          on each ".hm" file under that folder.''')
     sMatrix.add_argument('--csr', action = 'store_true',
-                         help = '''If specified, matrices are converted into CSR (Compressed Row Storage)
-                         format. By default, a customized numpy structured array is applied.''')
+                         help = '''If specified, dense matrices are converted into CSR (Compressed Row Storage)
+                         matrices, a customized numpy structured array is applied otherwise.''')
     sMatrix.add_argument('--logFile', default = 'runHiC.log', help = '''Logging file name.''')
     sMatrix.set_defaults(func = tosparse)
     

@@ -313,6 +313,11 @@ Row) matrices, type in the command below::
   If specified, dense matrices are converted into CSR (Compressed Sparse Row) matrices, a `customized numpy structured array <http://xiaotaowang.github.io/TADLib/hitad.html#transform-txt-into-npz>`_
   is applied otherwise.
 
+Pileup
+======
+*runHiC* also provides a handy subcommand called "pileup" by which you can perform all
+processing steps above one by one
+
 
 
 Reference
