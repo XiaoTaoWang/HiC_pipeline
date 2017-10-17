@@ -76,17 +76,17 @@ def juncSeqCountFASTQ(Fastq_1, Fastq_2, enzyme):
     
     if Fastq_1.endswith('.fastq.gz'):
         pread_1 = subprocess.Popen(['gunzip', Fastq_1, '-c'],
-                                    stdout = subprocess.PIPE, bufsize = 0)
+                                    stdout = subprocess.PIPE, bufsize = 256)
     else:
         pread_1 = subprocess.Popen(['cat', Fastq_1],
-                                    stdout = subprocess.PIPE, bufsize = 0)
+                                    stdout = subprocess.PIPE, bufsize = 256)
     
     if Fastq_2.endswith('.fastq.gz'):
         pread_2 = subprocess.Popen(['gunzip', Fastq_2, '-c'],
-                                    stdout = subprocess.PIPE, bufsize = 0)
+                                    stdout = subprocess.PIPE, bufsize = 256)
     else:
         pread_2 = subprocess.Popen(['cat', Fastq_2],
-                                    stdout = subprocess.PIPE, bufsize = 0)
+                                    stdout = subprocess.PIPE, bufsize = 256)
                                   
     inStream_1 = pread_1.stdout
     inStream_2 = pread_2.stdout
@@ -164,7 +164,7 @@ def gzipWriter(filename):
 
         pwrite = subprocess.Popen(writer, stdin = subprocess.PIPE,
                                   stdout = outFile, shell = False,
-                                  bufsize = 0)
+                                  bufsize = 256)
     return pwrite
 
 def uncompressSRA(sra, fastqF, bamF, hdf5F):
@@ -173,7 +173,7 @@ def uncompressSRA(sra, fastqF, bamF, hdf5F):
         raise ValueError('Please install fastq-dump first!')
     
     pread = subprocess.Popen(['fastq-dump', sra, "-Z", "--split-files"],
-                              stdout = subprocess.PIPE, bufsize = 0)
+                              stdout = subprocess.PIPE, bufsize = 256)
     
     inStream = pread.stdout
     
@@ -240,7 +240,7 @@ def splitSRA(sra, chunkF, bamF, hdf5F, splitBy=4000000):
 
     outname = os.path.split(sra)[1].replace('.sra', '') + '_chunk{0}_{1}.fastq.gz'
     pread = subprocess.Popen(['fastq-dump', sra, "-Z", "--split-files"],
-                              stdout = subprocess.PIPE, bufsize = 0)
+                              stdout = subprocess.PIPE, bufsize = 256)
     inStream = pread.stdout
 
     halted = False
@@ -292,16 +292,16 @@ def splitFASTQ(fq1, fq2, chunkF, bamF, hdf5F, splitBy=4000000):
     
     if fq1.endswith('.fastq.gz'):
         pread_1 = subprocess.Popen(['gunzip', fq1, '-c'],
-                                    stdout = subprocess.PIPE, bufsize = 0)
+                                    stdout = subprocess.PIPE, bufsize = 256)
     else:
         pread_1 = subprocess.Popen(['cat', fq1],
-                                    stdout = subprocess.PIPE, bufsize = 0)
+                                    stdout = subprocess.PIPE, bufsize = 256)
     if fq2.endswith('.fastq.gz'):
         pread_2 = subprocess.Popen(['gunzip', fq2, '-c'],
-                                    stdout = subprocess.PIPE, bufsize = 0)
+                                    stdout = subprocess.PIPE, bufsize = 256)
     else:
         pread_2 = subprocess.Popen(['cat', fq2],
-                                    stdout = subprocess.PIPE, bufsize = 0)
+                                    stdout = subprocess.PIPE, bufsize = 256)
                                   
     inStream_1 = pread_1.stdout
     inStream_2 = pread_2.stdout
