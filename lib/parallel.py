@@ -16,7 +16,7 @@ class ppLocal(pp.Server):
         n_worker = ncpus // per_worker
         if not n_worker:
             n_worker = 1
-        self.n_worker = maximum_worker
+        self.n_worker = min(n_worker, self.maximum_worker)
         pp.Server.__init__(self, ncpus=self.n_worker)
     
     def _detect_ncpus(self):
