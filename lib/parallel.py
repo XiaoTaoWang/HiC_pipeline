@@ -16,7 +16,7 @@ class ppLocal(pp.Server):
         n_worker = ncpus // per_worker
         if not n_worker:
             n_worker = 1
-        self.n_worker = min(n_worker, self.maximum_worker)
+        self.n_worker = min(n_worker, maximum_worker)
         pp.Server.__init__(self, ncpus=self.n_worker)
     
     def _detect_ncpus(self):
@@ -41,7 +41,7 @@ class ppServer(pp.Server):
         self._get_nodes()
         servers = self._collect_servers(port)
         self.launch_server(port, secret, timeout)
-        pp.Server.__init__(self, ncpus=0, ppservers=servers, secret=secret,
+        pp.Server.__init__(self, ppservers=servers, secret=secret,
                            socket_timeout=timeout)
         
     def _get_nodes(self):
@@ -68,7 +68,7 @@ class ppServer(pp.Server):
                 n_worker = 1
             n_worker = min(n_worker, self.maximum_worker)
             self.n_worker += n_worker
-            command = template.format(node, port, n_worker, secret, 36000, timeout)
+            command = template.format(node, port, n_worker, secret, 72000, timeout)
             subprocess.call(command, shell=True)
             
     def _genSecret(self):
