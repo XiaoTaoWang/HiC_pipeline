@@ -470,7 +470,7 @@ def mapping(args, commands):
                    bam1, '--bam2', bam2, '-b', Parameters['bowtie_path'],
                    '-t', str(Parameters['nthreads']), '-i',
                    Parameters['bowtie_index_path'], '--cache', Parameters['temp_dir']]
-        submapping = subprocess.Popen(command, bufsize=-1,
+        submapping = subprocess.Popen(command, bufsize=5120,
                                       stdout=subprocess.PIPE,
                                       stderr=subprocess.PIPE,
                                       shell=False)
