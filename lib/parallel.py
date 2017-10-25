@@ -5,7 +5,7 @@ Created on Thu Jun 15 16:32:51 2017
 @author: wxt
 """
 
-import os, time, random, pp, subprocess
+import os, pp, subprocess
 from collections import Counter
 
 class ppLocal(pp.Server):
@@ -36,13 +36,11 @@ class ppServer(pp.Server):
     def __init__(self, per_worker, maximum_worker, port=60000):
         self.per_worker = per_worker
         self.maximum_worker = maximum_worker
-        secret = self._genSecret()
         timeout = self._walltime_to_seconds()
         self._get_nodes()
         servers = self._collect_servers(port)
-        self.launch_server(port, secret, timeout)
-        pp.Server.__init__(self, ppservers=servers, secret=secret,
-                           socket_timeout=timeout)
+        self.launch_server(port, timeout)
+        pp.Server.__init__(self, ppservers=servers, socket_timeout=timeout)
         
     def _get_nodes(self):
         pbs_nodefile = os.environ["PBS_NODEFILE"]
@@ -57,9 +55,9 @@ class ppServer(pp.Server):
             servers += (tmp,)
         return servers
     
-    def launch_server(self, port, secret, timeout):
+    def launch_server(self, port, timeout):
         
-        template = 'pbsdsh -h {0} ppserver.py -p {1} -w {2} -s {3} -t {4} -k {5} &'
+        template = 'pbsdsh -h {0} ppserver.py -p {1} -w {2} -t {3} -k {4} &'
         self.n_worker = 0
         for node in self.nodes:
             ncpus = self.nodes[node]
@@ -68,15 +66,8 @@ class ppServer(pp.Server):
                 n_worker = 1
             n_worker = min(n_worker, self.maximum_worker)
             self.n_worker += n_worker
-            command = template.format(node, port, n_worker, secret, 72000, timeout)
+            command = template.format(node, port, n_worker, 3600, timeout)
             subprocess.call(command, shell=True)
-            
-    def _genSecret(self):
-        tl = list(time.strftime('%Y%m%d%H%M%S',time.localtime(time.time())))
-        random.shuffle(tl)
-        secret = ''.join(tl)
-        
-        return secret
     
     def _walltime_to_seconds(self):
         

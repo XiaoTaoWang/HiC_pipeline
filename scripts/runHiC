@@ -470,7 +470,7 @@ def mapping(args, commands):
                    bam1, '--bam2', bam2, '-b', Parameters['bowtie_path'],
                    '-t', str(Parameters['nthreads']), '-i',
                    Parameters['bowtie_index_path'], '--cache', Parameters['temp_dir']]
-        submapping = subprocess.Popen(command, bufsize=5120,
+        submapping = subprocess.Popen(command, bufsize=-1,
                                       stdout=subprocess.PIPE,
                                       stderr=subprocess.PIPE,
                                       shell=False)
@@ -538,7 +538,7 @@ def mapping(args, commands):
     ## Generate the task queue
     ## Initialize a pp Server for chunk generating
     if args.running_mode == 'pbs':
-        server = ppServer(1, args.nworker, port=60000)
+        server = ppServer(1, args.nworker, port=140656)
     else:
         server = ppLocal(1, args.nworker)
     
@@ -598,7 +598,7 @@ def mapping(args, commands):
     
     # Initialize a pp Server for mapping
     if args.running_mode == 'pbs':
-        server = ppServer(args.threads, args.nworker, port=60001)
+        server = ppServer(args.threads, args.nworker, port=140657)
     else:
         server = ppLocal(args.threads, args.nworker)
     
@@ -802,7 +802,7 @@ def filtering(args, commands):
         args.filteredDir.append(corHDF5)
     
     if args.running_mode == 'pbs':
-        server = ppServer(1, args.nworker, port=60002)
+        server = ppServer(1, args.nworker, port=140658)
     else:
         server = ppLocal(1, args.nworker)
     
@@ -856,7 +856,7 @@ def filtering(args, commands):
     logging.log(21, 'Done!')
     
     if args.running_mode == 'pbs':
-        server = ppServer(1, args.nworker, port=60003)
+        server = ppServer(1, args.nworker, port=140659)
     else:
         server = ppLocal(1, args.nworker)
     
@@ -878,7 +878,7 @@ def filtering(args, commands):
     
     logging.log(21, 'Merging data from the same biological replicates ...')
     if args.running_mode == 'pbs':
-        server = ppServer(1, args.nworker, port=60004)
+        server = ppServer(1, args.nworker, port=140660)
     else:
         server = ppLocal(1, args.nworker)
     logging.log(21, 'Launching %d processes ...', server.n_worker)
@@ -918,7 +918,7 @@ def filtering(args, commands):
     if args.level == 2:
         logging.log(21, 'Merging data of the same cell line with the same restriction enzyme ...')
         if args.running_mode == 'pbs':
-            server = ppServer(1, args.nworker, port=60005)
+            server = ppServer(1, args.nworker, port=140661)
         else:
             server = ppLocal(1, args.nworker)
         
@@ -988,7 +988,7 @@ def binning(args, commands):
     args.HeatMap = []
     
     if args.running_mode == 'pbs':
-        server = ppServer(1, args.nworker, port=60006)
+        server = ppServer(1, args.nworker, port=140662)
     else:
         server = ppLocal(1, args.nworker)
     
@@ -1080,7 +1080,7 @@ def correcting(args, commands):
     args.cHeatMap = []
     
     if args.running_mode == 'pbs':
-        server = ppServer(1, args.nworker, port=60007)
+        server = ppServer(1, args.nworker, port=140663)
     else:
         server = ppLocal(1, args.nworker)
     
@@ -1147,7 +1147,7 @@ def tosparse(args, commands):
     Sources = [os.path.abspath(os.path.expanduser(i)) for i in args.cHeatMap]
     
     if args.running_mode == 'pbs':
-        server = ppServer(1, args.nworker, port=60008)
+        server = ppServer(1, args.nworker, port=140664)
     else:
         server = ppLocal(1, args.nworker)
     
