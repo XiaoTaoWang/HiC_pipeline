@@ -170,7 +170,7 @@ class cHiCdataset(HiCdataset):
         self.metadata['122_SelfLigationReads'] = SS_N
         self.metadata['124_DanglingReads'] = DM_N
         self.metadata['126_UnknownMechanism'] = sameFrag_N - SSDE_N
-        mask = DSmask * (-sameFragMask)
+        mask = DSmask * (~sameFragMask)
         noSameFrag = mask.sum()
         
         del DSmask

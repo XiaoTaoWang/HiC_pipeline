@@ -352,6 +352,49 @@ def splitFASTQ(fq1, fq2, chunkF, bamF, hdf5F, splitBy=4000000):
             break
     
     return intermediates
+
+def genchunks(arg_pool):
+        
+    chunkF, subbamF, subhdf5F, query, Format, database, chunkSize = arg_pool
+        
+    fastqDir = os.path.split(chunkF)[0]
+    if Format == 'sra':
+        sra = os.path.join(fastqDir, query + '.sra')
+        if not os.path.exists(sra):
+            return
+        if not chunkSize:
+            queue = uncompressSRA(sra, chunkF, subbamF, subhdf5F)
+        else:
+            queue = splitSRA(sra, chunkF, subbamF, subhdf5F, splitBy=chunkSize)
+    else:
+        try_1 = os.path.join(fastqDir, query + '_1.fastq')
+        try_2 = os.path.join(fastqDir, query + '_1.fastq.gz')
+        try_3 = os.path.join(fastqDir, query + '_2.fastq')
+        try_4 = os.path.join(fastqDir, query + '_2.fastq.gz')
+        if os.path.exists(try_1) and os.path.exists(try_3):
+            Fq_1 = try_1
+            Fq_2 = try_3
+        elif os.path.exists(try_1) and os.path.exists(try_4):
+            Fq_1 = try_1
+            Fq_2 = try_4
+        elif os.path.exists(try_2) and os.path.exists(try_3):
+            Fq_1 = try_2
+            Fq_2 = try_3
+        elif os.path.exists(try_2) and os.path.exists(try_4):
+            Fq_1 = try_2
+            Fq_2 = try_4
+        else:
+            return
+        if not chunkSize:
+            queue = linkRawFASTQ(Fq_1, Fq_2, chunkF, subbamF, subhdf5F)
+        else:
+            queue = splitFASTQ(Fq_1, Fq_2, chunkF, subbamF, subhdf5F,
+                               splitBy=chunkSize)
+    pool = []
+    for pre in queue:
+        values = pre + (database[query],)
+        pool.append(values)
+    return pool
     
 # Convert Matrix to Scipy Sparse Matrix
 def toSparse(source, csr = False):

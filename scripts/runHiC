@@ -8,7 +8,7 @@
 ## Required Modules
 import os, sys, argparse, logging, logging.handlers, glob, atexit, \
        copy, traceback, cPickle, xmlrpclib, runHiC
-from runHiC.parallel import ppLocal, ppServer
+from runHiC.parallel import ppLocal, ppServer, mpPool
 from pkg_resources import parse_version as V
 
 try:
@@ -367,6 +367,7 @@ def mapping(args, commands):
     import hiclib.mapping as iterM
     import mirnylib.h5dict as h5dict
     import runHiC.utilities as utilities
+    from runHiC.utilities import genchunks
     
      # Initialization
     genomeFolder, genome_db = initialize(args.dataFolder,
@@ -408,51 +409,6 @@ def mapping(args, commands):
         os.remove(lockFile)
         
         return bowtieIndex
-    
-    def genchunks(chunkFolder, subbamFolder, subhdf5F, query, Format,
-                  database, chunkSize):
-        
-        fastqDir = os.path.split(chunkFolder)[0]
-        if Format == 'sra':
-            sra = os.path.join(fastqDir, query + '.sra')
-            if not os.path.exists(sra):
-                return
-            if not chunkSize:
-                queue = utilities.uncompressSRA(sra, chunkFolder,
-                                                subbamFolder, subhdf5F)
-            else:
-                queue = utilities.splitSRA(sra, chunkFolder, subbamFolder,
-                                           subhdf5F, splitBy=chunkSize)
-        else:
-            try_1 = os.path.join(fastqDir, query + '_1.fastq')
-            try_2 = os.path.join(fastqDir, query + '_1.fastq.gz')
-            try_3 = os.path.join(fastqDir, query + '_2.fastq')
-            try_4 = os.path.join(fastqDir, query + '_2.fastq.gz')
-            if os.path.exists(try_1) and os.path.exists(try_3):
-                Fq_1 = try_1
-                Fq_2 = try_3
-            elif os.path.exists(try_1) and os.path.exists(try_4):
-                Fq_1 = try_1
-                Fq_2 = try_4
-            elif os.path.exists(try_2) and os.path.exists(try_3):
-                Fq_1 = try_2
-                Fq_2 = try_3
-            elif os.path.exists(try_2) and os.path.exists(try_4):
-                Fq_1 = try_2
-                Fq_2 = try_4
-            else:
-                return
-            if not chunkSize:
-                queue = utilities.linkRawFASTQ(Fq_1, Fq_2, chunkFolder,
-                                               subbamFolder, subhdf5F)
-            else:
-                queue = utilities.splitFASTQ(Fq_1, Fq_2, chunkFolder, subbamFolder,
-                                             subhdf5F, splitBy=chunkSize)
-        pool = []
-        for pre in queue:
-            values = pre + (database[query],)
-            pool.append(values)
-        return pool
     
     def mapping_core(fq1, bam1, fq2, bam2, hdf5, enzyme,
                      dataFolder, genomeName, gapName, chroms, template,
@@ -536,19 +492,16 @@ def mapping(args, commands):
     metadata = [l.rstrip().split() for l in open(mFile) if not l.isspace()]
     database = dict([(i[0], i[-1]) for i in metadata])
     ## Generate the task queue
-    ## Initialize a pp Server for chunk generating
-    if args.running_mode == 'pbs':
-        server = ppServer(1, args.nworker, port=140656)
-    else:
-        server = ppLocal(1, args.nworker)
+    server, n_worker = mpPool(2, args.nworker)
     
     logging.log(21, 'Launching %d processes for chunk generating ...',
-                server.n_worker)
+                n_worker)
     
     rmFolders = []
-    pre_jobs = []
+    job_id = []
     pre_pool = {}
     Indicators = {}
+    pre_params = []
     for i in database:
         
         logging.log(21, 'Current task ID: %s', i)
@@ -574,20 +527,19 @@ def mapping(args, commands):
         cPickle.dump(gInfo,
                      open(os.path.join(subhdf5F,'referenceGenome'),'wb'))
         
-        pre_params = (chunkFolder, subbamFolder, subhdf5F, i, Format,
-                      database, chunkSize)
-        pre_modules = ('os','runHiC.utilities as utilities')
+        pre_params.append((chunkFolder, subbamFolder, subhdf5F, i, Format,
+                           database, chunkSize))
         
         logging.log(21, 'Add %s into the queue ...', i)
         
-        pre = server.submit(genchunks,
-                            pre_params,
-                            (),
-                            pre_modules)
-        pre_jobs.append((i, pre))
+        job_id.append(i)
     
-    for query, pre in pre_jobs:
-        tmp = pre()
+    intermediates = server.map(genchunks, pre_params)
+    # Synchronize the main process with the job processes to ensure proper cleanup.
+    server.close()
+    server.join()
+    
+    for query, tmp in zip(job_id, intermediates):
         if tmp is None:
             logging.warning('Data of %s can not be found under %s, skipping ...',
                             query, fastqDir)
