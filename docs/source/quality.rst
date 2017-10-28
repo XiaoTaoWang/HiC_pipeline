@@ -2,9 +2,14 @@ Experiment Quality Assessment
 =============================
 In this tutorial, I will show you how runHiC can be used in data quality assessment.
 
-All you need to type in is a sinlge line command after *runHiC filtering* or *runHiC pileup* (refer to `quickstart?` for more details)::
+All you need to type in is a sinlge line command after *runHiC filtering* or *runHiC pileup*
+(refer to `quickstart?` for more details)::
 
     $ ?
+	
+- ``-L/--Locator``
+
+  Path to the folder containing filtered HDF5 files.
 
 Statistic Table
 ---------------
