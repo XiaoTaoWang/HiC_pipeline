@@ -6,28 +6,31 @@ Created on Thu Jun 15 16:32:51 2017
 """
 
 import os, pp, subprocess
+import multiprocessing as mp
 from collections import Counter
+
+def mpPool(per_worker, maximum_worker):
+        
+    ncpus = mp.cpu_count()
+    n_worker = ncpus // per_worker
+    if not n_worker:
+        n_worker = 1
+    n_worker = min(n_worker, maximum_worker)
+    
+    return mp.Pool(n_worker), n_worker
+        
 
 class ppLocal(pp.Server):
     
     def __init__(self, per_worker, maximum_worker):
         
-        ncpus = self._detect_ncpus()
+        ncpus = mp.cpu_count()
         n_worker = ncpus // per_worker
         if not n_worker:
             n_worker = 1
         self.n_worker = min(n_worker, maximum_worker)
         pp.Server.__init__(self, ncpus=self.n_worker)
-    
-    def _detect_ncpus(self):
-        """
-        Detects the number of effective CPUs in the system.
-        """
-        # Linux and Unix
-        ncpus = os.sysconf("SC_NPROCESSORS_ONLN")
-        if isinstance(ncpus, int) and ncpus > 0:
-            return ncpus
-        return 1
+        
 
 class ppServer(pp.Server):
     """
