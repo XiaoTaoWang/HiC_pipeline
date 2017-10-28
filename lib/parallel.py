@@ -43,7 +43,8 @@ class ppServer(pp.Server):
         self._get_nodes()
         servers = self._collect_servers(port)
         self.launch_server(port, timeout)
-        pp.Server.__init__(self, ppservers=servers, socket_timeout=timeout)
+        pp.Server.__init__(self, ppservers=servers, socket_timeout=timeout,
+                           ncpus=0) # do not use local computer
         
     def _get_nodes(self):
         pbs_nodefile = os.environ["PBS_NODEFILE"]
