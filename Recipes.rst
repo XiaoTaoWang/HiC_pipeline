@@ -76,8 +76,8 @@ Call *quality* after *filtering* or *pileup*::
 
 Statistic Table
 ````````````````
-Statistic tables on sequencing reads for each SRA/FASTQ (level 1), biological
-replicate (level 2) and cell type (level 3) will be generated under filtered-hg19.
+Statistic tables on sequencing reads for each SRA/FASTQ (level 0), biological
+replicate (level 1) and cell type (level 2) will be generated under filtered-hg19.
 Here's a snapshot:
 
 .. image:: ./images/stats.png
@@ -206,7 +206,7 @@ site, therefore, ligation efficiency could be a good explain.
 Read-pair Type Plotting
 ````````````````````````
 Read-pair type ratios will be reported in line-plot manner for each biological
-replicate (level 2) and cell type (level 3) under filtered-hg19 too. Intra-chromosomal
+replicate (level 1) and cell type (level 2) under filtered-hg19 too. Intra-chromosomal
 contacts are broken down into four types: "left" pair (both reads map to the reverse
 strand), "right" pair (both reads map to the forward strand), "inner" pair (reads map
 to different strands and point towards each other) and "outer" pair (reads map to
