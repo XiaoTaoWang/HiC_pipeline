@@ -197,17 +197,14 @@ def getargs():
     
     ## Quality Assessment
     QA = subparser.add_parser('quality',
-                              help = '''Quality assessment for Hi-C experiments. Do not call this
-                              command before filtering!''',
+                              help = '''Assess data quality after filtering.''',
                               formatter_class = argparse.ArgumentDefaultsHelpFormatter)
-    QA.add_argument('-L', '--Locator', help = '''Path to the folder containing filtered HDF5 files. This
-                    argument is supposed to be "filtered-hg19" given reference genome name "hg19".''')
+    QA.add_argument('-L', '--Locator', help = '''Path to the folder containing filtered HDF5 files.''')
     QA.add_argument('-m', '--metadata', default = 'datasets.tsv',
                     help = '''Metadata file describing each SRA file. You should place
                     it under current working directory. Four columns are required: prefix
                     of SRA file name, cell line name, biological replicate label, and
-                    restriction enzyme name. An example file is distributed along with
-                    this software, please check it.''')
+                    restriction enzyme name.''')
     QA.add_argument('--logFile', default = 'runHiC.log', help = '''Logging file name.''')
     QA.set_defaults(func = quality)
                     
@@ -216,8 +213,6 @@ def getargs():
                                       parents = [iterM],
                                       help = '''Perform the entire analysis from sequencing
                                       data to corrected sparse matrices''',
-                                      description = '''A more convenient but less flexible
-                                      command for Hi-C data processing.''',
                                       formatter_class = argparse.ArgumentDefaultsHelpFormatter,
                                       add_help = False)
     streamline.add_argument('--libSize', type = int, default = 500,
