@@ -1,2 +1,3 @@
-include README.rst INSTALL.rst Recipes.rst fastq-dump LICENSE
+include README.rst LICENSE
 recursive-include demo *
+recursive-include mirnylab *

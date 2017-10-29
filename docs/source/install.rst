@@ -68,7 +68,7 @@ Install Packages through Conda
 Then it's straightforward to install all the required packages except for *mirnylib* and *hiclib*
 through the following one-line command::
 
-    conda install numpy numexpr scipy statsmodels matplotlib h5py cython biopython bx-python pysam joblib pp sra-tools bowtie2 samtools gcc=4.8.5
+    conda install numpy numexpr scipy statsmodels matplotlib h5py cython biopython bx-python pysam joblib pp sra-tools bowtie2 samtools pigz gcc=4.8.5
 
 Install mirnylib and hiclib
 ---------------------------
