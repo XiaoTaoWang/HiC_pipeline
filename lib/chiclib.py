@@ -485,7 +485,7 @@ class cHiCdataset(HiCdataset):
         if check:
             Total = self.metadata['000_SequencedReads']
             Ureads = self.metadata['100_DoubleUniqueMapped']
-            ligSeq = self.metadata['030_LigationCounts']
+            ligSeq = self.metadata['020_LigationCounts']
             selfLig = self.metadata['122_SelfLigationReads']
             dangling = self.metadata['124_DanglingReads']
             Uratio = float(Ureads) / Total

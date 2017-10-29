@@ -14,9 +14,14 @@ for basic usage):
 
 - ``--nworker``
 
-  The maximum number of task processes to launch on a single machine.
+  The maximum number of task processes to launch on a single machine (which means
+  the local computer for "local" mode and a compute node for "pbs" mode).
 
 - ``--chunkSize``
+
+  To make parallelized computation possible, our pipeline splits the original read file into
+  chunks and maps them to the reference genome separately. This parameter specifies the size
+  of each chunk. By default, no split is performed.
 
   
 
@@ -42,4 +47,13 @@ That's it! Just a single-line command and no tedious setup required.
 
 Performance
 ===========
-The table below shows the performance test of runHiC with low-thoughput and high-thoughput
+The table below shows the performance test of runHiC with low-depth and high-depth sequencing
+data. (Running time means the wall time runHiC took from raw read files to corrected sparse
+contact matrices)
+
++----------------+-------------------+------------------+-----------------------------+
+| Cell Line      | Number of reads   | Number of nodes  | Running time (hr: min: sec) |
++================+===================+==================+=============================+
+
+
+
