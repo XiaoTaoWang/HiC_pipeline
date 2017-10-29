@@ -1,3 +1,2 @@
 include README.rst INSTALL.rst Recipes.rst fastq-dump LICENSE
-recursive-include Sample *
-recursive-include images *
+recursive-include demo *

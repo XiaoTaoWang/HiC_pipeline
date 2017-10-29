@@ -11,15 +11,18 @@ pipeline by *pileup* subcommand.
 Data Preparation
 ================
 Suppose you are still in the *runHiC* distribution root folder, change your
-current working directory to the sub-folder **demo**::
+current working directory to the sub-folder *demo*::
 
     $ cd demo
+	$ mkdir data
 	$ ls -lh
 
-?
+    total 16K
+    drwxr-x--- 2 xtwang CPeng 4.0K Oct 29 10:03 data
+    drwxr-x--- 2 xtwang CPeng 4.0K Oct 29 10:01 workspace
 
 During this tutorial, all input data including Hi-C raw sequencing data and
-the reference genome data will be placed under the **data** sub-folder, and
+the reference genome data will be placed under the *data* sub-folder, and
 *runHiC* will be run under the *workspace* sub-folder.
 
 Download the example Hi-C data set from a human cell line GM06990::
@@ -31,7 +34,9 @@ Download the example Hi-C data set from a human cell line GM06990::
 	$ wget ftp://ftp-trace.ncbi.nlm.nih.gov/sra/sra-instant/reads/ByExp/sra/SRX/SRX011/SRX011610/SRR027958/SRR027958.sra -O SRR027958.sra
 	$ ls -lh
 
-?
+	total 1.4G
+    -rw-r----- 1 xtwang CPeng 623M Oct 29 10:07 SRR027956.sra
+    -rw-r----- 1 xtwang CPeng 783M Oct 29 10:10 SRR027958.sra
 
 Reads in SRR027956.sra and SRR027958.sra are sequenced from two biological replicates,
 respectively.
@@ -54,9 +59,9 @@ and SRA(Sequence Read Archive)::
 Download the reference genome (hg19) data from UCSC::
 
     $ mkdir hg19
-	$ cd  hg19
-    $ rsync -avzP rsync://hgdownload.cse.ucsc.edu/goldenPath/hg19/chromosomes/ .
-	$ wget http://hgdownload.cse.ucsc.edu/goldenPath/hg19/database/gap.txt.gz
+	$ cd hg19
+    $ wget ftp://hgdownload.cse.ucsc.edu/goldenPath/hg19/chromosomes/*
+	$ wget ftp://hgdownload.cse.ucsc.edu/goldenPath/hg19/database/gap.txt.gz
 
 Above commands can be modified to download the data for any other genomes
 available in UCSC by replacing "hg19" with the desired reference genome
@@ -73,7 +78,7 @@ a python interpreter and follow the commands below:
 ...         os.remove(c)
 >>> exit()
 
-Finally, uncompress the gz files to finish this section::
+Finally, uncompress the .gz files to finish this section::
 
 	$ gunzip *.gz
 	$ cd ../..
@@ -85,7 +90,7 @@ which maps raw sequencing reads to the reference genome and assigns aligned
 reads to the restriction fragments.
 
 *runHiC* also records the read-level statistics at this stage for quality
-assessment of your Hi-C data. (See ?)
+assessment of your Hi-C data. (See `quality <http://xiaotaowang.github.io/HiC_pipeline/quality.html>`_)
 
 Usage
 -----
@@ -100,7 +105,7 @@ so you need to tell *runHiC* where *bowtie2* is installed in your system::
 
     $ which bowtie2
 
-?
+    ~/Tools/anaconda2/bin/bowtie2
 
 Write the Meta Data File
 ------------------------
@@ -122,7 +127,12 @@ runHiC Command
 ---------------
 Now type in the command below::
 
-    $ ?
+    $ runHiC mapping -m datasets.tsv -p ../data -g hg19 -G gap.txt -f HiC-SRA -F SRA -b ~/Tools/anaconda2/bin/bowtie2 -t 20 --removeInters --logFile runHiC-mapping.log
+
+For FASTQ and the compressed FASTQ format, just replace "HiC-SRA" with "HiC-FASTQ" or "HiC-gzip",
+and reset "-F" argument correspondingly::
+
+    $ runHiC mapping -m datasets.tsv -p ../data -g hg19 -G gap.txt -f HiC-gzip -F FASTQ -b ~/Tools/anaconda2/bin/bowtie2 -t 20 --removeInters --logFile runHiC-mapping.log
 
 - ``-m/--metadata``
 
@@ -180,6 +190,7 @@ time, a new file "runHiC.log" is silently opened for output. In a word, the syst
 old log files by appending the extensions ".1", ".2" etc., and the current log is always
 written to "runHiC.log".
 
+
 .. _access-HDF5
 
 Access Data from HDF5
@@ -187,7 +198,9 @@ Access Data from HDF5
 You can extract data from HDF5 files via *mirnylib*:
 
 >>> from mirnylib import h5dict
->>> ???
+>>> lib = h5dict.h5dict('./hdf5-hg19/SRR027956/SRR027956.hdf5','r')
+>>> lib.keys()
+[u'chrms1', u'chrms2', u'cuts1', u'cuts2', u'downrsites1', u'downrsites2', u'misc', u'rfragIdxs1', u'rfragIdxs2', u'rsites1', u'rsites2', u'strands1', u'strands2', u'uprsites1', u'uprsites2']
 
 Filtering
 =========
@@ -198,14 +211,14 @@ the aligned read pairs: [1]_
 2. Remove redundant PCR artifacts.
 
 During the filtering process, *runHiC* also records the fragment-level and the
-contact-level statistics for quality assessment of your Hi-C data. (See ?)
+contact-level statistics for quality assessment of your Hi-C data. (See `quality <http://xiaotaowang.github.io/HiC_pipeline/quality.html>`_)
 
 Data from the same biological replicate (or optionally all replicates of the same cell
 line) are merged in this processing stage.
 
 Here's the command you should type in the terminal::
 
-    $ ?
+    $ runHiC filtering -m datasets.tsv --HDF5 hdf5-hg19 --libSize 500 --duplicates -l 2
 
 - ``-m/--metadata``
 
@@ -245,7 +258,7 @@ contact matrix, and **byChromosome** builds chromosome-versus-chromosome contact
 
 Type in the command below to carry on our analyzing on the example data::
 
-    $ ?
+    $ runHiC binning -f filtered-hg19 -M byChromosome -R 2000000
 
 - ``-f/--filteredDir``
 
@@ -267,14 +280,14 @@ with ".hm". (See :ref:`access-HDF5` for data extraction)
 
 Correcting
 ==========
-Hi-C data can contain many different biases, some of known origin and others from an
+Hi-C data can contain many different biases, some from known origin and others from an
 unknown origin. There are two general approaches to Hi-C bias correction: explicit-factor
 methods [2]_ and matrix balancing methods [1]_. *runHiC* (hiclib) uses the matrix balancing
 algorithm called Sinkhorn–Knopp for bias correction.
 
 To correct our sample Hi-C data, type in the command below::
 
-    $ ?
+    $ runHiC correcting -H Raw-hg19
 
 - ``-H/--Heatmap``
 
@@ -292,14 +305,10 @@ dense matrices, which are memory-consuming for large genomes (such as human and 
 and high resolutions (40 Kb) when used in other calculations (such as TAD and loop identifications).
 This subcommand converts intra-chromosomal contact matrices into sparse ones.
 
-Firstly, let's rerun the *binning* subcommand with ``--mode byChromosome``::
-
-    $ ?
-
 To convert the dense matrices generated just now into well-known CSR (Compressed Sparse
 Row) matrices, type in the command below::
 
-    $ ?
+    $ runHiC tosparse -H Corrected-hg19 --csr
 	
 -- ``-H/--cHeatMap``
 
@@ -312,15 +321,15 @@ Row) matrices, type in the command below::
   If specified, dense matrices are converted into `CSR (Compressed Sparse Row) <https://docs.scipy.org/doc/scipy/reference/sparse.html>`_ matrices,
   a `customized numpy structured array <http://xiaotaowang.github.io/TADLib/hitad.html#transform-txt-into-npz>`_ is applied otherwise.
 
-Sparse matrices are organized in `npz <https://docs.scipy.org/doc/numpy/reference/generated/numpy.savez.html>` format
-using chromosome labels as the keys. Here, you can find them under ? folder.
+Sparse matrices are organized in `npz <https://docs.scipy.org/doc/numpy/reference/generated/numpy.savez.html>`_ format
+using chromosome labels as the keys. Here, you can find them under the "Corrected-hg19" folder.
 
 Pileup
 ======
 *runHiC* also provides a handy subcommand called "pileup" by which you can perform all
-processing steps above with one-line command::
+processing steps above with single-line command::
 
-    $ ?
+    $ runHiC pileup -p ../data -g hg19 -f HiC-SRA -F SRA -b ~/Tools/anaconda2/bin/bowtie2 -t 20 --removeInters -M byChromosome -R 2000000
 
 
 

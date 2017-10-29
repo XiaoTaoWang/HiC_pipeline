@@ -3,9 +3,13 @@ Experiment Quality Assessment
 In this tutorial, I will show you how runHiC can be used in data quality assessment.
 
 All you need to type in is a sinlge line command after *runHiC filtering* or *runHiC pileup*
-(refer to `quickstart?` for more details)::
+(refer to `quickstart <http://xiaotaowang.github.io/HiC_pipeline/quickstart.html>`_ for more details)::
 
-    $ ?
+    $ runHiC quality -m datasets.tsv -L filtered-hg19
+
+- ``-m/--metadata``
+
+  The metadata data file name.
 	
 - ``-L/--Locator``
 
@@ -14,12 +18,35 @@ All you need to type in is a sinlge line command after *runHiC filtering* or *ru
 Statistic Table
 ---------------
 In our example, statistic tables on sequencing reads for each SRA/FASTQ (level 1),
-biological replicate (level 2) and cell type (level 3) will be generated under filtered-hg19
-folder.
+biological replicate (level 2) and cell type (level 3) will be generated under the
+"filtered-hg19" folder.
 
-Here's a snapshot:
+Here's a snapshot::
 
-?
+    000_SequencedReads:   14332993
+	    010_UniqueMappedReads:   13053095
+	    020_LigationCounts:   3225524
+    100_DoubleUniqueMapped:   8260823
+	    110_AfterFilteringReads:   6836510
+	    120_SameFragmentReads:   1147363
+		    122_SelfLigationReads:   210202
+		    124_DanglingReads:   928888
+		    126_UnknownMechanism:   8273
+	    210_ExtraDanglingReads:   250193
+	    310_DuplicatedRemoved:   26757
+    400_TotalContacts:   6836510
+	    410_IntraChromosomalReads:   2753015
+		    412_IntraLongRangeReads(>=20Kb):   2402139
+		    412_IntraShortRangeReads(<20Kb):   350876
+	    420_InterChromosomalReads:   4083495
+
+    Critical Indicators:
+    Double Unique Mapped Ratio = 8260823 / 14332993 = 0.5764
+    Ligation-Junction Ratio = 3225524 / 14332993 = 0.2250
+    Self-Ligation Ratio = 210202 / 14332993 = 0.0147
+    Dangling-Reads Ratio = 928888 / 14332993 = 0.0648
+    Long-Range Ratio = 2402139 / 6836510 = 0.3514
+    Data Usage = 6836510 / 14332993 = 0.4770
 
 The following table lists possible statistic names and their meanings:
 
@@ -44,7 +71,7 @@ The following table lists possible statistic names and their meanings:
 |                               | 30%~40% range. A low value suggests that the      |
 |                               | ligation failed. [1]_                             |
 +-------------------------------+---------------------------------------------------+
-| 100_NormalPairs               | Number of read pairs of which both reads can be   |
+| 100_DoubleUniqueMapped        | Number of read pairs of which both reads can be   |
 |                               | uniquely mapped.                                  |
 +-------------------------------+---------------------------------------------------+
 | 110_AfterFilteringReads       | Number of read pairs that have passed all         |
@@ -127,7 +154,8 @@ Library-size Estimation
 Dangling reads can be applied to estimate your library size in nature. Here's an example
 of size distribution of dangling read molecules for typical 300~500bp library:
 
-?
+.. image:: ./images/GM06990-HindIII-allReps-librarySize.png
+        :align: center
 
 The inconsistency between this distribution and the experimental library size suggests
 a failure in DNA size selection.
@@ -140,7 +168,8 @@ reads of most read pairs locate near a restriction site, the former (low ligatio
 is more likely to be the cause, so we also plot the distribution of the relative start
 sites for dangling reads:
 
-?
+.. image:: ./images/GM06990-HindIII-allReps-danglingStart.png
+        :align: center
 
 Here, the majority of these read pairs have one of their read starting near a restriction
 site, therefore, ligation efficiency could be a good explain.
@@ -158,11 +187,12 @@ at which the percentage of each type converges to 25% is a good indication of th
 distance at which it is meaningful to examine Hi-C contact patterns. Here's an example
 below:
 
-?
+.. image:: ./images/GM06990-HindIII-allReps-PairType.png
+        :align: center
 
-We can see a distinct turning point around 5Kb. While there may be several unknown mechanisms
+We can see a distinct turning point around 20Kb. While there may be several unknown mechanisms
 making biases below this point, we should only consider contacts whose genomic distances
-are greater than 5Kb in the following analysis.
+are greater than 20Kb in the following analysis.
 
 
 Reference

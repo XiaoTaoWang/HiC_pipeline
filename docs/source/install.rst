@@ -72,7 +72,7 @@ through the following one-line command::
 
 Install mirnylib and hiclib
 ---------------------------
-To make it easy, I have included the *mirnylib* and *hiclib* source code in the `runHiC <https://pypi.python.org/pypi/runHiC>`
+To make it easy, I have included the *mirnylib* and *hiclib* source code in the `runHiC <https://pypi.python.org/pypi/runHiC>`_
 distribution under the "mirnylab" sub-foler since version 0.7.0::
 
     $ cd mirnylab
