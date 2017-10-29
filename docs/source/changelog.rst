@@ -1,7 +1,7 @@
 Release Notes
 =============
 
-Version 0.7.0 (2017-8-?)
+Version 0.7.0 (2017-10-29)
 ------------------------
 - Parallelized the execution on both laptops and PBS-based clusters.
 - Included the latest *mirnylib* and *hiclib* source code.
