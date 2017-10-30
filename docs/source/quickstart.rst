@@ -340,5 +340,5 @@ Reference
 
 .. [2] Yaffe E, Tanay A. Probabilistic modeling of Hi-C contact maps eliminates
        systematic biases to characterize global chromosomal architecture. Nat Genet,
-	   2011, 43(11): 1059-65.
+       2011, 43(11): 1059-65.
 
