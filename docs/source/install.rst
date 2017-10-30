@@ -31,6 +31,10 @@ Other requirements:
 - bowtie2
 - samtools
 
+Optional:
+
+- pigz
+
 Install Conda
 -------------
 All above requirements except for mirnylib and hiclib can be installed through the

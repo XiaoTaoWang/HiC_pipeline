@@ -154,7 +154,7 @@ Library-size Estimation
 Dangling reads can be applied to estimate your library size in nature. Here's an example
 of size distribution of dangling read molecules for typical 300~500bp library:
 
-.. image:: ./images/GM06990-HindIII-allReps-librarySize.png
+.. image:: ./_static/GM06990-HindIII-allReps-librarySize.png
         :align: center
 
 The inconsistency between this distribution and the experimental library size suggests
@@ -168,7 +168,7 @@ reads of most read pairs locate near a restriction site, the former (low ligatio
 is more likely to be the cause, so we also plot the distribution of the relative start
 sites for dangling reads:
 
-.. image:: ./images/GM06990-HindIII-allReps-danglingStart.png
+.. image:: ./_static/GM06990-HindIII-allReps-danglingStart.png
         :align: center
 
 Here, the majority of these read pairs have one of their read starting near a restriction
@@ -187,7 +187,7 @@ at which the percentage of each type converges to 25% is a good indication of th
 distance at which it is meaningful to examine Hi-C contact patterns. Here's an example
 below:
 
-.. image:: ./images/GM06990-HindIII-allReps-PairType.png
+.. image:: ./_static/GM06990-HindIII-allReps-PairType.png
         :align: center
 
 We can see a distinct turning point around 20Kb. While there may be several unknown mechanisms
