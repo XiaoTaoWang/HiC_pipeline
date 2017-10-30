@@ -1,5 +1,5 @@
-Introduction
-============
+Parallel Computation
+*********************
 runHiC supports parallel processing of large Hi-C datasets on both SMP (systems
 with multiple processors or cores) and PBS-based clusters (computers connected
 via network).

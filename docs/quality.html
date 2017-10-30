@@ -1,13 +1,16 @@
-
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
   "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
 
 <html xmlns="http://www.w3.org/1999/xhtml">
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
     <title>Experiment Quality Assessment &#8212; runHiC 0.7.0 documentation</title>
+    
     <link rel="stylesheet" href="_static/alabaster.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    './',
@@ -23,6 +26,8 @@
     <script type="text/javascript" src="_static/doctools.js"></script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Release Notes" href="changelog.html" />
+    <link rel="prev" title="Parallel Computation" href="parallel.html" />
    
   <link rel="stylesheet" href="_static/custom.css" type="text/css" />
   
@@ -30,7 +35,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
 
   </head>
-  <body>
+  <body role="document">
   <div class="document">
     
       <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
@@ -54,6 +59,20 @@
 
 
 <h3>Navigation</h3>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="install.html">Install runHiC</a></li>
+<li class="toctree-l1"><a class="reference internal" href="quickstart.html">Quick Start</a></li>
+<li class="toctree-l1"><a class="reference internal" href="parallel.html">Parallel Computation</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Experiment Quality Assessment</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#statistic-table">Statistic Table</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#library-size-estimation">Library-size Estimation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#ligation-efficiency">Ligation Efficiency</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#read-pair-type-plotting">Read-pair Type Plotting</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#reference">Reference</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="changelog.html">Release Notes</a></li>
+</ul>
 
 
 <div id="searchbox" style="display: none" role="search">
@@ -92,8 +111,8 @@
 <h2>Statistic Table<a class="headerlink" href="#statistic-table" title="Permalink to this headline">¶</a></h2>
 <p>In our example, statistic tables on sequencing reads for each SRA/FASTQ (level 1),
 biological replicate (level 2) and cell type (level 3) will be generated under the
-“filtered-hg19” folder.</p>
-<p>Here’s a snapshot:</p>
+&#8220;filtered-hg19&#8221; folder.</p>
+<p>Here&#8217;s a snapshot:</p>
 <div class="highlight-default"><div class="highlight"><pre><span></span><span class="mi">000</span><span class="n">_SequencedReads</span><span class="p">:</span>   <span class="mi">14332993</span>
         <span class="mi">010</span><span class="n">_UniqueMappedReads</span><span class="p">:</span>   <span class="mi">13053095</span>
         <span class="mi">020</span><span class="n">_LigationCounts</span><span class="p">:</span>   <span class="mi">3225524</span>
@@ -121,10 +140,118 @@ biological replicate (level 2) and cell type (level 3) will be generated under t
 </pre></div>
 </div>
 <p>The following table lists possible statistic names and their meanings:</p>
+<table border="1" class="docutils">
+<colgroup>
+<col width="38%" />
+<col width="62%" />
+</colgroup>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">Statistic Name</th>
+<th class="head">Meaning</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr class="row-even"><td>000_SequencedReads</td>
+<td>Total number of sequenced read pairs</td>
+</tr>
+<tr class="row-odd"><td>010_UniqueMappedReads</td>
+<td>Number of read pairs of which one read or both
+reads can be uniquely mapped to the reference
+genome.</td>
+</tr>
+<tr class="row-even"><td>020_LigationCounts</td>
+<td>Number of read pairs containing the so-called
+&#8220;ligation junction&#8221;. A ligation junction is
+the sequence created when the ends of two
+filled-in restriction fragments ligate to one
+another. For HindIII, the sequence is AAGCTAGCTT,
+and for MboI, it&#8217;s GATCGATC. Obviously, this
+statistic is dependent on the read length and
+your library size. For 300~500bp library and
+101bp PE reads, it generally falls into the
+30%~40% range. A low value suggests that the
+ligation failed. <a class="footnote-reference" href="#id2" id="id1">[1]</a></td>
+</tr>
+<tr class="row-odd"><td>100_DoubleUniqueMapped</td>
+<td>Number of read pairs of which both reads can be
+uniquely mapped.</td>
+</tr>
+<tr class="row-even"><td>110_AfterFilteringReads</td>
+<td>Number of read pairs that have passed all
+filtering criteria.</td>
+</tr>
+<tr class="row-odd"><td>120_SameFragmentReads</td>
+<td>Number of read pairs of which both reads are
+mapped to the same restriction fragment. Such
+read pairs are filtered in our pipeline.</td>
+</tr>
+<tr class="row-even"><td>122_SelfLigationReads</td>
+<td>Number of read pairs deriving from
+self-circularized ligation product. The two reads
+are mapped to the same restriction fragment and
+face in opposite directions.</td>
+</tr>
+<tr class="row-odd"><td>124_DanglingReads</td>
+<td>Both reads of these read pairs are mapped to the
+same fragment and face toward each other. There
+can be many causes of such products, ranging from
+low ligation efficiency to poor streptavidin
+specificity.</td>
+</tr>
+<tr class="row-even"><td>126_UnknownMechanism</td>
+<td>Unknown sources of &#8220;120_SameFragmentReads&#8221;. Both
+reads are mapped to the same strand.</td>
+</tr>
+<tr class="row-odd"><td>210_ExtraDanglingReads</td>
+<td>The two reads of these read pairs are mapped to
+different restriction fragments but face toward
+each other and are separated by less than the
+library size (500bp) interval. Such read pairs
+may contain true contacts, but are largely
+contaminated, so we also remove these read pairs
+from our analysis.</td>
+</tr>
+<tr class="row-even"><td>310_DuplicatedRemoved</td>
+<td>Number of read pairs from PCR products. We treat
+two read pairs to be duplicated from one another
+if both reads of them are mapped to the same
+position of the genome. Such redundant read pairs
+are also filtered from our analysis.</td>
+</tr>
+<tr class="row-odd"><td>400_TotalContacts</td>
+<td>Number of read pairs from true contacts, i.e.,
+the remaining read pairs after all filtering
+processes.</td>
+</tr>
+<tr class="row-even"><td>410_IntraChromosomalReads</td>
+<td>Number of intra-chromosomal contacts</td>
+</tr>
+<tr class="row-odd"><td>412_IntraLongRangeReads</td>
+<td>Number of long-range contacts (genomic distance
+&gt;= 20Kb)</td>
+</tr>
+<tr class="row-even"><td>412_IntraShortRangeReads</td>
+<td>Number of short-range contacts (genomic distance
+&lt; 20Kb)</td>
+</tr>
+<tr class="row-odd"><td>420_InterChromosomalReads</td>
+<td>Number of inter-chromosomal contacts</td>
+</tr>
+<tr class="row-even"><td>500_IntraMitochondrial</td>
+<td>Number of intra-mitochondrial contacts</td>
+</tr>
+<tr class="row-odd"><td>600_InterNuclearMitochondrial</td>
+<td>Number of contacts between mitochondrial genome
+and the nuclear genome. This indicator has
+potential to assess the random ligation level of
+your library.</td>
+</tr>
+</tbody>
+</table>
 <p>Note that we try to organize these statistics hierarchically using indentation,
-so “010_UniqueMappedReads” and “020_LigationCounts” are parts of “000_SequencedReads”,
-similarly, “122_SelfLigationReads”, “124_DanglingReads” and “126_UnknownMechanism”
-constitute “120_SameFragmentReads”.</p>
+so &#8220;010_UniqueMappedReads&#8221; and &#8220;020_LigationCounts&#8221; are parts of &#8220;000_SequencedReads&#8221;,
+similarly, &#8220;122_SelfLigationReads&#8221;, &#8220;124_DanglingReads&#8221; and &#8220;126_UnknownMechanism&#8221;
+constitute &#8220;120_SameFragmentReads&#8221;.</p>
 <p>At the bottom of the statistic table, we include some important quality indicators:</p>
 <ol class="arabic simple">
 <li>Unique-Mapping Ratio. Low value of this metric indicates low sequencing quality,
@@ -137,9 +264,9 @@ sample contamination or incomplete genome assembly.</li>
 </div>
 <div class="section" id="library-size-estimation">
 <h2>Library-size Estimation<a class="headerlink" href="#library-size-estimation" title="Permalink to this headline">¶</a></h2>
-<p>Dangling reads can be applied to estimate your library size in nature. Here’s an example
+<p>Dangling reads can be applied to estimate your library size in nature. Here&#8217;s an example
 of size distribution of dangling read molecules for typical 300~500bp library:</p>
-<img alt="./_static/GM06990-HindIII-allReps-librarySize.png" class="align-center" src="./_static/GM06990-HindIII-allReps-librarySize.png" />
+<img alt="_images/GM06990-HindIII-allReps-librarySize.png" class="align-center" src="_images/GM06990-HindIII-allReps-librarySize.png" />
 <p>The inconsistency between this distribution and the experimental library size suggests
 a failure in DNA size selection.</p>
 </div>
@@ -150,7 +277,7 @@ specificity. Can we further discriminate these two mechanisms? Intuitively, if o
 reads of most read pairs locate near a restriction site, the former (low ligation efficiency)
 is more likely to be the cause, so we also plot the distribution of the relative start
 sites for dangling reads:</p>
-<img alt="./_static/GM06990-HindIII-allReps-danglingStart.png" class="align-center" src="./_static/GM06990-HindIII-allReps-danglingStart.png" />
+<img alt="_images/GM06990-HindIII-allReps-danglingStart.png" class="align-center" src="_images/GM06990-HindIII-allReps-danglingStart.png" />
 <p>Here, the majority of these read pairs have one of their read starting near a restriction
 site, therefore, ligation efficiency could be a good explain.</p>
 </div>
@@ -158,29 +285,29 @@ site, therefore, ligation efficiency could be a good explain.</p>
 <h2>Read-pair Type Plotting<a class="headerlink" href="#read-pair-type-plotting" title="Permalink to this headline">¶</a></h2>
 <p>Read-pair type ratios will be reported in line-plot manner for each biological
 replicate (level 1) and cell type (level 2) under filtered-hg19 too. Intra-chromosomal
-contacts are broken down into four types: “left pair” (both reads map to the reverse
-strand), “right pair” (both reads map to the forward strand), “inner pair” (reads map
-to different strands and point towards each other) and “outer pair” (reads map to
+contacts are broken down into four types: &#8220;left pair&#8221; (both reads map to the reverse
+strand), &#8220;right pair&#8221; (both reads map to the forward strand), &#8220;inner pair&#8221; (reads map
+to different strands and point towards each other) and &#8220;outer pair&#8221; (reads map to
 different strands and point away from one another). If reads come from proximity
 ligation, each pair type should account for roughly 25% of contacts. Thus, distance
 at which the percentage of each type converges to 25% is a good indication of the minimum
-distance at which it is meaningful to examine Hi-C contact patterns. Here’s an example
+distance at which it is meaningful to examine Hi-C contact patterns. Here&#8217;s an example
 below:</p>
-<img alt="./_static/GM06990-HindIII-allReps-PairType.png" class="align-center" src="./_static/GM06990-HindIII-allReps-PairType.png" />
+<img alt="_images/GM06990-HindIII-allReps-PairType.png" class="align-center" src="_images/GM06990-HindIII-allReps-PairType.png" />
 <p>We can see a distinct turning point around 20Kb. While there may be several unknown mechanisms
 making biases below this point, we should only consider contacts whose genomic distances
 are greater than 20Kb in the following analysis.</p>
 </div>
-</div>
 <div class="section" id="reference">
-<h1>Reference<a class="headerlink" href="#reference" title="Permalink to this headline">¶</a></h1>
-<table class="docutils footnote" frame="void" id="id1" rules="none">
+<h2>Reference<a class="headerlink" href="#reference" title="Permalink to this headline">¶</a></h2>
+<table class="docutils footnote" frame="void" id="id2" rules="none">
 <colgroup><col class="label" /><col /></colgroup>
 <tbody valign="top">
-<tr><td class="label">[1]</td><td>Rao SS, Huntley MH, Durand NC et al. A 3D Map of the Human Genome at Kilobase Resolution
+<tr><td class="label"><a class="fn-backref" href="#id1">[1]</a></td><td>Rao SS, Huntley MH, Durand NC et al. A 3D Map of the Human Genome at Kilobase Resolution
 Reveals Principles of Chromatin Looping. Cell, 2014, 159(7):1665-80.</td></tr>
 </tbody>
 </table>
+</div>
 </div>
 
 
@@ -193,7 +320,7 @@ Reveals Principles of Chromatin Looping. Cell, 2014, 159(7):1665-80.</td></tr>
       &copy;2017, XiaoTao Wang.
       
       |
-      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.6.3</a>
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.5.1</a>
       &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.10</a>
       
       |

@@ -1,13 +1,16 @@
-
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
   "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
 
 <html xmlns="http://www.w3.org/1999/xhtml">
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
     <title>Install runHiC &#8212; runHiC 0.7.0 documentation</title>
+    
     <link rel="stylesheet" href="_static/alabaster.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    './',
@@ -23,6 +26,8 @@
     <script type="text/javascript" src="_static/doctools.js"></script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Quick Start" href="quickstart.html" />
+    <link rel="prev" title="runHiC" href="index.html" />
    
   <link rel="stylesheet" href="_static/custom.css" type="text/css" />
   
@@ -30,7 +35,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
 
   </head>
-  <body>
+  <body role="document">
   <div class="document">
     
       <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
@@ -54,6 +59,21 @@
 
 
 <h3>Navigation</h3>
+<ul class="current">
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Install runHiC</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#requirements">Requirements</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#install-conda">Install Conda</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#set-up-channels">Set up Channels</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#install-packages-through-conda">Install Packages through Conda</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#install-mirnylib-and-hiclib">Install mirnylib and hiclib</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#id1">Install runHiC</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="quickstart.html">Quick Start</a></li>
+<li class="toctree-l1"><a class="reference internal" href="parallel.html">Parallel Computation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="quality.html">Experiment Quality Assessment</a></li>
+<li class="toctree-l1"><a class="reference internal" href="changelog.html">Release Notes</a></li>
+</ul>
 
 
 <div id="searchbox" style="display: none" role="search">
@@ -145,7 +165,7 @@ $ conda config --add channels bioconda
 </div>
 <div class="section" id="install-packages-through-conda">
 <h2>Install Packages through Conda<a class="headerlink" href="#install-packages-through-conda" title="Permalink to this headline">¶</a></h2>
-<p>Then it’s straightforward to install all the required packages except for <em>mirnylib</em> and <em>hiclib</em>
+<p>Then it&#8217;s straightforward to install all the required packages except for <em>mirnylib</em> and <em>hiclib</em>
 through the following one-line command:</p>
 <div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">conda</span> <span class="n">install</span> <span class="n">numpy</span> <span class="n">numexpr</span> <span class="n">scipy</span> <span class="n">statsmodels</span> <span class="n">matplotlib</span> <span class="n">h5py</span> <span class="n">cython</span> <span class="n">biopython</span> <span class="n">bx</span><span class="o">-</span><span class="n">python</span> <span class="n">pysam</span> <span class="n">joblib</span> <span class="n">pp</span> <span class="n">sra</span><span class="o">-</span><span class="n">tools</span> <span class="n">bowtie2</span> <span class="n">samtools</span> <span class="n">pigz</span> <span class="n">gcc</span><span class="o">=</span><span class="mf">4.8</span><span class="o">.</span><span class="mi">5</span>
 </pre></div>
@@ -154,7 +174,7 @@ through the following one-line command:</p>
 <div class="section" id="install-mirnylib-and-hiclib">
 <h2>Install mirnylib and hiclib<a class="headerlink" href="#install-mirnylib-and-hiclib" title="Permalink to this headline">¶</a></h2>
 <p>To make it easy, I have included the <em>mirnylib</em> and <em>hiclib</em> source code in the <a class="reference external" href="https://pypi.python.org/pypi/runHiC">runHiC</a>
-distribution under the “mirnylab” sub-foler since version 0.7.0:</p>
+distribution under the &#8220;mirnylab&#8221; sub-foler since version 0.7.0:</p>
 <div class="highlight-default"><div class="highlight"><pre><span></span>$ cd mirnylab
 </pre></div>
 </div>
@@ -193,7 +213,7 @@ $ python setup.py install
       &copy;2017, XiaoTao Wang.
       
       |
-      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.6.3</a>
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.5.1</a>
       &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.10</a>
       
       |

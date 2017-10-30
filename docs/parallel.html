@@ -1,13 +1,16 @@
-
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
   "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
 
 <html xmlns="http://www.w3.org/1999/xhtml">
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-    <title>Introduction &#8212; runHiC 0.7.0 documentation</title>
+    
+    <title>Parallel Computation &#8212; runHiC 0.7.0 documentation</title>
+    
     <link rel="stylesheet" href="_static/alabaster.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    './',
@@ -23,6 +26,8 @@
     <script type="text/javascript" src="_static/doctools.js"></script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Experiment Quality Assessment" href="quality.html" />
+    <link rel="prev" title="Quick Start" href="quickstart.html" />
    
   <link rel="stylesheet" href="_static/custom.css" type="text/css" />
   
@@ -30,7 +35,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
 
   </head>
-  <body>
+  <body role="document">
   <div class="document">
     
       <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
@@ -54,6 +59,17 @@
 
 
 <h3>Navigation</h3>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="install.html">Install runHiC</a></li>
+<li class="toctree-l1"><a class="reference internal" href="quickstart.html">Quick Start</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Parallel Computation</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#example">Example</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#performance">Performance</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="quality.html">Experiment Quality Assessment</a></li>
+<li class="toctree-l1"><a class="reference internal" href="changelog.html">Release Notes</a></li>
+</ul>
 
 
 <div id="searchbox" style="display: none" role="search">
@@ -72,8 +88,8 @@
         <div class="bodywrapper">
           <div class="body" role="main">
             
-  <div class="section" id="introduction">
-<h1>Introduction<a class="headerlink" href="#introduction" title="Permalink to this headline">¶</a></h1>
+  <div class="section" id="parallel-computation">
+<h1>Parallel Computation<a class="headerlink" href="#parallel-computation" title="Permalink to this headline">¶</a></h1>
 <p>runHiC supports parallel processing of large Hi-C datasets on both SMP (systems
 with multiple processors or cores) and PBS-based clusters (computers connected
 via network).</p>
@@ -81,12 +97,12 @@ via network).</p>
 for basic usage):</p>
 <ul>
 <li><p class="first"><code class="docutils literal"><span class="pre">-r/--running-mode</span></code></p>
-<p>Running mode of the program. “local” (Run on a local computer) or “pbs” (Run on
+<p>Running mode of the program. &#8220;local&#8221; (Run on a local computer) or &#8220;pbs&#8221; (Run on
 a PBS-based cluster).</p>
 </li>
 <li><p class="first"><code class="docutils literal"><span class="pre">--nworker</span></code></p>
 <p>The maximum number of task processes to launch on a single machine (which means
-the local computer for “local” mode and a compute node for “pbs” mode).</p>
+the local computer for &#8220;local&#8221; mode and a compute node for &#8220;pbs&#8221; mode).</p>
 </li>
 <li><p class="first"><code class="docutils literal"><span class="pre">--chunkSize</span></code></p>
 <p>To make parallelized computation possible, our pipeline splits the original read file into
@@ -94,14 +110,13 @@ chunks and maps them to the reference genome separately. This parameter specifie
 of each chunk. By default, no split is performed.</p>
 </li>
 </ul>
-</div>
 <div class="section" id="example">
-<h1>Example<a class="headerlink" href="#example" title="Permalink to this headline">¶</a></h1>
+<h2>Example<a class="headerlink" href="#example" title="Permalink to this headline">¶</a></h2>
 <p>To show how to launch runHiC on our example data (see <cite>Data Preparation</cite>) across
-multiple nodes of a cluster, let’s create a sub-folder and copy the meta data file
+multiple nodes of a cluster, let&#8217;s create a sub-folder and copy the meta data file
 into it:</p>
 <div class="highlight-default"><div class="highlight"><pre><span></span>$ mkdir run-on-cluster
-    $ cp datasets.tsv ./run-on-cluster
+$ cp datasets.tsv ./run-on-cluster
 </pre></div>
 </div>
 <p>Then change to the sub-folder and write (vi) a simple PBS script. My job script is
@@ -122,10 +137,10 @@ runHiC pileup -r pbs --nworker 2 -p ../../data -g hg19 -f HiC-gzip -F FASTQ -b ~
 <div class="highlight-default"><div class="highlight"><pre><span></span>$ qsub pileup.pbs
 </pre></div>
 </div>
-<p>That’s it! Just a single-line command and no tedious setup required.</p>
+<p>That&#8217;s it! Just a single-line command and no tedious setup required.</p>
 </div>
 <div class="section" id="performance">
-<h1>Performance<a class="headerlink" href="#performance" title="Permalink to this headline">¶</a></h1>
+<h2>Performance<a class="headerlink" href="#performance" title="Permalink to this headline">¶</a></h2>
 <p>The table below shows the performance test of runHiC with low-depth and high-depth sequencing
 data. (Running time means the wall time runHiC took from raw read files to corrected sparse
 contact matrices)</p>
@@ -162,6 +177,7 @@ contact matrices)</p>
 </tbody>
 </table>
 </div>
+</div>
 
 
           </div>
@@ -173,7 +189,7 @@ contact matrices)</p>
       &copy;2017, XiaoTao Wang.
       
       |
-      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.6.3</a>
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.5.1</a>
       &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.10</a>
       
       |

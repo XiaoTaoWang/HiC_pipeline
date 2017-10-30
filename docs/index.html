@@ -1,13 +1,16 @@
-
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
   "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
 
 <html xmlns="http://www.w3.org/1999/xhtml">
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-    <title>Welcome to runHiC’s documentation! &#8212; runHiC 0.7.0 documentation</title>
+    
+    <title>runHiC &#8212; runHiC 0.7.0 documentation</title>
+    
     <link rel="stylesheet" href="_static/alabaster.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    './',
@@ -23,6 +26,7 @@
     <script type="text/javascript" src="_static/doctools.js"></script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Install runHiC" href="install.html" />
    
   <link rel="stylesheet" href="_static/custom.css" type="text/css" />
   
@@ -30,7 +34,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
 
   </head>
-  <body>
+  <body role="document">
   <div class="document">
     
       <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
@@ -54,6 +58,13 @@
 
 
 <h3>Navigation</h3>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="install.html">Install runHiC</a></li>
+<li class="toctree-l1"><a class="reference internal" href="quickstart.html">Quick Start</a></li>
+<li class="toctree-l1"><a class="reference internal" href="parallel.html">Parallel Computation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="quality.html">Experiment Quality Assessment</a></li>
+<li class="toctree-l1"><a class="reference internal" href="changelog.html">Release Notes</a></li>
+</ul>
 
 
 <div id="searchbox" style="display: none" role="search">
@@ -72,18 +83,113 @@
         <div class="bodywrapper">
           <div class="body" role="main">
             
-  <div class="section" id="welcome-to-runhic-s-documentation">
-<h1>Welcome to runHiC’s documentation!<a class="headerlink" href="#welcome-to-runhic-s-documentation" title="Permalink to this headline">¶</a></h1>
+  <div class="section" id="runhic">
+<h1>runHiC<a class="headerlink" href="#runhic" title="Permalink to this headline">¶</a></h1>
+<p>runHiC is a easy-to-use Hi-C processing software based on hiclib (<a class="reference external" href="https://bitbucket.org/mirnylab/hiclib">https://bitbucket.org/mirnylab/hiclib</a>)
+Different from hiclib, which was born for flexibility, runHiC is a customized pipeline, and can be
+run from command line directly.</p>
+<p>Since version 0.7.0, runHiC has been able to execute concurrently either on a single laptop with multiple
+processors or on a PBS-based clusters.</p>
+<div class="section" id="design-concepts">
+<h2>Design Concepts<a class="headerlink" href="#design-concepts" title="Permalink to this headline">¶</a></h2>
+<p>runHiC is designed to process Hi-C data from raw sequencing reads(.sra, .fastq, .fastq.gz) to the corrected
+contact matrices. It separates the whole procedure into 4 stages(<em>mapping</em>, <em>filtering</em>, <em>binning</em>,
+<em>correcting</em>) and contains 7 subcommands:</p>
+<table border="1" class="docutils">
+<colgroup>
+<col width="13%" />
+<col width="87%" />
+</colgroup>
+<tbody valign="top">
+<tr class="row-odd"><td>mapping</td>
+<td>Iteratively map pair-end sequencing reads to a supplied genome</td>
+</tr>
+<tr class="row-even"><td>filtering</td>
+<td>Perform read-level and fragment-level noise removing</td>
+</tr>
+<tr class="row-odd"><td>binning</td>
+<td>Generate the original contact matrices</td>
+</tr>
+<tr class="row-even"><td>correcting</td>
+<td>Perform iterative corrections on original contact matrices</td>
+</tr>
+<tr class="row-odd"><td>tosparse</td>
+<td>Convert the dense intra-chromosomal contact matrices to sparse ones</td>
+</tr>
+<tr class="row-even"><td>pileup</td>
+<td>Streamline all stages from <em>mapping</em> to <em>correcting</em></td>
+</tr>
+<tr class="row-odd"><td>quality</td>
+<td>Assess the quality of your Hi-C data</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section" id="user-guide">
+<h2>User Guide<a class="headerlink" href="#user-guide" title="Permalink to this headline">¶</a></h2>
 <div class="toctree-wrapper compound">
-</div>
-</div>
-<div class="section" id="indices-and-tables">
-<h1>Indices and tables<a class="headerlink" href="#indices-and-tables" title="Permalink to this headline">¶</a></h1>
-<ul class="simple">
-<li><a class="reference internal" href="genindex.html"><span class="std std-ref">Index</span></a></li>
-<li><a class="reference internal" href="py-modindex.html"><span class="std std-ref">Module Index</span></a></li>
-<li><a class="reference internal" href="search.html"><span class="std std-ref">Search Page</span></a></li>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="install.html">Install runHiC</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="install.html#requirements">Requirements</a></li>
+<li class="toctree-l2"><a class="reference internal" href="install.html#install-conda">Install Conda</a></li>
+<li class="toctree-l2"><a class="reference internal" href="install.html#set-up-channels">Set up Channels</a></li>
+<li class="toctree-l2"><a class="reference internal" href="install.html#install-packages-through-conda">Install Packages through Conda</a></li>
+<li class="toctree-l2"><a class="reference internal" href="install.html#install-mirnylib-and-hiclib">Install mirnylib and hiclib</a></li>
+<li class="toctree-l2"><a class="reference internal" href="install.html#id1">Install runHiC</a></li>
 </ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="quickstart.html">Quick Start</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="quickstart.html#data-preparation">Data Preparation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="quickstart.html#mapping">Mapping</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="quickstart.html#usage">Usage</a></li>
+<li class="toctree-l3"><a class="reference internal" href="quickstart.html#bowtie2-path">Bowtie2 Path</a></li>
+<li class="toctree-l3"><a class="reference internal" href="quickstart.html#write-the-meta-data-file">Write the Meta Data File</a></li>
+<li class="toctree-l3"><a class="reference internal" href="quickstart.html#runhic-command">runHiC Command</a></li>
+<li class="toctree-l3"><a class="reference internal" href="quickstart.html#access-data-from-hdf5">Access Data from HDF5</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="quickstart.html#filtering">Filtering</a></li>
+<li class="toctree-l2"><a class="reference internal" href="quickstart.html#binning">Binning</a></li>
+<li class="toctree-l2"><a class="reference internal" href="quickstart.html#correcting">Correcting</a></li>
+<li class="toctree-l2"><a class="reference internal" href="quickstart.html#tosparse">tosparse</a></li>
+<li class="toctree-l2"><a class="reference internal" href="quickstart.html#pileup">Pileup</a></li>
+<li class="toctree-l2"><a class="reference internal" href="quickstart.html#reference">Reference</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="parallel.html">Parallel Computation</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="parallel.html#example">Example</a></li>
+<li class="toctree-l2"><a class="reference internal" href="parallel.html#performance">Performance</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="quality.html">Experiment Quality Assessment</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="quality.html#statistic-table">Statistic Table</a></li>
+<li class="toctree-l2"><a class="reference internal" href="quality.html#library-size-estimation">Library-size Estimation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="quality.html#ligation-efficiency">Ligation Efficiency</a></li>
+<li class="toctree-l2"><a class="reference internal" href="quality.html#read-pair-type-plotting">Read-pair Type Plotting</a></li>
+<li class="toctree-l2"><a class="reference internal" href="quality.html#reference">Reference</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="changelog.html">Release Notes</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="changelog.html#version-0-7-0-2017-10-29">Version 0.7.0 (2017-10-29)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="changelog.html#version-0-6-6-r2-2016-5-4">Version 0.6.6-r2 (2016-5-4)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="changelog.html#version-0-6-6-r1-2015-11-10">Version 0.6.6-r1 (2015-11-10)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="changelog.html#version-0-6-6-2015-11-6">Version 0.6.6 (2015-11-6)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="changelog.html#version-0-6-5-2015-9-29">Version 0.6.5 (2015-9-29)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="changelog.html#version-0-6-4-2015-9-21">Version 0.6.4 (2015-9-21)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="changelog.html#version-0-6-3-2015-9-16">Version 0.6.3 (2015-9-16)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="changelog.html#version-0-6-2-2015-8-21">Version 0.6.2 (2015-8-21)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="changelog.html#version-0-6-1-2015-7-21">Version 0.6.1 (2015-7-21)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="changelog.html#version-0-6-0-2015-6-16">Version 0.6.0 (2015-6-16)</a></li>
+</ul>
+</li>
+</ul>
+</div>
+</div>
+<div class="section" id="citation">
+<h2>Citation<a class="headerlink" href="#citation" title="Permalink to this headline">¶</a></h2>
+<p>Xiaotao Wang. (2016). runHiC: A user-friendly Hi-C data processing software based on hiclib. Zenodo.
+<a class="reference external" href="http://dx.doi.org/10.5281/zenodo.55324">10.5281/zenodo.55324</a></p>
+</div>
 </div>
 
 
@@ -96,7 +202,7 @@
       &copy;2017, XiaoTao Wang.
       
       |
-      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.6.3</a>
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.5.1</a>
       &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.10</a>
       
       |

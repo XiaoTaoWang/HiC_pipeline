@@ -1,5 +1,5 @@
-Introduction
-============
+Parallel Computation
+*********************
 runHiC supports parallel processing of large Hi-C datasets on both SMP (systems
 with multiple processors or cores) and PBS-based clusters (computers connected
 via network).
@@ -32,7 +32,7 @@ multiple nodes of a cluster, let's create a sub-folder and copy the meta data fi
 into it::
 
     $ mkdir run-on-cluster
-	$ cp datasets.tsv ./run-on-cluster
+    $ cp datasets.tsv ./run-on-cluster
 
 Then change to the sub-folder and write (vi) a simple PBS script. My job script is
 shown below::

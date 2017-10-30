@@ -1,5 +1,5 @@
 Experiment Quality Assessment
-=============================
+*****************************
 In this tutorial, I will show you how runHiC can be used in data quality assessment.
 
 All you need to type in is a sinlge line command after *runHiC filtering* or *runHiC pileup*
@@ -196,6 +196,6 @@ are greater than 20Kb in the following analysis.
 
 
 Reference
-=========
+---------
 .. [1] Rao SS, Huntley MH, Durand NC et al. A 3D Map of the Human Genome at Kilobase Resolution
        Reveals Principles of Chromatin Looping. Cell, 2014, 159(7):1665-80.

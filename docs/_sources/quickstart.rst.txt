@@ -1,5 +1,5 @@
-Introduction
-============
+Quick Start
+***********
 This tutorial covers the basic use of 6 subcommands (*mapping*, *filtering*,
 *binning*, *correcting*, *tosparse*, and *pileup*) provided by runHiC. We
 will first download an example Hi-C data set and corresponding reference
@@ -14,8 +14,8 @@ Suppose you are still in the *runHiC* distribution root folder, change your
 current working directory to the sub-folder *demo*::
 
     $ cd demo
-	$ mkdir data
-	$ ls -lh
+    $ mkdir data
+    $ ls -lh
 
     total 16K
     drwxr-x--- 2 xtwang CPeng 4.0K Oct 29 10:03 data
@@ -29,12 +29,12 @@ Download the example Hi-C data set from a human cell line GM06990::
 
     $ cd data
     $ mkdir HiC-SRA
-	$ cd HiC-SRA
-	$ wget ftp://ftp-trace.ncbi.nlm.nih.gov/sra/sra-instant/reads/ByExp/sra/SRX/SRX011/SRX011608/SRR027956/SRR027956.sra -O SRR027956.sra
-	$ wget ftp://ftp-trace.ncbi.nlm.nih.gov/sra/sra-instant/reads/ByExp/sra/SRX/SRX011/SRX011610/SRR027958/SRR027958.sra -O SRR027958.sra
-	$ ls -lh
+    $ cd HiC-SRA
+    $ wget ftp://ftp-trace.ncbi.nlm.nih.gov/sra/sra-instant/reads/ByExp/sra/SRX/SRX011/SRX011608/SRR027956/SRR027956.sra -O SRR027956.sra
+    $ wget ftp://ftp-trace.ncbi.nlm.nih.gov/sra/sra-instant/reads/ByExp/sra/SRX/SRX011/SRX011610/SRR027958/SRR027958.sra -O SRR027958.sra
+    $ ls -lh
 
-	total 1.4G
+    total 1.4G
     -rw-r----- 1 xtwang CPeng 623M Oct 29 10:07 SRR027956.sra
     -rw-r----- 1 xtwang CPeng 783M Oct 29 10:10 SRR027958.sra
 
@@ -44,24 +44,24 @@ respectively.
 To demonstrate all read formats supported by *runHiC*, let's first dump reads
 with *fastq-dump* and then compress the FASTQ files with gzip::
 
-	$ for i in ./*.sra; do fastq-dump --split-3 $i; done
-	$ for i in ./*.fastq; do gzip -c $i > `basename $i`.gz; done
+    $ for i in ./*.sra; do fastq-dump --split-3 $i; done
+    $ for i in ./*.fastq; do gzip -c $i > `basename $i`.gz; done
 
 *runHiC* currently supports 3 sequencing read format: FASTQ, compressed FASTQ with gzip,
 and SRA(Sequence Read Archive)::
 
     $ cd ..
-	$ mkdir HiC-FASTQ
-	$ mkdir HiC-gzip
-	$ mv ./HiC-SRA/*.fastq ./HiC-FASTQ
-	$ mv ./HiC-SRA/*.gz ./HiC-gzip
+    $ mkdir HiC-FASTQ
+    $ mkdir HiC-gzip
+    $ mv ./HiC-SRA/*.fastq ./HiC-FASTQ
+    $ mv ./HiC-SRA/*.gz ./HiC-gzip
 	
 Download the reference genome (hg19) data from UCSC::
 
     $ mkdir hg19
-	$ cd hg19
+    $ cd hg19
     $ wget ftp://hgdownload.cse.ucsc.edu/goldenPath/hg19/chromosomes/*
-	$ wget ftp://hgdownload.cse.ucsc.edu/goldenPath/hg19/database/gap.txt.gz
+    $ wget ftp://hgdownload.cse.ucsc.edu/goldenPath/hg19/database/gap.txt.gz
 
 Above commands can be modified to download the data for any other genomes
 available in UCSC by replacing "hg19" with the desired reference genome
@@ -80,8 +80,8 @@ a python interpreter and follow the commands below:
 
 Finally, uncompress the .gz files to finish this section::
 
-	$ gunzip *.gz
-	$ cd ../..
+    $ gunzip *.gz
+    $ cd ../..
 	
 Mapping
 =======
@@ -95,8 +95,6 @@ assessment of your Hi-C data. (See `quality <http://xiaotaowang.github.io/HiC_pi
 Usage
 -----
 ``runHiC mapping [options]``
-
-.. _locate-the-bowtie2
 
 Bowtie2 Path
 ------------
@@ -113,7 +111,7 @@ Another thing you need to do is to prepare a meta data file describing your Hi-C
 data under the *workspace* sub-folder::
 
     $ cd workspace
-	$ cat datasets.tsv
+    $ cat datasets.tsv
 	
 The meta data file should contain 4 columns: prefix of the SRA file name (in the
 case of the FASTQ read format, it should be the leading part of the file name
@@ -163,7 +161,7 @@ and reset "-F" argument correspondingly::
 
 - ``-b/--bowtiePath``
 
-  Path to the bowtie2 executable, see :ref:`locate-the-bowtie2`.
+  Path to the bowtie2 executable, see `Bowtie2 Path <http://xiaotaowang.github.io/HiC_pipeline/quickstart.html#bowtie2-path>`_.
 
 - ``-t/--threads``
 
@@ -189,9 +187,6 @@ runHiC uses a rotating file for logging. According to our settings, when the siz
 time, a new file "runHiC.log" is silently opened for output. In a word, the system saves
 old log files by appending the extensions ".1", ".2" etc., and the current log is always
 written to "runHiC.log".
-
-
-.. _access-HDF5
 
 Access Data from HDF5
 ---------------------
@@ -242,8 +237,7 @@ Here's the command you should type in the terminal::
   all replicates of the same cell line.
 
 That will create a new sub-folder named *filtered-hg19* in which the filtered data
-(stored in the HDF5 format, suffixed with .hdf5) reside. (See :ref:`access-HDF5` for
-data extraction)
+(stored in the HDF5 format, suffixed with .hdf5) reside. (See `Access Data from HDF5 <http://xiaotaowang.github.io/HiC_pipeline/quickstart.html#access-data-from-hdf5>`_)
 
 Binning
 =======
@@ -276,7 +270,7 @@ Type in the command below to carry on our analyzing on the example data::
 
 After this command, a new sub-folder named *Raw-hg19* will be created under current
 working directory. The original contact matrices are also stored in hdf5 files suffixed
-with ".hm". (See :ref:`access-HDF5` for data extraction)
+with ".hm". (See `Access Data from HDF5 <http://xiaotaowang.github.io/HiC_pipeline/quickstart.html#access-data-from-hdf5>`_)
 
 Correcting
 ==========
@@ -340,5 +334,5 @@ Reference
 
 .. [2] Yaffe E, Tanay A. Probabilistic modeling of Hi-C contact maps eliminates
        systematic biases to characterize global chromosomal architecture. Nat Genet,
-	   2011, 43(11): 1059-65.
+       2011, 43(11): 1059-65.
 

@@ -1,5 +1,5 @@
-Introduction
-============
+Quick Start
+***********
 This tutorial covers the basic use of 6 subcommands (*mapping*, *filtering*,
 *binning*, *correcting*, *tosparse*, and *pileup*) provided by runHiC. We
 will first download an example Hi-C data set and corresponding reference
@@ -96,8 +96,6 @@ Usage
 -----
 ``runHiC mapping [options]``
 
-.. _locate-the-bowtie2
-
 Bowtie2 Path
 ------------
 *runHiC* calls the *bowtie2* read alignment software during the *mapping* stage,
@@ -163,7 +161,7 @@ and reset "-F" argument correspondingly::
 
 - ``-b/--bowtiePath``
 
-  Path to the bowtie2 executable, see :ref:`locate-the-bowtie2`.
+  Path to the bowtie2 executable, see `Bowtie2 Path <http://xiaotaowang.github.io/HiC_pipeline/quickstart.html#bowtie2-path>`_.
 
 - ``-t/--threads``
 
@@ -189,9 +187,6 @@ runHiC uses a rotating file for logging. According to our settings, when the siz
 time, a new file "runHiC.log" is silently opened for output. In a word, the system saves
 old log files by appending the extensions ".1", ".2" etc., and the current log is always
 written to "runHiC.log".
-
-
-.. _access-HDF5
 
 Access Data from HDF5
 ---------------------
@@ -242,8 +237,7 @@ Here's the command you should type in the terminal::
   all replicates of the same cell line.
 
 That will create a new sub-folder named *filtered-hg19* in which the filtered data
-(stored in the HDF5 format, suffixed with .hdf5) reside. (See :ref:`access-HDF5` for
-data extraction)
+(stored in the HDF5 format, suffixed with .hdf5) reside. (See `Access Data from HDF5 <http://xiaotaowang.github.io/HiC_pipeline/quickstart.html#access-data-from-hdf5>`_)
 
 Binning
 =======
@@ -276,7 +270,7 @@ Type in the command below to carry on our analyzing on the example data::
 
 After this command, a new sub-folder named *Raw-hg19* will be created under current
 working directory. The original contact matrices are also stored in hdf5 files suffixed
-with ".hm". (See :ref:`access-HDF5` for data extraction)
+with ".hm". (See `Access Data from HDF5 <http://xiaotaowang.github.io/HiC_pipeline/quickstart.html#access-data-from-hdf5>`_)
 
 Correcting
 ==========
