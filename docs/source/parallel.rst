@@ -32,7 +32,7 @@ multiple nodes of a cluster, let's create a sub-folder and copy the meta data fi
 into it::
 
     $ mkdir run-on-cluster
-	$ cp datasets.tsv ./run-on-cluster
+    $ cp datasets.tsv ./run-on-cluster
 
 Then change to the sub-folder and write (vi) a simple PBS script. My job script is
 shown below::
