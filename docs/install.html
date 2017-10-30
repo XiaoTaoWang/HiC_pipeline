@@ -1,0 +1,212 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>Install runHiC &#8212; runHiC 0.7.0 documentation</title>
+    <link rel="stylesheet" href="_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    './',
+        VERSION:     '0.7.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head>
+  <body>
+  <div class="document">
+    
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="index.html">runHiC</a></h1>
+
+
+
+<p class="blurb">A user-friendly Hi-C data processing software based on hiclib </p>
+
+
+
+
+<p>
+<iframe src="https://ghbtns.com/github-btn.html?user=XiaoTaoWang&repo=HiC_pipeline&type=star&count=true&size=large&v=2"
+  allowtransparency="true" frameborder="0" scrolling="0" width="200px" height="35px"></iframe>
+</p>
+
+
+
+
+
+<h3>Navigation</h3>
+
+
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="install-runhic">
+<h1>Install runHiC<a class="headerlink" href="#install-runhic" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="requirements">
+<h2>Requirements<a class="headerlink" href="#requirements" title="Permalink to this headline">¶</a></h2>
+<p>runHiC is developed and tested on UNIX-like operating system, and following packages
+or softwares are required:</p>
+<p>Python requirements:</p>
+<ul class="simple">
+<li>Python (2.7, not compatible with 3.x for now)</li>
+<li>numpy</li>
+<li>numexpr</li>
+<li>scipy</li>
+<li>statsmodels</li>
+<li>matplotlib</li>
+<li>h5py</li>
+<li>cython</li>
+<li>biopython</li>
+<li>bx-python</li>
+<li>pysam</li>
+<li>joblib</li>
+<li>pp</li>
+<li>mirnylib</li>
+<li>hiclib</li>
+</ul>
+<p>Other requirements:</p>
+<ul class="simple">
+<li>gcc (&gt;= 4.8.5)</li>
+<li>sra-tools</li>
+<li>bowtie2</li>
+<li>samtools</li>
+</ul>
+<p>Optional:</p>
+<ul class="simple">
+<li>pigz</li>
+</ul>
+</div>
+<div class="section" id="install-conda">
+<h2>Install Conda<a class="headerlink" href="#install-conda" title="Permalink to this headline">¶</a></h2>
+<p>All above requirements except for mirnylib and hiclib can be installed through the
+conda package manager.</p>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">If you have the Anaconda Distribution installed, you already have it, feel free to jump to
+the <a class="reference internal" href="#set-up-channels">Set up Channels</a> section.</p>
+</div>
+<p>Download the latest <a class="reference external" href="https://conda.io/miniconda.html">Linux Miniconda installer for Python 2.7</a>,
+then in your terminal window type the following and follow the prompts on the installer screens:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span>$ bash Miniconda2-latest-Linux-x86_64.sh
+</pre></div>
+</div>
+<p>After that, update the environment variables to finish the Conda installation:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span>$ source ~/.bashrc
+</pre></div>
+</div>
+</div>
+<div class="section" id="set-up-channels">
+<h2>Set up Channels<a class="headerlink" href="#set-up-channels" title="Permalink to this headline">¶</a></h2>
+<p>Conda allows separation of packages into separate repositories, or channels. The main <em>defaults</em>
+channel has a large amount of common packages including <em>numpy</em>, <em>numexpr</em>, <em>scipy</em>, <em>statsmodels</em>,
+<em>matplotlib</em>, <em>h5py</em>, <em>cython</em> and <em>biopython</em> listed above. <em>bx-python</em>, <em>pysam</em>, <em>joblib</em>, <em>pp</em>,
+<em>sra-tools</em>, <em>bowtie2</em> and <em>samtools</em> are not available in the <em>defaults</em> channel but included in
+the <em>bioconda</em> channel, and to make them accessible, you will need to add the <em>bioconda</em> channel
+as well as the other channels bioconda depends on (note that the order is important to guarantee
+the correct priority):</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span>$ conda config --add channels conda-forge
+$ conda config --add channels defaults
+$ conda config --add channels r
+$ conda config --add channels bioconda
+</pre></div>
+</div>
+</div>
+<div class="section" id="install-packages-through-conda">
+<h2>Install Packages through Conda<a class="headerlink" href="#install-packages-through-conda" title="Permalink to this headline">¶</a></h2>
+<p>Then it’s straightforward to install all the required packages except for <em>mirnylib</em> and <em>hiclib</em>
+through the following one-line command:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">conda</span> <span class="n">install</span> <span class="n">numpy</span> <span class="n">numexpr</span> <span class="n">scipy</span> <span class="n">statsmodels</span> <span class="n">matplotlib</span> <span class="n">h5py</span> <span class="n">cython</span> <span class="n">biopython</span> <span class="n">bx</span><span class="o">-</span><span class="n">python</span> <span class="n">pysam</span> <span class="n">joblib</span> <span class="n">pp</span> <span class="n">sra</span><span class="o">-</span><span class="n">tools</span> <span class="n">bowtie2</span> <span class="n">samtools</span> <span class="n">pigz</span> <span class="n">gcc</span><span class="o">=</span><span class="mf">4.8</span><span class="o">.</span><span class="mi">5</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="install-mirnylib-and-hiclib">
+<h2>Install mirnylib and hiclib<a class="headerlink" href="#install-mirnylib-and-hiclib" title="Permalink to this headline">¶</a></h2>
+<p>To make it easy, I have included the <em>mirnylib</em> and <em>hiclib</em> source code in the <a class="reference external" href="https://pypi.python.org/pypi/runHiC">runHiC</a>
+distribution under the “mirnylab” sub-foler since version 0.7.0:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span>$ cd mirnylab
+</pre></div>
+</div>
+<p>To install <em>mirnylib</em>:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span>$ unzip mirnylib.zip
+$ cd mirnylib
+$ python setup.py install
+</pre></div>
+</div>
+<p>To install <em>hiclib</em>:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span>$ unzip hiclib.zip
+$ cd hiclib
+$ python setup.py install
+</pre></div>
+</div>
+</div>
+<div class="section" id="id1">
+<h2>Install runHiC<a class="headerlink" href="#id1" title="Permalink to this headline">¶</a></h2>
+<p>Now just run the setup.py script under the distribution root folder to finish the installation.
+Suppose you are still in the extracted hiclib folder:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span>$ cd ../..
+$ python setup.py install
+</pre></div>
+</div>
+<p>runHiC has been installed successfully if no exception occurs in the above processes.</p>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+    <div class="clearer"></div>
+  </div>
+    <div class="footer">
+      &copy;2017, XiaoTao Wang.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.6.3</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.10</a>
+      
+      |
+      <a href="_sources/install.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+    <a href="https://github.com/XiaoTaoWang/HiC_pipeline" class="github">
+        <img style="position: absolute; top: 0; right: 0; border: 0;" src="https://s3.amazonaws.com/github/ribbons/forkme_right_darkblue_121621.png" alt="Fork me on GitHub"  class="github"/>
+    </a>
+    
+
+    
+  </body>
+</html>
