@@ -27,6 +27,7 @@ Python requirements:
 Other requirements:
 
 - gcc (>= 4.8.5)
+- bzip2
 - sra-tools
 - bowtie2
 - samtools
@@ -62,9 +63,9 @@ the *bioconda* channel, and to make them accessible, you will need to add the *b
 as well as the other channels bioconda depends on (note that the order is important to guarantee
 the correct priority)::
 
-    $ conda config --add channels conda-forge
     $ conda config --add channels defaults
     $ conda config --add channels r
+	$ conda config --add channels conda-forge
     $ conda config --add channels bioconda
 
 Install Packages through Conda
@@ -72,7 +73,7 @@ Install Packages through Conda
 Then it's straightforward to install all the required packages except for *mirnylib* and *hiclib*
 through the following one-line command::
 
-    conda install numpy numexpr scipy statsmodels matplotlib h5py cython biopython bx-python pysam joblib pp sra-tools bowtie2 samtools pigz gcc=4.8.5
+    conda install numpy numexpr scipy statsmodels matplotlib h5py cython biopython bx-python pysam joblib pp bzip2 sra-tools bowtie2 samtools pigz gcc=4.8.5
 
 Install mirnylib and hiclib
 ---------------------------
