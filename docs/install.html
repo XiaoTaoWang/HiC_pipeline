@@ -119,6 +119,7 @@ or softwares are required:</p>
 <p>Other requirements:</p>
 <ul class="simple">
 <li>gcc (&gt;= 4.8.5)</li>
+<li>bzip2</li>
 <li>sra-tools</li>
 <li>bowtie2</li>
 <li>samtools</li>
@@ -156,9 +157,9 @@ channel has a large amount of common packages including <em>numpy</em>, <em>nume
 the <em>bioconda</em> channel, and to make them accessible, you will need to add the <em>bioconda</em> channel
 as well as the other channels bioconda depends on (note that the order is important to guarantee
 the correct priority):</p>
-<div class="highlight-default"><div class="highlight"><pre><span></span>$ conda config --add channels conda-forge
-$ conda config --add channels defaults
+<div class="highlight-default"><div class="highlight"><pre><span></span>$ conda config --add channels defaults
 $ conda config --add channels r
+$ conda config --add channels conda-forge
 $ conda config --add channels bioconda
 </pre></div>
 </div>
@@ -167,7 +168,7 @@ $ conda config --add channels bioconda
 <h2>Install Packages through Conda<a class="headerlink" href="#install-packages-through-conda" title="Permalink to this headline">¶</a></h2>
 <p>Then it&#8217;s straightforward to install all the required packages except for <em>mirnylib</em> and <em>hiclib</em>
 through the following one-line command:</p>
-<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">conda</span> <span class="n">install</span> <span class="n">numpy</span> <span class="n">numexpr</span> <span class="n">scipy</span> <span class="n">statsmodels</span> <span class="n">matplotlib</span> <span class="n">h5py</span> <span class="n">cython</span> <span class="n">biopython</span> <span class="n">bx</span><span class="o">-</span><span class="n">python</span> <span class="n">pysam</span> <span class="n">joblib</span> <span class="n">pp</span> <span class="n">sra</span><span class="o">-</span><span class="n">tools</span> <span class="n">bowtie2</span> <span class="n">samtools</span> <span class="n">pigz</span> <span class="n">gcc</span><span class="o">=</span><span class="mf">4.8</span><span class="o">.</span><span class="mi">5</span>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">conda</span> <span class="n">install</span> <span class="n">numpy</span> <span class="n">numexpr</span> <span class="n">scipy</span> <span class="n">statsmodels</span> <span class="n">matplotlib</span> <span class="n">h5py</span> <span class="n">cython</span> <span class="n">biopython</span> <span class="n">bx</span><span class="o">-</span><span class="n">python</span> <span class="n">pysam</span> <span class="n">joblib</span> <span class="n">pp</span> <span class="n">bzip2</span> <span class="n">sra</span><span class="o">-</span><span class="n">tools</span> <span class="n">bowtie2</span> <span class="n">samtools</span> <span class="n">pigz</span> <span class="n">gcc</span><span class="o">=</span><span class="mf">4.8</span><span class="o">.</span><span class="mi">5</span>
 </pre></div>
 </div>
 </div>
