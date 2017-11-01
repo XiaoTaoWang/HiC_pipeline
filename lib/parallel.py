@@ -41,10 +41,29 @@ class ppServer(pp.Server):
         self.maximum_worker = maximum_worker
         timeout = self._walltime_to_seconds()
         self._get_nodes()
+        local_worker = self._local_node()
         servers = self._collect_servers(port)
         self.launch_server(port, timeout)
         pp.Server.__init__(self, ppservers=servers, socket_timeout=timeout,
-                           ncpus=0) # do not use local computer
+                           ncpus=local_worker) # do not use local computer
+    
+    def _cal_worker(self, ncpus):
+        
+        n_worker = ncpus // self.per_worker
+        if not n_worker:
+            n_worker = 1
+        n_worker = min(n_worker, self.maximum_worker)
+        
+        return n_worker
+    
+    def _local_node(self):
+        
+        local = os.environ["HOSTNAME"]
+        local_ncpus = self.nodes[local]
+        self.nodes.pop(local)
+        n_worker = self._cal_worker(local_ncpus)
+        
+        return n_worker
         
     def _get_nodes(self):
         pbs_nodefile = os.environ["PBS_NODEFILE"]
@@ -65,10 +84,7 @@ class ppServer(pp.Server):
         self.n_worker = 0
         for node in self.nodes:
             ncpus = self.nodes[node]
-            n_worker = ncpus // self.per_worker
-            if not n_worker:
-                n_worker = 1
-            n_worker = min(n_worker, self.maximum_worker)
+            n_worker = self._cal_worker(ncpus)
             self.n_worker += n_worker
             command = template.format(node, port, n_worker, 3600, timeout)
             subprocess.call(command, shell=True)
