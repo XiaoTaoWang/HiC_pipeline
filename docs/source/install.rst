@@ -63,9 +63,9 @@ the *bioconda* channel, and to make them accessible, you will need to add the *b
 as well as the other channels bioconda depends on (note that the order is important to guarantee
 the correct priority)::
 
+    $ conda config --add channels conda-forge
     $ conda config --add channels defaults
     $ conda config --add channels r
-    $ conda config --add channels conda-forge
     $ conda config --add channels bioconda
 
 Install Packages through Conda
