@@ -5,9 +5,11 @@ Created on Thu Jun 15 16:32:51 2017
 @author: wxt
 """
 
-import os, pp, subprocess
+import os, pp, subprocess, logging
 import multiprocessing as mp
 from collections import Counter
+
+log = logging.getLogger(__name__)
 
 def mpPool(per_worker, maximum_worker):
         
@@ -24,11 +26,14 @@ class ppLocal(pp.Server):
     
     def __init__(self, per_worker, maximum_worker):
         
+        local = os.environ["HOSTNAME"]
         ncpus = mp.cpu_count()
         n_worker = ncpus // per_worker
         if not n_worker:
             n_worker = 1
         self.n_worker = min(n_worker, maximum_worker)
+        log.log(21, 'Launch %d processes on local compute node: %s',
+                self.n_worker, local)
         pp.Server.__init__(self, ncpus=self.n_worker)
         
 
@@ -45,7 +50,7 @@ class ppServer(pp.Server):
         servers = self._collect_servers(port)
         self.launch_server(port, timeout)
         pp.Server.__init__(self, ppservers=servers, socket_timeout=timeout,
-                           ncpus=local_worker) # do not use local computer
+                           ncpus=local_worker)
     
     def _cal_worker(self, ncpus):
         
@@ -62,6 +67,9 @@ class ppServer(pp.Server):
         local_ncpus = self.nodes[local]
         self.nodes.pop(local)
         n_worker = self._cal_worker(local_ncpus)
+        
+        log.log(21, 'Launch %d processes on local compute node: %s',
+                n_worker, local)
         
         return n_worker
         
@@ -81,11 +89,11 @@ class ppServer(pp.Server):
     def launch_server(self, port, timeout):
         
         template = 'pbsdsh -h {0} ppserver.py -p {1} -w {2} -t {3} -k {4} &'
-        self.n_worker = 0
         for node in self.nodes:
             ncpus = self.nodes[node]
             n_worker = self._cal_worker(ncpus)
-            self.n_worker += n_worker
+            log.log(21, 'Launch %d processed on remote compute node: %s',
+                    n_worker, node)
             command = template.format(node, port, n_worker, 3600, timeout)
             subprocess.call(command, shell=True)
     
