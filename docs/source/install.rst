@@ -88,11 +88,11 @@ To install *mirnylib*::
     $ cd mirnylib
     $ python setup.py install
 
-.. note:: During my tests on mirnylib installation, I came across such gcc errors for some specific system configurations,
+.. note:: During my tests on mirnylib installation, I came across such gcc errors for some cases,
    ``/tmp/ccX1ZZgk.s: Assembler messages:.../tmp/ccX1ZZgk.s:6751: Error: no such instruction: 
-   `vextracti128 $0x1,%ymm0,%xmm0'...``. In that case, I would remove gcc (``conda install gcc``) and re-compile mirnylib.
+   `vextracti128 $0x1,%ymm0,%xmm0'...``. Then I would remove gcc (``conda remove gcc``) and re-compile mirnylib.
    
-   After mirnylib had been successfully installed, command ``conda install gcc=4.8.5`` should be executed to ensure the
+   And after mirnylib had been successfully installed, command ``conda install gcc=4.8.5`` should be executed to ensure the
    installation of hiclib.
 
 To install *hiclib*::
