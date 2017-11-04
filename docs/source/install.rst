@@ -53,27 +53,28 @@ After that, update the environment variables to finish the Conda installation::
 
     $ source ~/.bashrc
 
-Set up Channels
----------------
+Install Packages through Conda
+------------------------------
 Conda allows separation of packages into separate repositories, or channels. The main *defaults*
 channel has a large amount of common packages including *numpy*, *numexpr*, *scipy*, *statsmodels*,
-*matplotlib*, *h5py*, *cython* and *biopython* listed above. *bx-python*, *pysam*, *joblib*, *pp*,
-*sra-tools*, *bowtie2* and *samtools* are not available in the *defaults* channel but included in
-the *bioconda* channel, and to make them accessible, you will need to add the *bioconda* channel
-as well as the other channels bioconda depends on (note that the order is important to guarantee
-the correct priority)::
+*matplotlib*, *h5py*, *cython* and *biopython* listed above. To install these packages, type and
+execute the following command::
+
+    $ conda install numpy numexpr scipy statsmodels matplotlib h5py cython biopython
+
+Other packages, such as *bx-python*, *pysam*, *joblib*, *pp*, *sra-tools*, *bowtie2* and *samtools* are
+not available in the *defaults* channel but included in the *bioconda* channel. To make them accessible,
+you need to add the *bioconda* channel as well as the other channels bioconda depends on (note that the
+order is important to guarantee the correct priority)::
 
     $ conda config --add channels conda-forge
     $ conda config --add channels defaults
     $ conda config --add channels r
     $ conda config --add channels bioconda
-
-Install Packages through Conda
-------------------------------
-Then it's straightforward to install all the required packages except for *mirnylib* and *hiclib*
-through the following one-line command::
-
-    conda install numpy numexpr scipy statsmodels matplotlib h5py cython biopython bx-python pysam joblib pp bzip2 sra-tools bowtie2 samtools pigz gcc=4.8.5
+ 
+ Then install them by typing and executing::
+ 
+     $ conda install bx-python pysam joblib pp bzip2 sra-tools bowtie2 samtools pigz gcc=4.8.5
 
 Install mirnylib and hiclib
 ---------------------------
