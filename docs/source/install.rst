@@ -72,7 +72,7 @@ order is important to guarantee the correct priority)::
     $ conda config --add channels r
     $ conda config --add channels bioconda
  
- Then install them by typing and executing::
+Then install them by typing and executing::
  
      $ conda install bx-python pysam joblib pp bzip2 sra-tools bowtie2 samtools pigz gcc=4.8.5
 
