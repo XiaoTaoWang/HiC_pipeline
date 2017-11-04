@@ -254,7 +254,7 @@ def run(args, commands):
         # Set level for Handlers
         filehandler.setLevel(21)
         # Customizing Formatter
-        formatter = logging.Formatter(fmt = '%(name)-10s %(levelname)-7s @ %(asctime)s: %(message)s',
+        formatter = logging.Formatter(fmt = '%(name)-18s %(levelname)-9s @ %(asctime)s: %(message)s',
                                       datefmt = '%m/%d/%y %H:%M:%S')
         ## Unified Formatter
         filehandler.setFormatter(formatter)
@@ -489,8 +489,7 @@ def mapping(args, commands):
     ## Generate the task queue
     server, n_worker = mpPool(2, args.nworker)
     
-    logging.log(21, 'Launching %d processes for chunk generating ...',
-                n_worker)
+    logging.log(21, 'Chunk generating ...')
     
     rmFolders = []
     job_id = []
@@ -549,8 +548,7 @@ def mapping(args, commands):
     else:
         server = ppLocal(args.threads, args.nworker)
     
-    logging.log(21, 'Launching %d processes for mapping ...',
-                server.n_worker)
+    logging.log(21, 'Mapping ...')
     jobs = []
     pool = {'seqlen':{}, 'ligcount':{}, 'Unique-Reads':{}}
     
@@ -753,8 +751,7 @@ def filtering(args, commands):
     else:
         server = ppLocal(1, args.nworker)
     
-    logging.log(21, 'Launching %d processes for chunk-level filtering ...',
-                server.n_worker)
+    logging.log(21, 'Chunk-level filtering ...')
     
     sra_pool = []
     chunk_jobs = []
@@ -807,8 +804,7 @@ def filtering(args, commands):
     else:
         server = ppLocal(1, args.nworker)
     
-    logging.log(21, 'Launching %d processes for sra-level filtering ...',
-                server.n_worker)
+    logging.log(21, 'SRA-level filtering ...')
     
     sra_jobs = []
     for sra_params in sra_pool:
@@ -828,7 +824,6 @@ def filtering(args, commands):
         server = ppServer(1, args.nworker, port=60660)
     else:
         server = ppLocal(1, args.nworker)
-    logging.log(21, 'Launching %d processes ...', server.n_worker)
     
     rep_jobs = []
     for rep in bioReps:
@@ -939,7 +934,7 @@ def binning(args, commands):
     else:
         server = ppLocal(1, args.nworker)
     
-    logging.log(21, 'Launching %d processes for binning ...', server.n_worker)
+    logging.log(21, 'Binning ...')
     
     jobs = []
     for S in Sources:
@@ -1031,7 +1026,7 @@ def correcting(args, commands):
     else:
         server = ppLocal(1, args.nworker)
     
-    logging.log(21, 'Launching %d processes for correcting ...', server.n_worker)
+    logging.log(21, 'Correcting ...')
     
     jobs = []
     for S in Sources:
@@ -1098,8 +1093,7 @@ def tosparse(args, commands):
     else:
         server = ppLocal(1, args.nworker)
     
-    logging.log(21, 'Launching %d processes for sparsing matrices ...', 
-                server.n_worker)
+    logging.log(21, 'Sparsing matrix converting ...')
     jobs = []
     for S in Sources:
         if os.path.isdir(S):
