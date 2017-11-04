@@ -63,7 +63,6 @@
 <li class="toctree-l1 current"><a class="current reference internal" href="#">Install runHiC</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="#requirements">Requirements</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#install-conda">Install Conda</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#set-up-channels">Set up Channels</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#install-packages-through-conda">Install Packages through Conda</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#install-mirnylib-and-hiclib">Install mirnylib and hiclib</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#id1">Install runHiC</a></li>
@@ -135,8 +134,7 @@ or softwares are required:</p>
 conda package manager.</p>
 <div class="admonition note">
 <p class="first admonition-title">Note</p>
-<p class="last">If you have the Anaconda Distribution installed, you already have it, feel free to jump to
-the <a class="reference internal" href="#set-up-channels">Set up Channels</a> section.</p>
+<p class="last">If you have the Anaconda Distribution installed, you already have it.</p>
 </div>
 <p>Download the latest <a class="reference external" href="https://conda.io/miniconda.html">Linux Miniconda installer for Python 2.7</a>,
 then in your terminal window type the following and follow the prompts on the installer screens:</p>
@@ -148,27 +146,27 @@ then in your terminal window type the following and follow the prompts on the in
 </pre></div>
 </div>
 </div>
-<div class="section" id="set-up-channels">
-<h2>Set up Channels<a class="headerlink" href="#set-up-channels" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="install-packages-through-conda">
+<h2>Install Packages through Conda<a class="headerlink" href="#install-packages-through-conda" title="Permalink to this headline">¶</a></h2>
 <p>Conda allows separation of packages into separate repositories, or channels. The main <em>defaults</em>
 channel has a large amount of common packages including <em>numpy</em>, <em>numexpr</em>, <em>scipy</em>, <em>statsmodels</em>,
-<em>matplotlib</em>, <em>h5py</em>, <em>cython</em> and <em>biopython</em> listed above. <em>bx-python</em>, <em>pysam</em>, <em>joblib</em>, <em>pp</em>,
-<em>sra-tools</em>, <em>bowtie2</em> and <em>samtools</em> are not available in the <em>defaults</em> channel but included in
-the <em>bioconda</em> channel, and to make them accessible, you will need to add the <em>bioconda</em> channel
-as well as the other channels bioconda depends on (note that the order is important to guarantee
-the correct priority):</p>
-<div class="highlight-default"><div class="highlight"><pre><span></span>$ conda config --add channels defaults
+<em>matplotlib</em>, <em>h5py</em>, <em>cython</em> and <em>biopython</em> listed above. To install these packages, type and
+execute the following command:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span>$ conda install numpy numexpr scipy statsmodels matplotlib h5py cython biopython
+</pre></div>
+</div>
+<p>Other packages, such as <em>bx-python</em>, <em>pysam</em>, <em>joblib</em>, <em>pp</em>, <em>sra-tools</em>, <em>bowtie2</em> and <em>samtools</em> are
+not available in the <em>defaults</em> channel but included in the <em>bioconda</em> channel. To make them accessible,
+you need to add the <em>bioconda</em> channel as well as the other channels bioconda depends on (note that the
+order is important to guarantee the correct priority):</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span>$ conda config --add channels conda-forge
+$ conda config --add channels defaults
 $ conda config --add channels r
-$ conda config --add channels conda-forge
 $ conda config --add channels bioconda
 </pre></div>
 </div>
-</div>
-<div class="section" id="install-packages-through-conda">
-<h2>Install Packages through Conda<a class="headerlink" href="#install-packages-through-conda" title="Permalink to this headline">¶</a></h2>
-<p>Then it&#8217;s straightforward to install all the required packages except for <em>mirnylib</em> and <em>hiclib</em>
-through the following one-line command:</p>
-<div class="highlight-default"><div class="highlight"><pre><span></span><span class="n">conda</span> <span class="n">install</span> <span class="n">numpy</span> <span class="n">numexpr</span> <span class="n">scipy</span> <span class="n">statsmodels</span> <span class="n">matplotlib</span> <span class="n">h5py</span> <span class="n">cython</span> <span class="n">biopython</span> <span class="n">bx</span><span class="o">-</span><span class="n">python</span> <span class="n">pysam</span> <span class="n">joblib</span> <span class="n">pp</span> <span class="n">bzip2</span> <span class="n">sra</span><span class="o">-</span><span class="n">tools</span> <span class="n">bowtie2</span> <span class="n">samtools</span> <span class="n">pigz</span> <span class="n">gcc</span><span class="o">=</span><span class="mf">4.8</span><span class="o">.</span><span class="mi">5</span>
+<p>Then other requirements can be installed by:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span>$ conda install bx-python pysam joblib pp bzip2 sra-tools bowtie2 samtools pigz gcc=4.8.5
 </pre></div>
 </div>
 </div>
@@ -184,6 +182,15 @@ distribution under the &#8220;mirnylab&#8221; sub-foler since version 0.7.0:</p>
 $ cd mirnylib
 $ python setup.py install
 </pre></div>
+</div>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p>During my tests on mirnylib installation, I came across such gcc errors for some cases,
+<code class="docutils literal"><span class="pre">/tmp/ccX1ZZgk.s:</span> <span class="pre">Assembler</span> <span class="pre">messages:.../tmp/ccX1ZZgk.s:6751:</span> <span class="pre">Error:</span> <span class="pre">no</span> <span class="pre">such</span> <span class="pre">instruction:</span>
+<span class="pre">`vextracti128</span> <span class="pre">$0x1,%ymm0,%xmm0'...</span></code>. Then I would remove local gcc installed just now (<code class="docutils literal"><span class="pre">conda</span> <span class="pre">remove</span> <span class="pre">gcc</span></code>) and
+re-compile mirnylib.</p>
+<p class="last">And after mirnylib had been successfully installed, command <code class="docutils literal"><span class="pre">conda</span> <span class="pre">install</span> <span class="pre">gcc=4.8.5</span></code> should be executed to ensure the
+installation of hiclib.</p>
 </div>
 <p>To install <em>hiclib</em>:</p>
 <div class="highlight-default"><div class="highlight"><pre><span></span>$ unzip hiclib.zip
