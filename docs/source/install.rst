@@ -41,8 +41,7 @@ Install Conda
 All above requirements except for mirnylib and hiclib can be installed through the
 conda package manager.
 
-.. note:: If you have the Anaconda Distribution installed, you already have it, feel free to jump to
-   the `Set up Channels`_ section.
+.. note:: If you have the Anaconda Distribution installed, you already have it.
 
 Download the latest `Linux Miniconda installer for Python 2.7 <https://conda.io/miniconda.html>`_,
 then in your terminal window type the following and follow the prompts on the installer screens::
