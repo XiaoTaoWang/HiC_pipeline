@@ -192,11 +192,9 @@ class cHiCdataset(HiCdataset):
                              constants={"numexpr":numexpr})
         extSpace = dist[sameFragMask][DM]
         
-        self.h5dict['_DanglingDetials'] = {'extLen':extLen,
-                                           'extD':extD,
-                                           'extSpace':extSpace}
+        self.h5dict['_DanglingDetials'] = np.column_stack((extLen, extD, extSpace))
         
-        del sameFragMask
+        del sameFragMask, extLen, extD, extSpace
 
         readsMolecules = self.evaluate(
             "a = numexpr.evaluate('(chrms1==chrms2) & (strands1!=strands2) & (dist>=0) &"
@@ -440,16 +438,15 @@ class cHiCdataset(HiCdataset):
         
         self._sortData()
         
-        stats = ['extLen', 'extD', 'extSpace']
-        pool = {}
         check = all([('_DanglingDetials' in h) for h in h5dicts])
         if check:
-            for name in stats:
-                res = []
-                for mydict in h5dicts:
-                    res.append(mydict['_DanglingDetials'][name])
-                res = np.concatenate(res)
-                pool[name] = res
+            pool = []
+            for mydict in h5dicts:
+                tmp = mydict['_DanglingDetials']
+                if type(tmp) == dict: # Backward compatibility
+                    tmp = np.column_stack((tmp['extLen'],tmp['extD'],tmp['extSpace']))
+                pool.append(tmp)
+            pool = np.vstack(pool)
             self.h5dict['_DanglingDetials'] = pool
         
         Types = ['LeftType', 'RightType', 'InnerType', 'OuterType']
@@ -659,9 +656,9 @@ class cHiCdataset(HiCdataset):
     
     def dangStats(self, prefix, offset = 2, dpi = 500):
         
-        extD = self.h5dict['_DanglingDetials']['extD']
-        extLen = self.h5dict['_DanglingDetials']['extLen']
-        extSpace = self.h5dict['_DanglingDetials']['extSpace']
+        extD = self.h5dict['_DanglingDetials'][:,1]
+        extLen = self.h5dict['_DanglingDetials'][:,0]
+        extSpace = self.h5dict['_DanglingDetials'][:,2]
         
         m = int(np.percentile(extD[extD<0],0.5))
         extLen = extLen[extD>=m]
