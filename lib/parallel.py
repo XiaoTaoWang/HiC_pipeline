@@ -12,12 +12,15 @@ from collections import Counter
 log = logging.getLogger(__name__)
 
 def mpPool(per_worker, maximum_worker):
-        
+    
+    local = os.environ["HOSTNAME"]
     ncpus = mp.cpu_count()
     n_worker = ncpus // per_worker
     if not n_worker:
         n_worker = 1
     n_worker = min(n_worker, maximum_worker)
+    log.log(21, 'Launch %d processes on local compute node: %s',
+            n_worker, local)
     
     return mp.Pool(n_worker), n_worker
         
