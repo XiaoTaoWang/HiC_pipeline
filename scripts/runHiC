@@ -544,7 +544,7 @@ def mapping(args, commands):
     
     # Initialize a pp Server for mapping
     if args.running_mode == 'pbs':
-        server = ppServer(args.threads, args.nworker, port=60657)
+        server = ppServer(args.threads, args.nworker, port=60000)
     else:
         server = ppLocal(args.threads, args.nworker)
     
@@ -747,7 +747,7 @@ def filtering(args, commands):
         args.filteredDir.append(corHDF5)
     
     if args.running_mode == 'pbs':
-        server = ppServer(1, args.nworker, port=60658)
+        server = ppServer(1, args.nworker, port=60001)
     else:
         server = ppLocal(1, args.nworker)
     
@@ -800,7 +800,7 @@ def filtering(args, commands):
     logging.log(21, 'Done!')
     
     if args.running_mode == 'pbs':
-        server = ppServer(1, args.nworker, port=60659)
+        server = ppServer(1, args.nworker, port=60002)
     else:
         server = ppLocal(1, args.nworker)
     
@@ -821,7 +821,7 @@ def filtering(args, commands):
     
     logging.log(21, 'Merging data from the same biological replicates ...')
     if args.running_mode == 'pbs':
-        server = ppServer(1, args.nworker, port=60660)
+        server = ppServer(1, args.nworker, port=60003)
     else:
         server = ppLocal(1, args.nworker)
     
@@ -860,7 +860,7 @@ def filtering(args, commands):
     if args.level == 2:
         logging.log(21, 'Merging data of the same cell line with the same restriction enzyme ...')
         if args.running_mode == 'pbs':
-            server = ppServer(1, args.nworker, port=60661)
+            server = ppServer(1, args.nworker, port=60004)
         else:
             server = ppLocal(1, args.nworker)
         
@@ -930,7 +930,7 @@ def binning(args, commands):
     args.HeatMap = []
     
     if args.running_mode == 'pbs':
-        server = ppServer(1, args.nworker, port=60662)
+        server = ppServer(1, args.nworker, port=60005)
     else:
         server = ppLocal(1, args.nworker)
     
@@ -1022,7 +1022,7 @@ def correcting(args, commands):
     args.cHeatMap = []
     
     if args.running_mode == 'pbs':
-        server = ppServer(1, args.nworker, port=60663)
+        server = ppServer(1, args.nworker, port=60006)
     else:
         server = ppLocal(1, args.nworker)
     
@@ -1089,7 +1089,7 @@ def tosparse(args, commands):
     Sources = [os.path.abspath(os.path.expanduser(i)) for i in args.cHeatMap]
     
     if args.running_mode == 'pbs':
-        server = ppServer(1, args.nworker, port=60664)
+        server = ppServer(1, args.nworker, port=60007)
     else:
         server = ppLocal(1, args.nworker)
     
