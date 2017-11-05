@@ -100,7 +100,6 @@ class ppServer(pp.Server):
                     n_worker, node)
             command = template.format(node, port, n_worker, secret, 3600, timeout)
             subprocess.call(command, shell=True)
-            time.sleep(5)
     
     def _genSecret(self):
         
