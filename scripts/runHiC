@@ -254,7 +254,7 @@ def run(args, commands):
         # Set level for Handlers
         filehandler.setLevel(21)
         # Customizing Formatter
-        formatter = logging.Formatter(fmt = '%(name)-18s %(levelname)-7s @ %(asctime)s: %(message)s',
+        formatter = logging.Formatter(fmt = '%(name)-17s %(levelname)-7s @ %(asctime)s: %(message)s',
                                       datefmt = '%m/%d/%y %H:%M:%S')
         ## Unified Formatter
         filehandler.setFormatter(formatter)
