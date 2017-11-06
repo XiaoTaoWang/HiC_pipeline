@@ -5,7 +5,7 @@ Created on Thu Jun 15 16:32:51 2017
 @author: wxt
 """
 
-import os, time, pp, random, subprocess, logging
+import os, time, pp, random, subprocess, logging, shlex
 import multiprocessing as mp
 from collections import Counter
 
@@ -92,14 +92,15 @@ class ppServer(pp.Server):
     
     def launch_server(self, port, secret, timeout):
         
-        template = 'pbsdsh -h {0} ppserver.py -p {1} -w {2} -s {3} -t {4} -k {5} &'
+        template = 'pbsdsh -h {0} ppserver.py -p {1} -w {2} -s {3} -t {4} -k {5}'
         for node in self.nodes:
             ncpus = self.nodes[node]
             n_worker = self._cal_worker(ncpus)
             log.log(21, 'Launch %d processed on remote compute node: %s',
                     n_worker, node)
             command = template.format(node, port, n_worker, secret, 3600, timeout)
-            subprocess.call(command, shell=True)
+            command_list = shlex.split(command)
+            pid = subprocess.Popen(command_list).pid
     
     def _genSecret(self):
         
