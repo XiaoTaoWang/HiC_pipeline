@@ -51,8 +51,8 @@ class ppServer(pp.Server):
         timeout = self._walltime_to_seconds()
         self._get_nodes()
         #local_worker = self._local_node()
-        servers = self._collect_servers(port)
         self.launch_server(port, secret, timeout)
+        servers = self._collect_servers(port)
         pp.Server.__init__(self, ncpus=0, ppservers=servers, secret=secret,
                            socket_timeout=timeout)
     
@@ -96,11 +96,12 @@ class ppServer(pp.Server):
         for node in self.nodes:
             ncpus = self.nodes[node]
             n_worker = self._cal_worker(ncpus)
-            log.log(21, 'Launch %d processed on remote compute node: %s',
-                    n_worker, node)
-            command = template.format(node, port, n_worker, secret, 3600, timeout)
+            command = template.format(node, port, n_worker, secret, 36000, timeout)
             command_list = shlex.split(command)
             pid = subprocess.Popen(command_list).pid
+            log.log(21, 'Launch %d processes on remote compute node: %s',
+                    n_worker, node)
+            time.sleep(10)
     
     def _genSecret(self):
         
