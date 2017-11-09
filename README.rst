@@ -34,11 +34,11 @@ contact matrices. It separates the whole procedure into 4 stages(*mapping*, *fil
 
 Links
 =====
-- `Detailed Documentation <http://xiaotaowang.github.io/HiC_pipeline/>`_
-    - `Installation <http://xiaotaowang.github.io/HiC_pipeline/install.html>`_
-    - `Quick Start <http://xiaotaowang.github.io/HiC_pipeline/quickstart.html>`_
-    - `Data Quality <http://xiaotaowang.github.io/HiC_pipeline/quality.html>`_
-    - `Parallel Computation <http://xiaotaowang.github.io/HiC_pipeline/parallel.html>`_
+- `Detailed Documentation <https://xiaotaowang.github.io/HiC_pipeline/>`_
+    - `Installation <https://xiaotaowang.github.io/HiC_pipeline/install.html>`_
+    - `Quick Start <https://xiaotaowang.github.io/HiC_pipeline/quickstart.html>`_
+    - `Data Quality <https://xiaotaowang.github.io/HiC_pipeline/quality.html>`_
+    - `Parallel Computation <https://xiaotaowang.github.io/HiC_pipeline/parallel.html>`_
 - `Code Repository <https://github.com/XiaoTaoWang/HiC_pipeline/>`_ (At GitHub, Track the package issue)
 - `PyPI <https://pypi.python.org/pypi/runHiC>`_ (Download and Installation)
 
