@@ -102,6 +102,11 @@ To install *hiclib*::
     $ cd hiclib
     $ python setup.py install
 
+.. note:: If you cannot install *mirnylib* or *hiclib* successfully with instructions above, then try
+   to run *install_linux.py* ``python install_linux.py`` under "mirnylib" and "hiclib" sub-folder in order.
+   You may need to update the environment variables after each execution of *install_linux.py* by ``source ~/.bashrc``
+   (for Linux user) or ``source ~/.bash_profile`` (for Mac user).
+
 Install runHiC
 --------------
 Now just run the setup.py script under the distribution root folder to finish the installation.
@@ -110,4 +115,3 @@ Suppose you are still in the extracted hiclib folder::
     $ cd ../..
     $ python setup.py install
 
-runHiC has been installed successfully if no exception occurs in the above processes.
