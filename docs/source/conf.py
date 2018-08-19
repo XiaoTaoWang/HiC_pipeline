@@ -101,7 +101,7 @@ html_sidebars = {
 }
 
 html_theme_options = {
-'description': "A user-friendly Hi-C data processing software based on hiclib ",
+'description': "A user-friendly Hi-C data processing software based on hiclib.",
 'github_user': "XiaoTaoWang",
 'github_repo': "HiC_pipeline",
 'github_type': "star",
