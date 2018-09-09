@@ -7,8 +7,7 @@
 
 ## Required Modules
 import os, sys, argparse, logging, logging.handlers, glob, atexit, \
-       copy, traceback, cPickle, xmlrpclib, runHiC
-from runHiC.parallel import ppLocal, ppServer, mpPool
+       traceback, cPickle, xmlrpclib, runHiC
 from pkg_resources import parse_version as V
 
 try:
@@ -22,18 +21,16 @@ try:
     pypi = xmlrpclib.ServerProxy('http://pypi.python.org/pypi')
     available = pypi.package_releases('runHiC')
     if V(currentVersion) < V(available[0]):
-        print '*'*75
-        print 'Version %s is out of date, Version %s is available.' % (currentVersion, available[0])
-        print 'Run `pip install -U runHiC` or `easy_install -U runHiC` for update.'
-        print
-        print '*'*75
+        print('*'*75)
+        print('Version {0} is out of date, Version {1} is available.'.format(currentVersion, available[0]))
+        print()
+        print('*'*75)
 except:
     pass
 
 def getargs():
     ## Construct an ArgumentParser object for command-line arguments
-    parser = argparse.ArgumentParser(description = '''A user-friendly Hi-C data processing software
-                                     based on hiclib.''',
+    parser = argparse.ArgumentParser(description = '''A user-friendly Hi-C data processing software''',
                                      formatter_class = argparse.ArgumentDefaultsHelpFormatter)
     # Version
     parser.add_argument('-v', '--version', action = 'version',
@@ -42,136 +39,141 @@ def getargs():
     
     ## Sub-commands
     subparser = parser.add_subparsers(title = 'sub-commands',
-                                      description = '''Read pair mapping, filtering, binning
-                                      iterative correction and sparse matrix converting are contained.
+                                      description = '''Read pair mapping, filtering, binning,
+                                      ICE correcting and quality assessment modules are contained.
                                       You can perform each stage of the analysis separately, or streamline
-                                      the pipeline by using the "pileup" subcommand.''',
+                                      the pipeline by "pileup" subcommand.''',
                                       dest = 'subcommand')
     ## Iterative Mapping
     iterM = subparser.add_parser('mapping',
                                  help = '''Map raw pair-end sequencing data to a supplied
-                                 genome. Both SRA and FASTQ format are admissible.''',
-                                 description = '''An iterative mapping schema is used. The
-                                 minimum length is always 25, then the step will be calculated
-                                 automatically based on the sequence length. The bowtie2 mapping
-                                 software and a fastq-dump tool from SRA toolkit are required.
-                                 At least, you should specify --fastqDir, --genomeName,
-                                 --bowtiePath, --dataFolder and --metadata yourself.''',
-                                 epilog = '''After this command, a BAM folder containing BAM
-                                 files for each side of Hi-C molecules and a HDF5 folder containing
-                                 hdf5 (dict-like structure format) files for library of matched
-                                 Hi-C reads are created under current working directory.''',
+                                 genome. It works well with .sra, .fastq and .fastq.gz formats.
+                                 And you can specify either bwa-mem (<=100bp) or minimap2 (>100bp)
+                                 as the underlying aligner. After mapping has been done, it will
+                                 utilize pairtools to parse the attained SAM/BAM file, detect ligation
+                                 junctions, and output a .pairs complied with 4DN standards.''',
                                  formatter_class = argparse.ArgumentDefaultsHelpFormatter)
-    iterM.add_argument('-m', '--metadata', default='datasets.tsv',
-                       help='''Metadata file describing each SRA file. You should place
+    iterM.add_argument('-m', '--metadata', default = 'datasets.tsv',
+                       help = '''Metadata file describing each SRA file. You should place
                        it under current working directory. Four columns are required: prefix
                        of SRA file name, cell line name, biological replicate label, and
                        restriction enzyme name.''')
-    iterM.add_argument('-r', '--running-mode', default='local', choices=['local','pbs'],
-                       help='''Running mode of the program. local -- Run on a local computer.
-                       pbs -- Run on a PBS-based cluster.''')
-    iterM.add_argument('--nworker', default=1, type=int, help='''The maximum number of task
-                       processes to launch on a single machine.''')
-    iterM.add_argument('-p', '--dataFolder', default = '.',
-                       help = '''Root directory of datasets. Both sequencing and genome data
-                       should be placed under this directory.''')
+    iterM.add_argument('-p', '--dataFolder',
+                       help = '''Path to the root data folder. Both sequencing and reference genome
+                       data should be placed under this folder.''')
     iterM.add_argument('-g', '--genomeName',
-                       help = '''Genome folder name. Genome sequences (FASTA) should be split
-                       by chromosome and placed under this folder. If gap file is not contained,
-                       we will generate a dummy one.''')
-    iterM.add_argument('-C', '--chroms', nargs = '*', default = ['#', 'X'],
-                       help = '''List of chromosome labels. Only specified chromosomes will be
-                       involved. Specially, "#" stands for chromosomes with numerical labels.''')
-    iterM.add_argument('-T', '--template', default = 'chr%s.fa', help = '''Template of the FASTA file names''')
-    iterM.add_argument('-G', '--gapFile', default = 'gap.txt', help = '''Gap file name.''')
-    iterM.add_argument('-f', '--fastqDir', help = 'Sequencing data folder name.')
+                       help = '''Name of the folder containing reference genome data. If your reference
+                       genome is hg38, the path to it should: look like this: dataFolder/hg38/hg38.fa''')
+    iterM.add_argument('-C', '--chromsizes',
+                       help = '''Path to the file containing chromosome size information. Both absoulte and
+                       relative path are supported. If not specified, we will try to generate one under
+                       your genome folder by UCSC fetchChromSizes command.''')
+    iterM.add_argument('-f', '--fastqDir', help = 'Name of the folder containing sequencing data.')
     iterM.add_argument('-F', '--Format', default = 'SRA', choices = ['SRA', 'FASTQ'],
                        help = 'Format of the sequencing data.')
-    iterM.add_argument('-b', '--bowtiePath', help = 'Path to the bowtie2 executable program file.')
-    iterM.add_argument('-t', '--threads', type = int, default = 4, help = 'Number of bowtie2 threads.')
-    iterM.add_argument('-i', '--bowtieIndex',
-                       help = '''Path to the bowtie2 genome index. Since the index consists of
-                       several files with different suffices (e.g., hg19.1.bt2, hg19.2.bt.2),
-                       provide only the common part. For example, if your genome data hg19.fa
-                       and corresponding index files are stored under ~/data/hg19, you should
-                       specify it as this "--bowtieIndex ~/data/hg19/hg19". If not specified,
-                       we will generate one under the genome folder.''')
-    iterM.add_argument('--cache', default = '/tmp',
-                       help = '''Cache folder name.''')
+    iterM.add_argument('-A', '--aligner', default = 'bwa-mem', choices = ['bwa-mem', 'minimap2'],
+                       help = '''Name of the sequence alignment software to invoke.''')
+    iterM.add_argument('-i', '--Index',
+                       help = '''Path to the bwa/minimap2 genome index. If your reference genome is hg38, and
+                       it is located within ~/data/hg38, then you need to specify --Index as "~/data/hg38/hg38.fa"
+                       and "~/data/hg38/hg38.mmi" for bwa-mem and minimap2 respectively. When not specified,
+                       the index will be built automatically according to your aligner choice.''')
+    iterM.add_argument('-t', '--threads', type = int, default = 4, help = 'Number of threads used in mapping.')
+    iterM.add_argument('-O', '--outformat', default = 'SAM', choices = ['SAM', 'BAM'],
+                       help = '''Output alignment format.''')
+    iterM.add_argument('--min-mapq', type = int, default = 1,
+                       help = '''The minimal MAPQ score to consider a read as uniquely mapped.''')
+    iterM.add_argument('--max-molecule-size', type = int, default = 2000,
+                       help = '''The maximal size of a Hi-C molecule, used to rescue single ligations from
+                       molecules with three alignments.''')
+    iterM.add_argument('--max-inter-align-gap', type = int, default = 20,
+                       help = '''A key parameter used by pairtools to rescue single ligations from walks.''')
+    iterM.add_argument('--walks-policy', default = 'mask', choices = ['mask', '5any', '5unique', '3any', '3unique'],
+                       help = '''The policy used by pairtools to report unrescuable walks.''')
+    iterM.add_argument('--include-readid', action = 'store_true',
+                       help = '''If specified, add read IDs in final .pairs files.''')
+    iterM.add_argument('--include-sam', action = 'store_true',
+                       help = '''If specified, add sam columns in final .pairs files.''')
+    iterM.add_argument('--drop-seq', action = 'store_true',
+                       help = '''If specified, exclude SEQ and QUAL from the sam fields in final .pairs files.''')
     iterM.add_argument('--chunkSize', type = int, help = '''On a low-memory machine, it's better
                        to split the raw read file into chunks and map them separatively. This
                        parameter specifies the size of each chunk. By default, no split is performed.''')
     iterM.add_argument('--removeInters', action = 'store_true',
-                       help = '''If specified, remove intermediate results, and only the final hdf5
-                       files will be retained.''')
-    iterM.add_argument('--logFile', default = 'runHiC.log', help = '''Logging file name.''')
+                       help = '''If specified, remove intermediate results, and only the final .pairs files
+                       will be retained.''')
+    iterM.add_argument('--logFile', default = 'runHiC-mapping.log', help = '''Logging file name.''')
     iterM.set_defaults(func = mapping)
     
     ## Merging and Filtering
     removeNoise = subparser.add_parser('filtering',
-                                       help = '''Perform some basic filtering on the aligned read
-                                       pairs.''',
+                                       help = '''Filtering at the level of aligned read pairs
+                                       and restriction fragments. Files from the same experiment
+                                       or the same cell line (optional) will be merged together
+                                       at this stage.''',
+                                       epilog = '''A folder with one or more hdf5 files containing
+                                       fragment-level information are generated under current working
+                                       directory after this command is called.''',
                                        formatter_class = argparse.ArgumentDefaultsHelpFormatter)
     removeNoise.add_argument('-m', '--metadata', default = 'datasets.tsv',
                              help = '''Metadata file describing each SRA file. You should place
                              it under current working directory. Four columns are required: prefix
                              of SRA file name, cell line name, biological replicate label, and
-                             restriction enzyme name.''')
-    removeNoise.add_argument('-r', '--running-mode', default='local', choices=['local','pbs'],
-                             help='''Running mode of the program. local -- Run on a local computer.
-                             pbs -- Run on a PBS-based cluster.''')
-    removeNoise.add_argument('--nworker', default=1, type=int, help='''The maximum number of task
-                             processes to launch on a single machine.''')
+                             restriction enzyme name. An example file is distributed along with
+                             this software, please check it.''')
     removeNoise.add_argument('--HDF5',
-                             help = '''Path to the root folder of hdf5 files generated during the
-                             mapping stage.''')
+                             help = '''Path to the folder with hdf5 files which are generated by
+                             mapping command.''')
     removeNoise.add_argument('--libSize', type = int, default = 500,
                              help = '''Maximum length of molecules in your Hi-C library.''')
     removeNoise.add_argument('--duplicates', action = 'store_true',
-                             help = '''Remove redundant PCR artifacts if specified.''')
+                             help = '''Remove read pairs resulting from PCR amplification.''')
+    removeNoise.add_argument('--startNearRsite', action = 'store_true',
+                             help = '''Remove reads that start within 5 bp near a restriction site.''')
     removeNoise.add_argument('-l', '--level', type = int, default = 2, choices = [1, 2],
-                             help = '''Merging level. 1: Merge data from the same biological
-                             replicate; 2: Merge data from all replicates of the same cell line.''')
+                             help = '''Set merging level. 1: hdf5 files from the same biological
+                             replicate will be merged, 2: hdf5 files from the same cell line will also be
+                             merged.''')
     removeNoise.add_argument('--logFile', default = 'runHiC.log', help = '''Logging file name.''')
     removeNoise.set_defaults(func = filtering)
     
     ## Binning
     binReads = subparser.add_parser('binning',
                                     help = '''Bin filtered reads at certain resolution.''',
+                                    epilog = '''After calling this command, a folder with
+                                    contact matrices (in HDF5 format) is created under current
+                                    working directory.''',
                                     formatter_class = argparse.ArgumentDefaultsHelpFormatter)
-    binReads.add_argument('-r', '--running-mode', default='local', choices=['local','pbs'],
-                          help='''Running mode of the program. local -- Run on a local computer.
-                          pbs -- Run on a PBS-based cluster.''')
-    binReads.add_argument('--nworker', default=1, type=int, help='''The maximum number of task
-                          processes to launch on a single machine.''')
     binReads.add_argument('-f', '--filteredDir', nargs = '+',
-                          help = '''Path to the hdf5 files generated during the filtering stage.
-                          Wild cards are allowed. If a path points to a folder, the *binning*
-                          procedure will be performed on each hdf5 file under that folder.''')
+                          help = '''Path to the filtered HDF5 files generated by filtering
+                          command. The path can point to a folder or certain files (wild cards
+                          are allowed). If a folder name is provided, binning procedure will be
+                          performed on each file in that folder.''')
     binReads.add_argument('-M', '--mode', default = 'wholeGenome', choices = ['wholeGenome', 'byChromosome'],
                           help = 'Mode for building contact matrices.')
-    binReads.add_argument('-R', '--resolution', type = int, default = 2000000,
+    binReads.add_argument('-R', '--resolution', type = int, default = 200000,
                           help = 'Resolution of a contact matrix. Unit: bp')
+    binReads.add_argument('--includeTrans', action = 'store_true',
+                          help = '''Whether to include inter-chromosomal interactions in "byChromosome"
+                          mode.''')
     binReads.add_argument('--logFile', default = 'runHiC.log', help = '''Logging file name.''')
     binReads.set_defaults(func = binning)
     
     ## Iterative Correction
     iterC = subparser.add_parser('correcting',
-                                 help = '''Perform the bias correction procedure on original contact
-                                 matrices.''',
+                                 help = '''Perform iterative corrections on original contact matrices.''',
+                                 description = '''Two modes are provided for different resolutions.
+                                 The program will choose a better one for you according to the data
+                                 format.''',
                                  epilog = '''After calling this command, a folder with corrected
                                  contact matrices (in HDF5 format) is created under current working
                                  directory.''',
                                  formatter_class = argparse.ArgumentDefaultsHelpFormatter)
-    iterC.add_argument('-r', '--running-mode', default='local', choices=['local','pbs'],
-                       help='''Running mode of the program. local -- Run on a local computer.
-                       pbs -- Run on a PBS-based cluster.''')
-    iterC.add_argument('--nworker', default=1, type=int, help='''The maximum number of task
-                       processes to launch on a single machine.''')
     iterC.add_argument('-H', '--HeatMap', nargs = '+', metavar = 'Matrix',
-                       help = '''Path to the contact matrices generated by binning subcommand.
-                       Wild cards are allowed. If a path points to a folder, bias correction will
-                       be performed on each ".hm" file under that folder.''')
+                       help = '''Path to the contact matrix files generated by binning command. The path
+                       can point to a folder or certain files (wild cards are allowed). If a folder
+                       name is provided, we will perform iterative corrections for all contact matrices in
+                       that folder.''')
     iterC.add_argument('--logFile', default = 'runHiC.log', help = '''Logging file name.''')
     iterC.set_defaults(func = correcting)
     
@@ -180,31 +182,29 @@ def getargs():
                                   help = '''Convert intra-chromosomal contact matrices to sparse ones.
                                   ''',
                                   formatter_class = argparse.ArgumentDefaultsHelpFormatter)
-    sMatrix.add_argument('-r', '--running-mode', default='local', choices=['local','pbs'],
-                         help='''Running mode of the program. local -- Run on a local computer.
-                         pbs -- Run on a PBS-based cluster.''')
-    sMatrix.add_argument('--nworker', default=1, type=int, help='''The maximum number of task
-                         processes to launch on a single machine.''')
     sMatrix.add_argument('-H', '--cHeatMap', nargs = '+', metavar = 'Matrix',
-                         help = '''Path to the dense matrix files from binning* or correcting. Wild
-                         cards are allowed. If a folder name is provided, conversion will be performed
-                         on each ".hm" file under that folder.''')
+                         help = '''Source contact matrix files saved by chromosome. Wild cards are
+                         allowed. If a folder name is provided, conversion will be performed on each
+                         contact matrix file under that folder.''')   
     sMatrix.add_argument('--csr', action = 'store_true',
-                         help = '''If specified, dense matrices are converted into CSR (Compressed Row Storage)
-                         matrices, a customized numpy structured array is applied otherwise.''')
+                         help = '''If specified, matrices are converted into CSR (Compressed Row Storage)
+                         format. By default, a customized numpy structured array is applied.''')
     sMatrix.add_argument('--logFile', default = 'runHiC.log', help = '''Logging file name.''')
     sMatrix.set_defaults(func = tosparse)
     
     ## Quality Assessment
     QA = subparser.add_parser('quality',
-                              help = '''Assess data quality after filtering.''',
+                              help = '''Quality assessment for Hi-C experiments. Do not call this
+                              command before filtering!''',
                               formatter_class = argparse.ArgumentDefaultsHelpFormatter)
-    QA.add_argument('-L', '--Locator', help = '''Path to the folder containing filtered HDF5 files.''')
+    QA.add_argument('-L', '--Locator', help = '''Path to the folder containing filtered HDF5 files. This
+                    argument is supposed to be "filtered-hg19" given reference genome name "hg19".''')
     QA.add_argument('-m', '--metadata', default = 'datasets.tsv',
                     help = '''Metadata file describing each SRA file. You should place
                     it under current working directory. Four columns are required: prefix
                     of SRA file name, cell line name, biological replicate label, and
-                    restriction enzyme name.''')
+                    restriction enzyme name. An example file is distributed along with
+                    this software, please check it.''')
     QA.add_argument('--logFile', default = 'runHiC.log', help = '''Logging file name.''')
     QA.set_defaults(func = quality)
                     
@@ -213,13 +213,15 @@ def getargs():
                                       parents = [iterM],
                                       help = '''Perform the entire analysis from sequencing
                                       data to corrected sparse matrices''',
+                                      description = '''A more convenient but less flexible
+                                      command for Hi-C data processing.''',
                                       formatter_class = argparse.ArgumentDefaultsHelpFormatter,
                                       add_help = False)
     streamline.add_argument('--libSize', type = int, default = 500,
                              help = '''Maximum length of molecules in your Hi-C library.''')
     streamline.add_argument('-M', '--mode', default = 'wholeGenome', choices = ['wholeGenome', 'byChromosome'],
                             help = '''Mode for building contact matrices.''')
-    streamline.add_argument('-R', '--resolution', type = int, default = 2000000,
+    streamline.add_argument('-R', '--resolution', type = int, default = 200000,
                           help = 'Resolution of the contact matrix. Unit: bp')
     streamline.set_defaults(func = pileup)
     
@@ -249,12 +251,12 @@ def run(args, commands):
         # Logger Level
         logger.setLevel(21)
         filehandler = logging.handlers.RotatingFileHandler(args.logFile,
-                                                           maxBytes = 100000,
+                                                           maxBytes = 200000,
                                                            backupCount = 5)
         # Set level for Handlers
         filehandler.setLevel(21)
         # Customizing Formatter
-        formatter = logging.Formatter(fmt = '%(name)-17s %(levelname)-7s @ %(asctime)s: %(message)s',
+        formatter = logging.Formatter(fmt = '%(name)-20s %(levelname)-7s @ %(asctime)s: %(message)s',
                                       datefmt = '%m/%d/%y %H:%M:%S')
         ## Unified Formatter
         filehandler.setFormatter(formatter)
@@ -262,69 +264,57 @@ def run(args, commands):
         logger.addHandler(filehandler)
         ## Logging for argument setting
         arglist = ['# ARGUMENT LIST:',
-                   '# Sub-Command Name = %s' % commands[0],
+                   '# Sub-Command Name = {0}'.format(commands[0]),
                    ]
         if (commands[0] == 'mapping') or (commands[0] == 'pileup'):
             args.dataFolder = os.path.abspath(os.path.expanduser(args.dataFolder))
-            args.fastqDir = os.path.join(args.dataFolder, args.fastqDir)
-            args.bowtiePath = os.path.abspath(os.path.expanduser(args.bowtiePath))
-            arglist.extend(['# MetaData = %s' % args.metadata,
-                            '# Running Mode = %s' % args.running_mode,
-                            '# Maximum Process Number = %s' % args.nworker,
-                            '# Data Root Directory = %s' % args.dataFolder,
-                            '# Genome Name = %s' % args.genomeName,
-                            '# Chromosomes = %s' % args.chroms,
-                            '# FASTA template = %s' % args.template,
-                            '# Gap File = %s' % args.gapFile,
-                            '# Sequencing Data = %s' % args.fastqDir,
-                            '# Sequencing Format = %s' % args.Format,
-                            '# Bowtie2 Path = %s' % args.bowtiePath,
-                            '# Bowtie2 Threads = %s' % args.threads
+            arglist.extend(['# MetaData = {0}'.format(args.metadata), 
+                            '# Data Root Folder = {0}'.format(args.dataFolder),
+                            '# Genome Name = {0}'.format(args.genomeName),
+                            '# Chromsome Sizes = {0}'.format(args.chromsizes),
+                            '# Sequencing Data Folder = {0}'.format(args.fastqDir),
+                            '# Sequencing Format = {0}'.format(args.Format),
+                            '# Alignment Software = {0}'.format(args.aligner),
+                            '# Genome Index = {0}'.format(args.Index),
+                            '# Mapping Threads = {0}'.format(args.threads),
+                            '# Out Alignment Format = {0}'.format(args.outformat),
+                            '# Minimal MAPQ = {0}'.format(args.min_mapq),
+                            '# Maximal Molecule Size = {0}'.format(args.max_molecule_size),
+                            '# Max Inter Align Gap = {0}'.format(args.max_inter_align_gap),
+                            '# Walks Policy = {0}'.format(args.walks_policy),
+                            '# Include Read ID = {0}'.format(args.include_readid),
+                            '# Include Sam = {0}'.format(args.include_sam),
+                            '# Drop SEQ and QUAL = {0}'.format(args.drop_seq),
+                            '# Chunk size = {0}'.format(args.chunksize),
+                            '# Remove Intermediates = {0}'.format(args.removeInters)
                             ])
-            if ('--bowtieIndex' in commands) or ('-i' in commands):
-                args.bowtieIndex = os.path.abspath(os.path.expanduser(args.bowtieIndex))
-                arglist.extend(['# Bowtie2 Genome Index = %s' % args.bowtieIndex])
-            if args.chunkSize != None:
-                arglist.extend(['# Chunk Size = %d' % args.chunkSize])
-            
-            args.cache = os.path.abspath(os.path.expanduser(args.cache))
-            if not os.path.exists(args.cache):
-                os.makedirs(args.cache)
-            
-            arglist.extend(['# Cache Folder = %s' % args.cache,
-                            '# Remove Intermediate Results = %s' % args.removeInters])
                             
         if commands[0] == 'filtering':
-            args.HDF5 = os.path.abspath(os.path.expanduser(args.HDF5))
-            arglist.extend(['# MetaData = %s' % args.metadata,
-                            '# Running Mode = %s' % args.running_mode,
-                            '# Maximum Process Number = %s' % args.nworker,
-                            '# Source Files = %s' % args.HDF5,
+            arglist.extend(['# Source Files = %s' % args.HDF5,
+                            '# MetaData = %s' % args.metadata,
                             '# Library Size = %d' % args.libSize,
                             '# Remove PCR Duplicates = %s' % args.duplicates,
+                            '# Remove startNearRsite = %s' % args.startNearRsite,
                             '# Merging Level = %s' % args.level])
         if commands[0] == 'binning':
-            arglist.extend(['# Running Mode = %s' % args.running_mode,
-                            '# Maximum Process Number = %s' % args.nworker,
-                            '# Source Files = %s' % args.filteredDir,
+            arglist.extend(['# Source Files = %s' % args.filteredDir,
                             '# Building Mode = %s' % args.mode,
                             '# Resolution = %s' % args.resolution])
+            if args.mode == 'byChromosome':
+                arglist.extend(['# Include Inter-chromosomal Interactions = %s' % args.includeTrans])
                 
         if commands[0] == 'correcting':
-            arglist.extend(['# Running Mode = %s' % args.running_mode,
-                            '# Maximum Process Number = %s' % args.nworker,
-                            '# Source Matrix = %s' % args.HeatMap])
+            arglist.extend(['# Source Matrix = %s' % args.HeatMap])
         
         if commands[0] == 'pileup':
             arglist.extend(['# Merging Level = 2',
                             '# Library Size = %d' % args.libSize,
                             '# Remove PCR Duplicates = True',
+                            '# Remove startNearRsite = False',
                             '# Building Mode = %s' % args.mode,
                             '# Resolution = %s' % args.resolution])
         if commands[0] == 'tosparse':
-            arglist.extend(['# Running Mode = %s' % args.running_mode,
-                            '# Maximum Process Number = %s' % args.nworker,
-                            '# Source Matrix = %s' % args.cHeatMap,
+            arglist.extend(['# Source Matrix = %s' % args.cHeatMap,
                             '# Use CSR = %s' % args.csr])
         
         if commands[0] == 'quality':
@@ -336,392 +326,231 @@ def run(args, commands):
         # Subcommand
         args.func(args, commands)
 
-def initialize(dataFolder, genomeName, gapName, chroms, template):
-    ## Necessary Modules
-    from runHiC.chiclib import myGenome
-    
-    genomeFolder = os.path.join(dataFolder, genomeName)
-    ## Generate a dummy gap file under genome folder if there's no one yet
-    gapFile = os.path.join(genomeFolder, gapName)
-    if not os.path.exists(gapFile):
-        tmpfil = open(gapFile, 'wb')
-        tmpfil.write('0\tNA1000\t0\t0\t0\tN\t0\tcentromere\tno\n')
-        tmpfil.flush()
-        tmpfil.close()
-    
-    # Python Genome Object
-    genome_db = myGenome(genomeFolder, readChrms = chroms,
-                         chrmFileTemplate = template, gapFile = gapName)
-    
-    return genomeFolder, genome_db
-    
-
 def mapping(args, commands):
     ## Import necessary modules
     import subprocess
-    import hiclib.mapping as iterM
-    import mirnylib.h5dict as h5dict
-    import runHiC.utilities as utilities
-    from runHiC.utilities import genchunks
+    from runHiC.mapping import splitSRA, splitSingleFastq, uncompressSRA, buildMapIndex, map_core, fetchChromsizes, parse_bam
+    from runHiC.utilities import cleanDirectory, cleanFile
     
-     # Initialization
-    genomeFolder, genome_db = initialize(args.dataFolder,
-                                         args.genomeName,
-                                         args.gapFile,
-                                         args.chroms,
-                                         args.template)
-    
-    # Reference Genome Information
-    gInfo = {'dataFolder': args.dataFolder, 'genomeName': args.genomeName,
-             'gapFile': args.gapFile, 'chroms': args.chroms,
-             'template': args.template, 'label2idx': genome_db.label2idx,
-             'idx2label': genome_db.idx2label}
-    
-    # Construct bowtie2 genome index
-    def buildIndex(genomeFolder):
-        """
-        Build bowtie2 index files under the provided genome folder.
-        
-        """
-        lockFile = os.path.join(genomeFolder, '.'.join([args.genomeName, 'lock']))
-        
-        lock = open(lockFile, 'wb')
-        lock.close()
-        
-        atexit.register(cleanFile, lockFile)
-        
-        fastaNames = [os.path.join(genomeFolder, i)
-                      for i in glob.glob(os.path.join(
-                      genomeFolder, args.template % ('*',)))]
-        wholeGenome = os.path.join(genomeFolder,
-                                   '.'.join([args.genomeName, 'fa']))
-        if not os.path.exists(wholeGenome):
-            os.system('cat ' + ' '.join(fastaNames) + ' > ' + wholeGenome)
-        bowtieIndex = os.path.join(genomeFolder, args.genomeName)
-        buildCmd = ['bowtie2-build', '--quiet', wholeGenome, bowtieIndex]
-        os.system(' '.join(buildCmd))
-                    
-        os.remove(lockFile)
-        
-        return bowtieIndex
-    
-    def mapping_core(fq1, bam1, fq2, bam2, hdf5, enzyme,
-                     dataFolder, genomeName, gapName, chroms, template,
-                     Parameters):
-        
-        genomeFolder, genome_db = initialize(dataFolder,
-                                             genomeName,
-                                             gapName,
-                                             chroms,
-                                             template)
-        ## Count Ligation Junctions
-        seqlen, ligcount = utilities.juncSeqCountFASTQ(fq1, fq2, enzyme)
-        ## Map pair-end reads to the reference genome
-        command = ['runHiC-mapping', '--fq1', fq1, '--fq2', fq2, '--bam1',
-                   bam1, '--bam2', bam2, '-b', Parameters['bowtie_path'],
-                   '-t', str(Parameters['nthreads']), '-i',
-                   Parameters['bowtie_index_path'], '--cache', Parameters['temp_dir']]
-        submapping = subprocess.Popen(command, bufsize=-1,
-                                      stdout=subprocess.PIPE,
-                                      stderr=subprocess.PIPE,
-                                      shell=False)
-        submapping.communicate()
-        ## Parse the mapped sequences into a Python data structure
-        lib = h5dict.h5dict(hdf5)
-        iterM.parse_sam(sam_basename1 = bam1,
-                        sam_basename2 = bam2,
-                        out_dict = lib,
-                        genome_db = genome_db,
-                        enzyme_name = enzyme)
-        
-        uniquely_mapped = len(lib['chrms1'])
-        
-        return seqlen, ligcount, uniquely_mapped
-    
-    ## Validity of arguments
-    fastqDir = args.fastqDir
+    # Preparing
+    genomeFolder = os.path.join(args.dataFolder, args.genomeName)
+    fastqDir = os.path.join(args.dataFolder, args.fastqDir)
+    genomeName = args.genomeName
+    outformat = args.outformat
+    aligner = args.aligner
     mFile = args.metadata
-    chunkSize = args.chunkSize
-    
-    ## Construct bowtie2 genome index if there's no one yet
-    if '--bowtieIndex' in commands:
-        bowtieIndex = args.bowtieIndex
+    if not args.Index is None:
+        indexpath = os.path.abspath(os.path.expanduser(args.Index))
     else:
-        logging.log(21, 'You haven\'t specify the Bowtie2 Genome Index Files.')
-        logging.log(21, 'Try to find them at %s ...', genomeFolder)
-        if os.path.exists(os.path.join(genomeFolder, '.'.join([args.genomeName, 'lock']))):
-            logging.log(21, 'Another Index Building Process is on, leaving ...')
-            sys.exit(1)
-        icheck = glob.glob(os.path.join(genomeFolder, '%s*.bt2' % args.genomeName))
-        if len(icheck) != 0:
-            bowtieIndex = os.path.join(genomeFolder, args.genomeName)
-            logging.log(21, 'Set --bowtieIndex to %s', bowtieIndex)
+        if aligner=='minimap2':
+            indexpath = os.path.join(genomeFolder, '.'.join([genomeName, 'mmi']))
         else:
-            logging.log(21, 'Index files can not be found. Generating them under the'
-                        ' genome folder ...')
-            bowtieIndex = buildIndex(genomeFolder)
-            logging.log(21, 'Done!')
-            
-    # Sequencing Data Format
-    Format = args.Format.lower()
+            indexpath = os.path.join(genomeFolder, '.'.join([genomeName, 'fa']))
+    
+    if args.chromsizes is None:
+        logging.log(21, 'Chromosome sizes are not provided, attempt to fetch from UCSC ...')
+        chromsize_file = fetchChromsizes(genomeFolder, genomeName)
+        logging.log(21, 'Done')
+    else:
+        chromsize_file = os.path.abspath(os.path.expanduser(args.chromsizes))
+    
+    if args.Index is None:
+        logging.log(21, 'You didn\'t specify the Genome Index Path. Try to find it under {0}'.format(genomeFolder))
+        indexlock = os.path.join(genomeFolder, '.'.join([genomeName, 'lock']))
+        if os.path.exists(indexlock):
+            raise Exception('''Another index building process is on. Leaving''')
+        if aligner=='minimap2':
+            icheck = glob.glob(indexpath)
+        else:
+            icheck = glob.glob(indexpath+'.sa')
+        if len(icheck):
+            logging.log(21, 'Set --Index to {0}'.format(indexpath))
+        else:
+            logging.log(21, '''Index files can not be found. Start to generate them ...''')
+            buildMapIndex(aligner, genomeFolder, genomeName)
+            logging.log(21, 'Done')
     
     ## Output Folders
-    bamFolder = os.path.abspath('bams-%s' % args.genomeName)
-    hdf5F = os.path.abspath('hdf5-%s' % args.genomeName)
-    args.HDF5 = hdf5F # To communicate with the next step (filtering)
+    bamFolder = 'alignments-{0}'.format(genomeName)
+    pairFolder = 'pairs-{0}'.format(genomeName)
+    args.pairFolder = pairFolder # To communicate with next processing step (filtering)
     if not os.path.exists(bamFolder):
         os.makedirs(bamFolder)
-    if not os.path.exists(hdf5F):
-        os.makedirs(hdf5F)
+    if not os.path.exists(pairFolder):
+        os.makedirs(pairFolder)
     
-    logging.log(21, 'Bowtie2 alignment results will be saved in bam format under %s',
-                bamFolder)
-    logging.log(21, 'Bam files will be parsed into hdf5 format under %s', hdf5F)
-    
-    # Common Parameters for Mapping
-    Params = {'bowtie_path': args.bowtiePath, 'bowtie_index_path': bowtieIndex,
-              'nthreads': args.threads, 'temp_dir': args.cache,
-              'bowtie_flags': '--very-sensitive'}
+    logging.log(21, 'Alignment results will be outputed in {0} under {1}'.format(outformat, bamFolder))
+    logging.log(21, '{0} files will be parsed into .pairs format under {1}'.format(outformat, pairFolder))
     
     # Read Metadata
-    metadata = [l.rstrip().split() for l in open(mFile) if not l.isspace()]
+    metadata = [l.rstrip().split() for l in open(mFile, 'r') if not l.isspace()]
     database = dict([(i[0], i[-1]) for i in metadata])
-    ## Generate the task queue
-    server, n_worker = mpPool(2, args.nworker)
-    
-    logging.log(21, 'Chunk generating ...')
-    
-    rmFolders = []
-    job_id = []
-    pre_pool = {}
-    Indicators = {}
-    pre_params = []
+    readformat = args.Format.lower()
+    logging.log(21, 'Dump/chunk read pairs from {0} format ...'.format(readformat))
     for i in database:
-        
-        logging.log(21, 'Current task ID: %s', i)
-        
+        logging.log(21, 'Current: {0}'.format(i))
+            
         chunkFolder = os.path.join(fastqDir, i)
         subbamFolder = os.path.join(bamFolder, i)
-        rmFolders.extend([chunkFolder,subbamFolder])
-        subhdf5F = os.path.join(hdf5F, i)
         
-        tmp = os.path.join(subhdf5F, '%s.completed' % i)
-        if os.path.exists(tmp):
-            logging.log(21, 'Completed task, skipping ...')
+        Indicator = os.path.join(fastqDir, '{0}.completed'.format(i))
+        lockFile = os.path.join(fastqDir, '{0}.lock'.format(i))
+        
+        if os.path.exists(Indicator):
+            logging.log(21, 'Completed process, skip')
             continue
-        Indicators[i] = tmp
         
-        for folder in [chunkFolder, subbamFolder, subhdf5F]:
-            if not os.path.exists(folder):
-                os.makedirs(folder)
+        if os.path.exists(lockFile):
+            logging.log(21, 'Conflict process, skip')
+            continue
+        
+        # Chunking/Dumping lock, not the mapping lock
+        lock = open(lockFile, 'wb')
+        lock.close()
+
+        atexit.register(cleanFile, lockFile)
+        
+        if readformat == 'sra':
+            sourceFile = os.path.join(fastqDir, i + '.sra')
+            if not os.path.exists(sourceFile):
+                logging.warning('{0} can not be found on your system, skip'.format(sourceFile))
+                continue
+        else:
+            tryFile_1 = os.path.join(fastqDir, i + '_1.fastq')
+            tryFile_2 = os.path.join(fastqDir, i + '_1.fastq.gz')
+            tryFile_3 = os.path.join(fastqDir, i + '_2.fastq')
+            tryFile_4 = os.path.join(fastqDir, i + '_2.fastq.gz')
+            if os.path.exists(tryFile_1) and os.path.exists(tryFile_3):
+                Fastq_1 = tryFile_1
+                Fastq_2 = tryFile_3
+            elif os.path.exists(tryFile_2) and os.path.exists(tryFile_4):
+                Fastq_1 = tryFile_2
+                Fastq_2 = tryFile_4
+            else:
+                logging.warning('No proper FASTQ pairs can be found, skip')
+                continue
         
         for folder in [chunkFolder, subbamFolder]:
+            if not os.path.exists(folder):
+                os.makedirs(folder)
+            
+        for folder in [chunkFolder, subbamFolder]:
             cleanDirectory(folder)
-            
-        cPickle.dump(gInfo,
-                     open(os.path.join(subhdf5F,'referenceGenome'),'wb'))
         
-        pre_params.append((chunkFolder, subbamFolder, subhdf5F, i, Format,
-                           database, chunkSize))
-        
-        logging.log(21, 'Add %s into the queue ...', i)
-        
-        job_id.append(i)
-    
-    intermediates = server.map(genchunks, pre_params)
-    # Synchronize the main process with the job processes to ensure proper cleanup.
-    server.close()
-    server.join()
-    
-    for query, tmp in zip(job_id, intermediates):
-        if tmp is None:
-            logging.warning('Data of %s can not be found under %s, skipping ...',
-                            query, fastqDir)
+        ## Make chunks according to --chunksize
+        if readformat == 'sra':
+            if not args.chunkSize:
+                logging.log(21, 'Dump SRA ...')
+                uncompressSRA(sourceFile, chunkFolder)
+                logging.log(21, 'Done')
+            else:
+                logging.log(21, 'Split raw SRA into chunks ...')
+                splitSRA(sourceFile, chunkFolder, splitBy = args.chunkSize)
+                logging.log(21, 'Done')
         else:
-            pre_pool[query] = tmp
-    
-    logging.log(21, 'Done!')
-    
-    # Initialize a pp Server for mapping
-    if args.running_mode == 'pbs':
-        server = ppServer(args.threads, args.nworker, port=60000)
-    else:
-        server = ppLocal(args.threads, args.nworker)
-    
-    logging.log(21, 'Mapping ...')
-    jobs = []
-    pool = {'seqlen':{}, 'ligcount':{}, 'Unique-Reads':{}}
-    
-    for query in pre_pool:
-        for pre_out in pre_pool[query]:
-            mapping_params = pre_out + (args.dataFolder,
-                                        args.genomeName,
-                                        args.gapFile,
-                                        args.chroms,
-                                        args.template,
-                                        Params)
-            mapping_modules = ('subprocess',
-                               'runHiC.utilities as utilities',
-                               'hiclib.mapping as iterM',
-                               'mirnylib.h5dict as h5dict')
-            
-            Id = os.path.split(pre_out[4])[1].replace('.hdf5','')
-            logging.log(21, 'Add %s into the queue ...', Id)
-            
-            job = server.submit(mapping_core,
-                                mapping_params,
-                                (initialize,),
-                                mapping_modules)
-            tmp = pre_out + (query,)
-            jobs.append((tmp,job))
-            for key in pool:
-                pool[key][query] = {}
-    
-            
-    for (fq1, outb1, fq2, outb2, hdf5, enzyme, query), job in jobs:
-        seqlen, ligcount, uniquely_mapped = job()
-        pool['seqlen'][query][hdf5] = seqlen
-        pool['ligcount'][query][hdf5] = ligcount
-        pool['Unique-Reads'][query][hdf5] = uniquely_mapped
-    
-    for query in pre_pool:
-        Read_level = {}
-        Read_level['seqlen'] = sum(pool['seqlen'][query].values())
-        Read_level['ligcount'] = sum(pool['ligcount'][query].values())
-        Read_level['Unique-Reads'] = sum(pool['Unique-Reads'][query].values())
-        subhdf5F = os.path.split(pool['seqlen'][query].keys()[0])[0]
-        cPickle.dump(Read_level,
-                     open(os.path.join(subhdf5F,'Read-Level-Stats'),'wb'))
-        completed = open(Indicators[query], 'wb')
-        completed.close()
-    
-    logging.log(21, 'The mapping stage is finished.')
+            if not args.chunkSize:
+                os.symlink(Fastq_1, os.path.join(chunkFolder, os.path.split(Fastq_1)[1]))
+                os.symlink(Fastq_2, os.path.join(chunkFolder, os.path.split(Fastq_2)[1]))
+            else:
+                logging.log(21, 'Split raw FASTQs into chunks ...')
+                splitSingleFastq(Fastq_1, chunkFolder, splitBy = args.chunkSize)
+                splitSingleFastq(Fastq_2, chunkFolder, splitBy = args.chunkSize)
+                logging.log(21, 'Done')
         
-    if args.removeInters:
-        for folder in rmFolders:
-            rmcommand = ['rm', '-rf', folder]
-            os.system(' '.join(rmcommand))
+        completed = open(Indicator, 'wb')
+        completed.close()
+
+        # Release lock
+        os.remove(lockFile)
+    
+    logging.log(21, 'Map read pairs to {0} ...'.format(genomeName))
+    for i in database:
+        logging.log(21, 'Current: {0}'.format(i))
+
+        chunkFolder = os.path.join(fastqDir, i)
+        subbamFolder = os.path.join(bamFolder, i)
+        subPair = os.path.join(pairFolder, i)
+        if not os.path.exists(subPair):
+            os.makedirs(subPair)
+        
+        globalIndicator = os.path.join(pairFolder, '%s.completed' % i)
+
+        if os.path.exists(globalIndicator):
+            logging.log(21, 'Completed work, skip')
+            continue
+
+        ReadFiles = [os.path.join(chunkFolder, f) for f in os.listdir(chunkFolder)]
+        Read_1 = sorted([f for f in ReadFiles if (f.endswith('_1.fastq.gz') or f.endswith('_1.fastq'))])
+        Read_2 = sorted([f for f in ReadFiles if (f.endswith('_2.fastq.gz') or f.endswith('_2.fastq'))])
+        if all([f.endswith('_1.fastq') for f in Read_1]) and all([f.endswith('_2.fastq') for f in Read_2]):
+            OutFiles = [os.path.join(subPair, os.path.split(f)[1].replace('_1.fastq', '.pairs.gz')) for f in Read_1]
+        else:
+            OutFiles = [os.path.join(subPair, os.path.split(f)[1].replace('_1.fastq.gz', '.pairs.gz')) for f in Read_1]
+            
+        Assignments = zip(Read_1, Read_2, OutFiles)
+        
+        for count, (r1, r2, out) in enumerate(Assignments):
+            if len(Read_1)>1:
+                logging.log(21, 'Chunk {0} ...'.format(count))
+            Indicator = os.path.join(subPair, os.path.split(out)[1].replace('.pairs.gz', '.completed'))
+            lockFile = os.path.join(subPair, os.path.split(out)[1].replace('.pairs.gz', '.lock'))
+
+            if os.path.exists(Indicator):
+                logging.log(21, 'Completed work, skip')
+                continue
+        
+            if os.path.exists(lockFile):
+                logging.log(21, 'Someone is working on it, skip')
+                continue
+            
+            # Mapping lock
+            lock = open(lockFile, 'wb')
+            lock.close()
+
+            atexit.register(cleanFile, lockFile)
+
+            cleanDirectory(subPair)
+
+            # BAM/SAM
+            bampath = map_core(r1, r2, indexpath, subbamFolder, aligner, outformat, nthread=args.threads)
+            parse_bam(bampath, out, chromsize_file, genomeName, args.min_mapq, args.max_molecule_size,
+                      args.max_inter_align_gap, args.walks_policy, args.include_readid, args.include_sam,
+                      args.drop_seq)
+                      
+            completed = open(Indicator, 'wb')
+            completed.close()
+
+            logging.log(21, 'Done')
+
+            os.remove(lockFile)
+            
+        if args.removeInters:
+            for folder in [chunkFolder, subbamFolder]:
+                rmcommand = ['rm', '-rf', folder]
+                subprocess.call(' '.join(rmcommand), shell=True)
+        
+        completed = open(globalIndicator, 'wb')
+        completed.close()
 
 def filtering(args, commands):
     # Necessary Modules
-    import runHiC.chiclib as hiclib
-    import mirnylib.h5dict as h5dict
+    from runHiC.chiclib import cHiCdataset
+    from mirnylib.h5dict import h5dict
     
-    def preFilter(infile, outfile, gInfo, enzyme, libSize):
-        genomeFolder, genome_db = initialize(gInfo['dataFolder'],
-                                             gInfo['genomeName'],
-                                             gInfo['gapFile'],
-                                             gInfo['chroms'],
-                                             gInfo['template'])
-        genome_db.setEnzyme(enzyme)
-        parseF = hiclib.cHiCdataset(filename=outfile, genome=genome_db,
-                                    maximumMoleculeLength=libSize,
-                                    mode='w')
-        parseF.parseInputData(infile)
-        gInfo['enzyme'] = enzyme
-        parseF.h5dict['genomeInformation'] = gInfo
-    
-    def sraFilter(poolName, outFiles, gInfo, enzyme, subHDF5, Indicator, duplicates):
-        genomeFolder, genome_db = initialize(gInfo['dataFolder'],
-                                             gInfo['genomeName'],
-                                             gInfo['gapFile'],
-                                             gInfo['chroms'],
-                                             gInfo['template'])
-        genome_db.setEnzyme(enzyme)
-        # Merge chunks
-        frags = hiclib.cHiCdataset(filename=poolName, genome=genome_db,
-                                   mode = 'w')
-        frags.merge(outFiles)
-         
-        ## Additional filtering
-        if duplicates:
-            frags.filterDuplicates()
-        
-        ## Other Stats
-        oriStats = cPickle.load(open(os.path.join(subHDF5, 'Read-Level-Stats'),'rb'))
-        frags.metadata['000_SequencedReads'] = oriStats['seqlen']
-        frags.metadata['010_UniqueMappedReads'] = oriStats['Unique-Reads']
-        frags.metadata['020_LigationCounts'] = oriStats['ligcount']
-            
-        frags.metadata['110_AfterFilteringReads'] = frags.N
-        frags.metadata['400_TotalContacts'] = frags.N
-        sameChrom = (frags.chrms1 == frags.chrms2)
-        sameChromNum = sameChrom.sum()
-        frags.metadata['410_IntraChromosomalReads'] = sameChromNum
-        frags.metadata['420_InterChromosomalReads'] = frags.N - sameChromNum
-        shortRange = sameChrom & (np.abs(frags.mids1-frags.mids2)<20000)
-        shortRangeNum = shortRange.sum()
-        frags.metadata['412_IntraShortRangeReads(<20Kb)'] = shortRangeNum
-        frags.metadata['412_IntraLongRangeReads(>=20Kb)'] = sameChromNum - shortRangeNum
-        
-        if 'M' in genome_db.label2idx:
-            MChromIdx = genome_db.label2idx['M']
-            IntraM = (frags.chrms1==MChromIdx) & (frags.chrms2==MChromIdx)
-            frags.metadata['500_IntraMitochondrial'] = IntraM.sum()
-            InterMN = np.logical_or((frags.chrms1!=MChromIdx) & (frags.chrms2==MChromIdx),
-                                    (frags.chrms1==MChromIdx) & (frags.chrms2!=MChromIdx))
-            frags.metadata['600_InterNuclearMitochondrial'] = InterMN.sum()
-        
-        frags.h5dict['metadata'] = frags.metadata
-        
-        pool = {}
-        genomeDis = np.abs(frags.mids1[sameChrom] - frags.mids2[sameChrom])
-        cuts1 = frags.cuts1[sameChrom]
-        cuts2 = frags.cuts2[sameChrom]
-        strands1 = frags.strands1[sameChrom]
-        strands2 = frags.strands2[sameChrom]
-        RightType = (strands1==1) & (strands2==1)
-        LeftType = (strands1==0) & (strands2==0)
-        InnerType = np.logical_or((strands1 > strands2) & (cuts1 > cuts2),
-                                  (strands1 < strands2) & (cuts1 < cuts2))
-        OuterType = np.logical_or((strands1 > strands2) & (cuts1 < cuts2),
-                                  (strands1 < strands2) & (cuts1 > cuts2))
-        
-        binDis = genomeDis // 1000 # Bin Size: 1000
-        pool = {'LeftType':np.bincount(binDis[LeftType])[:50],
-                'RightType':np.bincount(binDis[RightType])[:50],
-                'InnerType':np.bincount(binDis[InnerType])[:50],
-                'OuterType':np.bincount(binDis[OuterType])[:50]}
-        frags.h5dict['_DirectionTypeStats'] = pool
-        
-        completed = open(Indicator, 'wb')
-        completed.close()
-    
-    def repMerge(infiles, outfile, gInfo, enzyme, Indicator):
-        
-        genomeFolder, genome_db = initialize(gInfo['dataFolder'],
-                                             gInfo['genomeName'],
-                                             gInfo['gapFile'],
-                                             gInfo['chroms'],
-                                             gInfo['template'])
-        genome_db.setEnzyme(enzyme)
-        frags = hiclib.cHiCdataset(filename=outfile, genome=genome_db,
-                                    mode='w')
-        frags.merge(infiles)
-        completed = open(Indicator, 'wb')
-        completed.close()
-    
-    def cellMerge(infiles, outfile, gInfo, enzyme, Indicator):
-        
-        genomeFolder, genome_db = initialize(gInfo['dataFolder'],
-                                             gInfo['genomeName'],
-                                             gInfo['gapFile'],
-                                             gInfo['chroms'],
-                                             gInfo['template'])
-        genome_db.setEnzyme(enzyme)
-        frags = hiclib.cHiCdataset(filename=outfile, genome=genome_db,
-                                   mode='w')
-        frags.merge(infiles)
-        completed = open(Indicator, 'wb')
-        completed.close()
-        
-    
-    Sources = args.HDF5
+    ## Validity of arguments
+    Sources = os.path.abspath(os.path.expanduser(args.HDF5))
+    if not os.path.exists(Sources):
+        logging.error('There is no folder named %s on your system!', Sources)
+        logging.error('Exit ...')
+        sys.exit(1)
     mFile = args.metadata
+    if not os.path.exists(mFile):
+        logging.error('%s can not be found under current working directory!', mFile)
+        logging.error('Exit ...')
+        sys.exit(1)
     
-    gpath, subfolder = os.path.split(Sources)
-    subfolder = subfolder.replace('hdf5-', 'filtered-')
-    filteredFolder = os.path.join(gpath, subfolder)
+    # Output Folder
+    filteredFolder = os.path.split(Sources)[-1].replace('hdf5-', 'filtered-')
     if not os.path.exists(filteredFolder):
         os.makedirs(filteredFolder)
     
@@ -729,7 +558,7 @@ def filtering(args, commands):
     
     metadata = [l.rstrip().split() for l in open(mFile) if not l.isspace()]
     database = dict([(i[0], i[-1]) for i in metadata])
-    ## Hierarchical merging tasks
+    ## Hierarchical merging structures
     bioReps = set((i[1], i[3], i[2]) for i in metadata if not os.path.exists(os.path.join(filteredFolder, '%s-%s-%s.completed' % (i[1], i[3], i[2]))))
     cellLines = set((i[1], i[3]) for i in metadata if not os.path.exists(os.path.join(filteredFolder, '%s-%s-allReps.completed' % (i[1], i[3]))))
     
@@ -740,217 +569,266 @@ def filtering(args, commands):
         if ps in database:
             del database[ps]
     
-    # To communicate with the next step (binning)
+    # To communicate with next processing step (binning)
     args.filteredDir = []
     for i in glob.glob(os.path.join(filteredFolder, '*.completed')):
         corHDF5 = i.replace('.completed', '-filtered.hdf5')
         args.filteredDir.append(corHDF5)
     
-    if args.running_mode == 'pbs':
-        server = ppServer(1, args.nworker, port=60001)
-    else:
-        server = ppLocal(1, args.nworker)
-    
-    logging.log(21, 'Chunk-level filtering ...')
-    
-    sra_pool = []
-    chunk_jobs = []
+    logging.log(21, 'Filtering data at SRA level ...')
     for SRR in database:
-        logging.log(21, 'Current SRA ID: %s', SRR)
-        
+        logging.log(21, 'Current SRR: %s ...', SRR)
         subHDF5 = os.path.join(Sources, SRR)
         if not os.path.exists(os.path.join(subHDF5, '%s.completed' % SRR)):
             logging.log(21, '%s is still in mapping stage, skipping ...', SRR)
             continue
         
+        ## Read-in Corresponding Genome Information
+        gInfo = cPickle.load(open(os.path.join(subHDF5, 'referenceGenome'),'rb'))
+        args.__dict__.update(gInfo)
+        
         subFilter = os.path.join(filteredFolder, SRR)
-        tmp = os.path.join(subFilter, '%s.completed' % SRR)
-        if os.path.exists(tmp):
-            logging.log(21, 'Completed task, skipping ...')
+        
+        Indicator = os.path.join(subFilter, '%s.completed' % SRR)
+        lockFile = os.path.join(subFilter, '%s.lock' % SRR)
+        
+        if os.path.exists(Indicator) and not os.path.exists(lockFile):
+            logging.log(21, 'Completed work, skipping ...')
             continue
         
-        gInfo = cPickle.load(open(os.path.join(subHDF5, 'referenceGenome'),'rb'))
+        if os.path.exists(lockFile):
+            logging.log(21, 'Someone is working on %s, skipping', SRR)
+            continue
         
         if not os.path.exists(subFilter):
             os.makedirs(subFilter)
+        
         cleanDirectory(subFilter)
         
+        lock = open(lockFile, 'w')
+        lock.close()
+        
+        atexit.register(cleanFile, lockFile)
+        
+        logging.log(21, 'Filtering ...')
         inFiles = glob.glob(os.path.join(subHDF5, SRR + '*.hdf5'))
         outFiles = []
         for infile in inFiles:
+            dataLocation, genomeFolder, genome_db = initialize(args)
             FileAlone = os.path.split(infile)[1]
             outfile = os.path.join(subFilter, FileAlone.replace('.hdf5', '-parsed.hdf5'))
             outFiles.append(outfile)
             enzyme = database[SRR]
-            pre_params = (infile, outfile, copy.deepcopy(gInfo), enzyme,
-                          args.libSize)
-            pre_modules = ('runHiC.chiclib as hiclib',)
-            Id = FileAlone.replace('.hdf5','')
-            logging.log(21, 'Add %s into the queue ...', Id)
-            job = server.submit(preFilter, pre_params, (initialize,), pre_modules)
-            chunk_jobs.append(job)
+            genome_db.setEnzyme(enzyme)
+            parseF = cHiCdataset(filename = outfile, genome = genome_db,
+                                 maximumMoleculeLength = args.libSize,
+                                 mode = 'w', inMemory = False)
+            parseF.parseInputData(infile)
             
+            if args.startNearRsite:
+                parseF.filterRsiteStart(offset=5)
+            
+            # Save ref-genome information
+            gInfo['enzyme'] = enzyme
+            parseF.h5dict['genomeInformation'] = gInfo
+         
         poolName = os.path.join(subFilter, SRR + '-filtered.hdf5')
-        sra_params = (poolName, outFiles, gInfo, enzyme, subHDF5, tmp,
-                      args.duplicates)
-        sra_pool.append(sra_params)
+        # Merge chunks
+        fragments = cHiCdataset(filename = poolName, genome = genome_db,
+                                mode = 'w', inMemory = False)
+        fragments.merge(outFiles)
+         
+        ## Additional filtering
+        if args.duplicates:
+            fragments.filterDuplicates()
+        
+        ## Other Stats
+        if os.path.exists(os.path.join(subHDF5, 'Read-Level-Stats')):
+            oriStats = cPickle.load(open(os.path.join(subHDF5, 'Read-Level-Stats'),'rb'))
+            fragments.metadata['000_SequencedReads'] = oriStats['Sequenced-Reads']
+            fragments.metadata['010_UniqueMappedReads'] = oriStats['Unique-Reads']
+            fragments.metadata['020_LigationCounts'] = oriStats['Ligation-Counts']
+            
+        fragments.metadata['110_AfterFilteringReads'] = fragments.N
+        fragments.metadata['400_TotalContacts'] = fragments.N
+        sameChrom = (fragments.chrms1 == fragments.chrms2)
+        sameChromNum = sameChrom.sum()
+        fragments.metadata['410_IntraChromosomalReads'] = sameChromNum
+        fragments.metadata['420_InterChromosomalReads'] = fragments.N - sameChromNum
+        shortRange = sameChrom & (np.abs(fragments.mids1 - fragments.mids2) < 20000)
+        shortRangeNum = shortRange.sum()
+        fragments.metadata['412_IntraShortRangeReads(<20Kb)'] = shortRangeNum
+        fragments.metadata['412_IntraLongRangeReads(>=20Kb)'] = sameChromNum - shortRangeNum
+        
+        if 'M' in genome_db.label2idx:
+            MChromIdx = genome_db.label2idx['M']
+            IntraM = (fragments.chrms1==MChromIdx) & (fragments.chrms2==MChromIdx)
+            fragments.metadata['500_IntraMitochondrial'] = IntraM.sum()
+            InterMN = np.logical_or((fragments.chrms1!=MChromIdx) & (fragments.chrms2==MChromIdx),
+                                    (fragments.chrms1==MChromIdx) & (fragments.chrms2!=MChromIdx))
+            fragments.metadata['600_InterNuclearMitochondrial'] = InterMN.sum()
+        
+        fragments.h5dict['metadata'] = fragments.metadata
+        
+        ## Read pair types
+        genomeDis = np.abs(fragments.mids1[sameChrom] - fragments.mids2[sameChrom])
+        cuts1 = fragments.cuts1[sameChrom]
+        cuts2 = fragments.cuts2[sameChrom]
+        strands1 = fragments.strands1[sameChrom]
+        strands2 = fragments.strands2[sameChrom]
+        RightType = (strands1 == 1) & (strands2 == 1)
+        LeftType = (strands1 == 0) & (strands2 == 0)
+        InnerType = np.logical_or((strands1 > strands2) & (cuts1 > cuts2),
+                                  (strands1 < strands2) & (cuts1 < cuts2))
+        OuterType = np.logical_or((strands1 > strands2) & (cuts1 < cuts2),
+                                  (strands1 < strands2) & (cuts1 > cuts2))
+        
+        binDis = genomeDis // 1000 # Bin Size: 1000
+        binCount_R = np.bincount(binDis[RightType])[:50]
+        binCount_L = np.bincount(binDis[LeftType])[:50]
+        binCount_I = np.bincount(binDis[InnerType])[:50]
+        binCount_O = np.bincount(binDis[OuterType])[:50]
+        
+        fragments.h5dict['LeftType'] = binCount_L
+        fragments.h5dict['RightType'] = binCount_R
+        fragments.h5dict['InnerType'] = binCount_I
+        fragments.h5dict['OuterType'] = binCount_O
+        
+        logging.log(21, 'Done!')
+        
+        completed = open(Indicator, 'wb')
+        completed.close()
+                    
+        os.remove(lockFile)
     
-    for job in chunk_jobs:
-        job()
-    logging.log(21, 'Done!')
-    
-    if args.running_mode == 'pbs':
-        server = ppServer(1, args.nworker, port=60002)
-    else:
-        server = ppLocal(1, args.nworker)
-    
-    logging.log(21, 'SRA-level filtering ...')
-    
-    sra_jobs = []
-    for sra_params in sra_pool:
-        sra_modules = ('runHiC.chiclib as hiclib','cPickle', 'os',
-                       'numpy as np')
-        Id = os.path.split(sra_params[0])[1].replace('-filtered.hdf5','')
-        logging.log(21, 'Add %s into the queue ...', Id)
-        job = server.submit(sraFilter, sra_params, (initialize,), sra_modules)
-        sra_jobs.append(job)
-    
-    for job in sra_jobs:
-        job()
-    logging.log(21, 'Done!')
-    
+    ## The First level, biological replicates
     logging.log(21, 'Merging data from the same biological replicates ...')
-    if args.running_mode == 'pbs':
-        server = ppServer(1, args.nworker, port=60003)
-    else:
-        server = ppLocal(1, args.nworker)
-    
-    rep_jobs = []
     for rep in bioReps:
-        logging.log(21, 'Current task ID: %s-%s-%s' % rep)
+        logging.log(21, 'Current work ID: %s-%s-%s' % rep)
         checkComplete = [os.path.join(filteredFolder, i[0], '%s.completed' % i[0]) for i in metadata
                          if ((i[1], i[3], i[2]) == rep)]
         if not all([os.path.exists(i) for i in checkComplete]):
-            logging.log(21, 'Filtering for some SRA hasn\'t been completed, skipping ...')
+            logging.log(21, 'Filtering for some SRR hasn\'t been completed, skipping ...')
             continue
         
         Indicator = os.path.join(filteredFolder, '%s-%s-%s.completed' % rep)
+        lockFile = os.path.join(filteredFolder, '%s-%s-%s.lock' % rep)
         
-        if os.path.exists(Indicator):
-            logging.log(21, 'Completed task, skipping ...')
+        if os.path.exists(Indicator) and not os.path.exists(lockFile):
+            logging.log(21, 'Completed work, skipping ...')
             continue
         
+        if os.path.exists(lockFile):
+            logging.log(21, 'Conflicted work, skipping ...')
+            continue
+        
+        lock = open(lockFile, 'w')
+        lock.close()
+        
+        atexit.register(cleanFile, lockFile)
+        
         filenames = [os.path.join(filteredFolder, i[0], '%s-filtered.hdf5' % i[0]) for i in metadata
-                    if ((i[1], i[3], i[2])==rep)]
+                    if ((i[1], i[3], i[2]) == rep)]
         outfile = os.path.join(filteredFolder, '%s-%s-%s-filtered.hdf5' % rep)
         args.filteredDir.append(outfile)
         
-        gInfo = h5dict.h5dict(filenames[0], 'r')['genomeInformation']
+        # Genome information from HDF5
+        gInfo = h5dict(filenames[0], 'r')['genomeInformation']
+        args.__dict__.update(gInfo)
         enzyme = rep[1]
-        rep_params = (filenames, outfile, gInfo, enzyme, Indicator)
-        rep_modules = ('runHiC.chiclib as hiclib',)
-        logging.log(21, 'Add %s-%s-%s into the queue ...' % rep)
-        job = server.submit(repMerge, rep_params, (initialize,), rep_modules)
-        rep_jobs.append(job)
-    
-    for job in rep_jobs:
-        job()
-    logging.log(21, 'Done!')  
+        
+        dataLocation, genomeFolder, genome_db = initialize(args)
+        genome_db.setEnzyme(enzyme)
+        ## Merge lane data altogether
+        fragments = cHiCdataset(filename = outfile, genome = genome_db,
+                                mode = 'w', inMemory = False)
+        fragments.merge(filenames)
+        
+        completed = open(Indicator, 'wb')
+        completed.close()
+               
+        os.remove(lockFile)
+        
+        logging.log(21, 'Done!')
     
     if args.level == 2:
-        logging.log(21, 'Merging data of the same cell line with the same restriction enzyme ...')
-        if args.running_mode == 'pbs':
-            server = ppServer(1, args.nworker, port=60004)
-        else:
-            server = ppLocal(1, args.nworker)
+        ## The Second level, cell lines, optional
+        logging.log(21, 'Merging data of the same cell line using the same restriction enzyme ...')
         
         bioList = set((i[1], i[3], i[2]) for i in metadata)
         
-        cell_jobs = []
         for cell in cellLines:
-            logging.log(21, 'Current task ID: %s-%s' % cell)
+            logging.log(21, 'Current work ID: %s-%s' % cell)
             checkComplete = [os.path.exists(os.path.join(filteredFolder, '%s-%s-%s.completed' % i)) for i in bioList
                              if ((i[0], i[1]) == cell)]
             if not all(checkComplete):
-                logging.log(21, 'Merging for some replicates hasn\'t been completed, skipping ...')
+                logging.log(21, 'Corresponding rep filtering hasn\'t been completed, skipping ...')
                 continue
             
             Indicator = os.path.join(filteredFolder, '%s-%s-allReps.completed' % cell)
+            lockFile = os.path.join(filteredFolder, '%s-%s.lock' % cell)
             
-            if os.path.exists(Indicator):
-                logging.log(21, 'Completed task, skipping ...')
+            if os.path.exists(Indicator) and not os.path.exists(lockFile):
+                logging.log(21, 'Completed work, skipping ...')
                 continue
+        
+            if os.path.exists(lockFile):
+                logging.log(21, 'Conflicted work, skipping ...')
+                continue
+            
+            lock = open(lockFile, 'w')
+            lock.close()
+            
+            atexit.register(cleanFile, lockFile)
             
             filenames = [os.path.join(filteredFolder, '%s-%s-%s-filtered.hdf5' % i) for i in bioList
                          if ((i[0], i[1]) == cell)]
             outfile = os.path.join(filteredFolder, '%s-%s-allReps-filtered.hdf5' % cell)
             args.filteredDir.append(outfile)
             
-            gInfo = h5dict.h5dict(filenames[0], 'r')['genomeInformation']
+            # Genome information from HDF5
+            gInfo = h5dict(filenames[0], 'r')['genomeInformation']
+            args.__dict__.update(gInfo)
             enzyme = cell[-1]
-            cell_params = (filenames, outfile, gInfo, enzyme, Indicator)
-            cell_modules = ('runHiC.chiclib as hiclib',)
-            logging.log(21, 'Add %s-%s into the queue ...' % cell)
-            job = server.submit(cellMerge, cell_params,
-                                (initialize,), cell_modules)
-            cell_jobs.append(job)
-        
-        for job in cell_jobs:
-            job()
-        logging.log(21, 'Done!')
-    
-    logging.log(21, 'The filtering stage is finished.')
+            
+            dataLocation, genomeFolder, genome_db = initialize(args)
+            genome_db.setEnzyme(enzyme)
+            fragments = cHiCdataset(filename = outfile, genome = genome_db,
+                                    mode = 'w', inMemory = False)
+            fragments.merge(filenames)
+            
+            completed = open(Indicator, 'wb')
+            completed.close()
+                    
+            os.remove(lockFile)
+            
+            logging.log(21, 'Done!')
 
 def binning(args, commands):
-    
-    import runHiC.chiclib as hiclib
+    # Necessary Modules
+    from runHiC.chiclib import cHiCdataset
     from mirnylib.h5dict import h5dict
     
     Sources = [os.path.abspath(os.path.expanduser(i)) for i in args.filteredDir]
     
-    def outHeatmap(infile, hfile, resolution, gInfo, mode, Indicator):
-        
-        genomeFolder, genome_db = initialize(gInfo['dataFolder'],
-                                             gInfo['genomeName'],
-                                             gInfo['gapFile'],
-                                             gInfo['chroms'],
-                                             gInfo['template'])
-        genome_db.setEnzyme(gInfo['enzyme'])
-        frags = hiclib.cHiCdataset(infile, genome=genome_db, mode='r')
-        if mode == 'wholeGenome':
-            frags.saveHeatmap(hfile, resolution=resolution, gInfo=gInfo)
-        if mode == 'byChromosome':
-            frags.saveByChromosomeHeatmap(hfile, resolution=resolution,
-                                          includeTrans=False, gInfo=gInfo)
-        completed = open(Indicator, 'wb')
-        completed.close()
-        
-    
-    # To communicate with the next step (correcting)
+    # To communicate with next processing step (correcting)
     args.HeatMap = []
     
-    if args.running_mode == 'pbs':
-        server = ppServer(1, args.nworker, port=60005)
-    else:
-        server = ppLocal(1, args.nworker)
-    
-    logging.log(21, 'Binning ...')
-    
-    jobs = []
+    ## Generate Matrices
     for S in Sources:
         if os.path.isdir(S):
             sFolder = S
-            queue = [os.path.join(S,i) for i in glob.glob(os.path.join(S, '*-filtered.hdf5'))]
+            queue = [os.path.join(S, i) for i in glob.glob(os.path.join(S, '*-filtered.hdf5'))]
         else:
-            sFolder = os.path.split(S)[0]
-            queue = [os.path.join(sFolder,i) for i in glob.glob(S) if i.endswith('-filtered.hdf5')]
+            parse = os.path.split(S)
+            sFolder = parse[0]
+            queue = [os.path.join(sFolder, i) for i in glob.glob(S) if i.endswith('-filtered.hdf5')]
         
         # Output Dir
-        gpath, subfolder = os.path.split(sFolder)
-        subfolder = subfolder.replace('filtered-', 'Raw-')
-        hFolder = os.path.join(gpath, subfolder)
+        hFolder = os.path.split(sFolder)[-1].replace('filtered-', 'Raw-')
         if not os.path.exists(hFolder):
             os.makedirs(hFolder)
+        
     
         # Appropriate Units
         unit, denominator = ('K', 1000) if (args.resolution / 1000 < 1000) else ('M', 1000000)
@@ -958,183 +836,241 @@ def binning(args, commands):
             
         for f in queue:
             logging.log(21, 'Current source file: %s', f)
-            tmp = f.replace('-filtered.hdf5', '.completed')
-            if not os.path.exists(tmp):
-                logging.log(21, 'Filtering hasn\'t been completed, skipping ...')
+            completeFile = f.replace('-filtered.hdf5', '.completed')
+            if not os.path.exists(completeFile):
+                logging.log(21, 'Incompleted HDF5 source, skipping ...')
                 continue
             
-            fname = os.path.basename(f)
-            Indicator = os.path.join(hFolder, fname.replace('.hdf5', '-%s.completed' % nLabel))
+            Indicator = os.path.join(hFolder, os.path.basename(f).replace('.hdf5', '-%s.completed' % nLabel))
+            lockFile = os.path.join(hFolder, os.path.basename(f).replace('.hdf5', '-%s.lock' % nLabel))
             
-            if os.path.exists(Indicator):
-                logging.log(21, 'Completed task, skipping ...')
+            if os.path.exists(Indicator) and not os.path.exists(lockFile):
+                logging.log(21, 'Completed work, skipping ...')
                 continue
+        
+            if os.path.exists(lockFile):
+                logging.log(21, 'Conflicted work, skipping ...')
+                continue
+            
+            lock = open(lockFile, 'w')
+            lock.close()
+            
+            atexit.register(cleanFile, lockFile)
+            
+            logging.log(21, 'Contact Matrices will be saved in hdf5 format under %s', hFolder)
+            
+            logging.log(21, 'Constructing ...')
             
             gInfo = h5dict(f, 'r')['genomeInformation']
+            args.__dict__.update(gInfo)
             
-            hFile = os.path.join(hFolder, fname.replace('.hdf5', '-%s.hm' % nLabel))
+            hFile = os.path.join(hFolder, os.path.basename(f).replace('.hdf5', '-%s.hm' % nLabel))
             args.HeatMap.append(hFile)
-            params = (f, hFile, args.resolution, gInfo, args.mode, Indicator)
-            required_modules = ('runHiC.chiclib as hiclib',)
-            job = server.submit(outHeatmap, params, (initialize,), required_modules)
-            jobs.append(job)
+            # Initialize a Genome Object
+            dataLocation, genomeFolder, genome_db = initialize(args)
+            genome_db.setEnzyme(args.enzyme)
+            fragments = cHiCdataset(f, genome = genome_db, mode = 'r', inMemory = False)
+            ## Different Modes
+            if args.mode == 'wholeGenome':
+                fragments.saveHeatmap(hFile, resolution = args.resolution,
+                                      gInfo = gInfo)
+            if args.mode == 'byChromosome':
+                fragments.saveByChromosomeHeatmap(hFile, resolution = args.resolution,
+                                                  includeTrans = args.includeTrans,
+                                                  gInfo = gInfo)
+            
+            completed = open(Indicator, 'wb')
+            completed.close()
+                    
+            os.remove(lockFile)
     
-    for job in jobs:
-        job()
-    logging.log(21, 'The binning stage is finished.')
+            logging.log(21, 'Done!')
 
 def correcting(args, commands):
-    
-    import mirnylib.h5dict as h5dict
-    import runHiC.chiclib as hiclib
+    ## Necessary Modules
+    from mirnylib.h5dict import h5dict
     
     ## Two modes
-    def allinone(inFile, outFile, resolution, gInfo, Keys, Indicator):
+    def Lcore(inFile, outFile, resolution, genome_db):
+        # Necessary Modules
+        from hiclib import binnedData
+        # Create a binnedData object, load the data.
+        logging.log(21, 'Loading Contact Matrix of the Whole Genome ...')
+        BD = binnedData.binnedData(resolution, genome_db)
+        name = '-'.join(os.path.basename(inFile).split('-')[:3])
+        BD.simpleLoad(inFile, name)
+        logging.log(21, 'Done!')
+        # Remove the contacts between loci located within the same bin.
+        BD.removeDiagonal(m = 0)
+        # Remove bins with less than half of a bin sequenced.
+        BD.removeBySequencedCount(0.5)
+        # Remove 0.5% bins with the lowest number of records
+        BD.removePoorRegions(cutoff = 0.5, coverage = True)
+        BD.removePoorRegions(cutoff = 0.5, coverage = False)
+        # Truncate top 0.05% of inter-chromosomal counts (possibly, PCR blowouts).
+        BD.truncTrans(high = 0.0005)
+        logging.log(21, 'Perform ICE ...')
+        BD.iterativeCorrectWithoutSS()
+        logging.log(21, 'Done!')
+        logging.log(21, 'Exporting Corrected Matrix ...')
+        BD.export(name, outFile)
+        logging.log(21, 'Done!')
+
+    def Hcore(inFile, outFile, resolution, genome_db):
+        # Necessary Modules
+        from runHiC.chiclib import cHiResHiC
+        import tempfile
+        # Create a HiResHiC object
+        fd, tempHDF5 = tempfile.mkstemp(suffix = '.hdf5')
+        os.close(fd)
+        BD = cHiResHiC(genome = genome_db, resolution = resolution,
+                       storageFile = tempHDF5, mode = 'w')
+        logging.log(21, 'Loading Intra-chromosomal Matrices ...')
+        BD.loadData(dictLike = inFile, mode = 'cis')
+        logging.log(21, 'Done!')
         
-        genomeFolder, genome_db = initialize(gInfo['dataFolder'],
-                                             gInfo['genomeName'],
-                                             gInfo['gapFile'],
-                                             gInfo['chroms'],
-                                             gInfo['template'])
-        if 'heatmap' in Keys: # Low resolution case
-            BD = hiclib.cBinnedData(resolution, genome_db)
-            name = '-'.join(os.path.basename(inFile).split('-')[:3])
-            BD.simpleLoad(inFile, name)
-            BD.removeDiagonal(m = 0)
-            BD.removeBySequencedCount(0.5)
-            BD.removePoorRegions(cutoff=0.5, coverage=False)
-            BD.truncTrans(high = 0.0005)
-            BD.iterativeCorrectWithoutSS()
-            BD.export(name, outFile)
-        else:
-            BD = hiclib.HiResHiC(genome_db, resolution, inFile)
-            BD.iterativeCorrection(outFile)
+        BD.removeDiagonal(m = 0)
+        BD.removePoorRegions(percent = 0.5)
         
-        reRead = h5dict.h5dict(outFile)
-        reRead['genomeInformation'] = gInfo
-              
-        completed = open(Indicator, 'wb')
-        completed.close()
+        logging.log(21, 'Perform ICE ...')
+        BD.iterativeCorrection()
+        logging.log(21, 'Done!')
+        logging.log(21, 'Exporting Corrected Matrix ...')
+        BD.export(outFile, mode = 'cis')
+        logging.log(21, 'Done!')
         
     Sources = [os.path.abspath(os.path.expanduser(i)) for i in args.HeatMap]
     
     # To communicate with next processing step
     args.cHeatMap = []
     
-    if args.running_mode == 'pbs':
-        server = ppServer(1, args.nworker, port=60006)
-    else:
-        server = ppLocal(1, args.nworker)
-    
-    logging.log(21, 'Correcting ...')
-    
-    jobs = []
+    ## Corrections start
     for S in Sources:
         if os.path.isdir(S):
-            queue = [os.path.join(S,i) for i in glob.glob(os.path.join(S, '*.hm'))]
+            queue = [os.path.join(S, i) for i in glob.glob(os.path.join(S, '*.hm'))]
             sFolder = S
         else:
-            sFolder = os.path.split(S)[0]
-            queue = [os.path.join(sFolder,i) for i in glob.glob(S) if i.endswith('.hm')]
+            parse = os.path.split(S)
+            sFolder = parse[0]
+            queue = [os.path.join(sFolder, i) for i in glob.glob(S) if i.endswith('.hm')]
         
         ## Output Dir
-        gpath, subfolder = os.path.split(sFolder)
-        subfolder = subfolder.replace('Raw-', 'Corrected-')
-        cFolder = os.path.join(gpath, subfolder)
+        cFolder = os.path.split(sFolder)[-1].replace('Raw-', 'Corrected-')
         if not os.path.exists(cFolder):
             os.makedirs(cFolder)
     
         for f in queue:
             logging.log(21, 'Current source file: %s', f)
             
-            tmp = f[:-3] + '.completed'
-            if not os.path.exists(tmp):
-                logging.log(21, 'Binning hasn\'t been completed, skipping ...')
+            completeFile = f[:-3] + '.completed'
+            if not os.path.exists(completeFile):
+                logging.log(21, 'Incompleted Raw Matrix, skipping ...')
                 continue
             
-            fname = os.path.basename(f)
-            Indicator = os.path.join(cFolder, fname[:-3] + '_c.completed')
-            cFile = os.path.join(cFolder, fname[:-3] + '_c.hm')
+            Indicator = os.path.join(cFolder, os.path.basename(f)[:-3] + '_c.completed')
+            lockFile = os.path.join(cFolder, os.path.basename(f)[:-3] + '_c.lock')
+            
+            if os.path.exists(Indicator) and not os.path.exists(lockFile):
+                logging.log(21, 'Completed work, skipping ...')
+                continue
+        
+            if os.path.exists(lockFile):
+                logging.log(21, 'Conflicted work, skipping ...')
+                continue
+            
+            lock = open(lockFile, 'w')
+            lock.close()
+            
+            atexit.register(cleanFile, lockFile)
+            
+            logging.log(21, 'Corrected Matrices will be generated under %s', cFolder)
+            
+            gInfo = h5dict(f, 'r')['genomeInformation']
+            args.__dict__.update(gInfo)
+            
+            dataLocation, genomeFolder, genome_db = initialize(args)
+            
+            # Output file
+            cFile = os.path.join(cFolder, os.path.basename(f)[:-3] + '_c.hm')
             args.cHeatMap.append(cFile)
-            
-            if os.path.exists(Indicator):
-                logging.log(21, 'Completed task, skipping ...')
-                continue
-            
-            raw = h5dict.h5dict(f, mode = 'r')
-            gInfo = raw['genomeInformation']
+            # Raw Data
+            raw = h5dict(f, mode = 'r')
             Keys = raw.keys()
             resolution = int(raw['resolution'])
-            params = (f, cFile, resolution, gInfo, Keys, Indicator)
-            required_modules = ('runHiC.chiclib as hiclib',
-                                'mirnylib.h5dict as h5dict')
-            job = server.submit(allinone, params, (initialize,), required_modules)
-            jobs.append(job)
-    
-    for job in jobs:
-        job()
-    logging.log(21, 'The correcting stage is finished.')
+            if 'heatmap' in Keys: # Low resolution case
+                Lcore(f, cFile, resolution, genome_db)
+            else: # High resolution case
+                Hcore(f, cFile, resolution, genome_db)
+            
+            # Add genome information
+            reRead = h5dict(cFile)
+            reRead['genomeInformation'] = gInfo
+            
+            completed = open(Indicator, 'wb')
+            completed.close()
+                    
+            os.remove(lockFile)
+            
 
 def tosparse(args, commands):
+    # Necessary Modules
+    from mirnylib.h5dict import h5dict
+    from runHiC.utilities import toSparse
     
-    import mirnylib.h5dict as h5dict
-    import runHiC.utilities as utilities
-    
-    def toSparse(infile, csr, Indicator):
-        
-        utilities.toSparse(source=infile, csr=csr)
-        completed = open(Indicator, 'wb')
-        completed.close()
-        
     Sources = [os.path.abspath(os.path.expanduser(i)) for i in args.cHeatMap]
     
-    if args.running_mode == 'pbs':
-        server = ppServer(1, args.nworker, port=60007)
-    else:
-        server = ppLocal(1, args.nworker)
+    logging.log(21, 'Converting matched Matrices into sparse ones ...')
     
-    logging.log(21, 'Sparsing matrix converting ...')
-    jobs = []
     for S in Sources:
         if os.path.isdir(S):
-            queue = [os.path.join(S,i) for i in glob.glob(os.path.join(S, '*.hm'))]
+            queue = [os.path.join(S, i) for i in glob.glob(os.path.join(S, '*.hm'))]
             sFolder = S
         else:
-            sFolder = os.path.split(S)[0]
-            queue = [os.path.join(sFolder,i) for i in glob.glob(S) if i.endswith('.hm')]
+            parse = os.path.split(S)
+            sFolder = parse[0]
+            queue = [os.path.join(sFolder, i) for i in glob.glob(S) if i.endswith('.hm')]
         
         for f in queue:
-            logging.log(21, 'Current matrix file: %s', f)
+            logging.log(21, 'Current Matrix file: %s', f)
             
-            tmp = f[:-3] + '.completed'
-            if not os.path.exists(tmp):
-                logging.log(21, 'Incompleted matrix source, skipping ...')
+            completeFile = f[:-3] + '.completed'
+            if not os.path.exists(completeFile):
+                logging.log(21, 'Incompleted Matrix Source, skipping ...')
                 continue
             
             if args.csr: 
                 Indicator = f[:-3] + '-csrsparse.completed'
+                lockFile = f[:-3] + '-csrsparse.lock'
             else:
                 Indicator = f[:-3] + '-sparse.completed'
+                lockFile = f[:-3] + '-sparse.lock'
             
-            if os.path.exists(Indicator):
-                logging.log(21, 'Completed task, skipping ...')
+            if os.path.exists(Indicator) and not os.path.exists(lockFile):
+                logging.log(21, 'Completed work, skipping ...')
+                continue
+        
+            if os.path.exists(lockFile):
+                logging.log(21, 'Conflicted work, skipping ...')
                 continue
             
-            # Check if it is a by-chromosome contact matrix
-            raw = h5dict.h5dict(f, mode = 'r')
+            lock = open(lockFile, 'w')
+            lock.close()
+            
+            atexit.register(cleanFile, lockFile)
+            
+            # Check if it is by-chromosome contact matrix
+            raw = h5dict(f, mode = 'r')
             Keys = raw.keys()
             if 'heatmap' in Keys:
                 logging.warning('%s is a whole-genome contact matrix, skipping ...', f)
                 continue
             else:
-                params = (f, args.csr, Indicator)
-                required_modules = ('runHiC.utilities as utilities',)
-                job = server.submit(toSparse, params, (), required_modules)
-                jobs.append(job)
-    
-    for job in jobs:
-        job()
-    logging.log(21, 'Done!')
+                toSparse(source = f, csr = args.csr)
+            
+            completed = open(Indicator, 'wb')
+            completed.close()
+                    
+            os.remove(lockFile)
 
 def quality(args, commands):
     
@@ -1162,15 +1098,12 @@ def quality(args, commands):
         checkFile_2 = os.path.join(locator, lane[0], lane[0] + '-filtered.hdf5')
         if os.path.exists(checkFile_1) and os.path.exists(checkFile_2):
             logging.log(21, 'Generate statistic table ...')
+            ## Read genome information in
             gInfo = h5dict(checkFile_2, 'r')['genomeInformation']
-            genomeFolder, genome_db = initialize(gInfo['dataFolder'],
-                                                 gInfo['genomeName'],
-                                                 gInfo['gapFile'],
-                                                 gInfo['chroms'],
-                                                 gInfo['template'])
-            genome_db.setEnzyme(lane[3])
+            args.__dict__.update(gInfo)
+            dataLocation, genomeFolder, genome_db = initialize(args)
             fragments = cHiCdataset(checkFile_2, genome = genome_db,
-                                    mode = 'r')
+                                    mode = 'r', inMemory = False)
             parsePath = os.path.split(checkFile_2)
             outStats = os.path.join(parsePath[0], parsePath[1].replace('-filtered.hdf5', '.stats'))
             fragments.printMetadata(saveTo = outStats)
@@ -1190,14 +1123,10 @@ def quality(args, commands):
         if os.path.exists(checkFile_1) and os.path.exists(checkFile_2):
             logging.log(21, 'Generate statistic table ...')
             gInfo = h5dict(checkFile_2, 'r')['genomeInformation']
-            genomeFolder, genome_db = initialize(gInfo['dataFolder'],
-                                                 gInfo['genomeName'],
-                                                 gInfo['gapFile'],
-                                                 gInfo['chroms'],
-                                                 gInfo['template'])
-            genome_db.setEnzyme(rep[1])
+            args.__dict__.update(gInfo)
+            dataLocation, genomeFolder, genome_db = initialize(args)
             fragments = cHiCdataset(checkFile_2, genome = genome_db,
-                                    mode = 'r')
+                                    mode = 'r', inMemory = False)
             parsePath = os.path.split(checkFile_2)
             outStats = os.path.join(parsePath[0], parsePath[1].replace('-filtered.hdf5', '.stats'))
             fragments.printMetadata(saveTo = outStats)
@@ -1233,14 +1162,10 @@ def quality(args, commands):
         if os.path.exists(checkFile_1) and os.path.exists(checkFile_2):
             logging.log(21, 'Generate statistic table ...')
             gInfo = h5dict(checkFile_2, 'r')['genomeInformation']
-            genomeFolder, genome_db = initialize(gInfo['dataFolder'],
-                                                 gInfo['genomeName'],
-                                                 gInfo['gapFile'],
-                                                 gInfo['chroms'],
-                                                 gInfo['template'])
-            genome_db.setEnzyme(cell[1])
+            args.__dict__.update(gInfo)
+            dataLocation, genomeFolder, genome_db = initialize(args)
             fragments = cHiCdataset(checkFile_2, genome = genome_db,
-                                    mode = 'r')
+                                    mode = 'r', inMemory = False)
             parsePath = os.path.split(checkFile_2)
             outStats = os.path.join(parsePath[0], parsePath[1].replace('-filtered.hdf5', '.stats'))
             fragments.printMetadata(saveTo = outStats)
@@ -1267,28 +1192,28 @@ def quality(args, commands):
         else:
             logging.warning('Still in filtering stage, skipping ...')
             continue
-            
-def cleanFile(filename):
-    if os.path.exists(filename):
-        os.remove(filename)
 
-def cleanDirectory(dirName):
-    for i in os.listdir(dirName):
-        os.remove(os.path.join(dirName, i))
           
 def pileup(args, commands):
     """
     A customized pipeline covering the whole process.
+    
     """
     mapping(args, commands)
     args.level = 2
     args.duplicates = True
+    args.startNearRsite = False
     filtering(args, commands)
+    args.includeTrans = False
     binning(args, commands)
     correcting(args, commands)
-    if args.mode == 'byChromosome':
-        args.csr = False
-        tosparse(args, commands)
+    if args.mode == 'wholeGenome':
+        logging.error('Only by-chromosome Matrices can be converted to sparse ones!')
+        logging.error('Exit ...')
+        sys.exit(1)
+    args.csr = False
+    tosparse(args, commands)
+    
 
 if __name__ == '__main__':
     # Parse Arguments

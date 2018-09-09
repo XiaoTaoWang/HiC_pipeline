@@ -3,17 +3,14 @@
 # Author: XiaoTao Wang
 # Organization: HuaZhong Agricultural University
 
-import logging, os, time, re, tempfile, gc
-from textwrap import dedent
-import numexpr, matplotlib
+import logging, os, time, re
+import matplotlib
 matplotlib.use('Agg')
 import numpy as np
 from mirnylib.genome import Genome
 from hiclib.fragmentHiC import HiCdataset
-from hiclib.hicShared import mydtype, mydtypeSorter, searchsorted, h5dictBinarySearch
-from hiclib.binnedData import binnedData
-from mirnylib import numutils
-from mirnylib.numutils import uniqueIndex, fillDiagonal, externalMergeSort, completeIC
+from hiclib.highResBinnedData import HiResHiC
+from mirnylib.numutils import uniqueIndex, fillDiagonal, fasterBooleanIndexing
 from mirnylib.h5dict import h5dict
 
 ## Plot Settings
@@ -61,46 +58,32 @@ class myGenome(Genome):
 # A Customized HiCdataset Class
 class cHiCdataset(HiCdataset):
     
-    def __init__(self, filename, genome, maximumMoleculeLength=500,
-                 mode="a", tmpFolder="/tmp", dictToStoreIDs="h5dict",
-                 compression="gzip", compression_opts=3):
+    def __init__(self, filename, genome, maximumMoleculeLength = 500,
+                 inMemory = False, mode = "a"):
         
         self.vectors = {
             # chromosomes for each read.
-            "chrms1": "int16", "chrms2": "int16",
-            #strand to which the read maps
-            "strands1": "bool", "strands2": "bool",
-            #Start of the read ("ultrasonic" cut site)
-            "cuts1": "int32", "cuts2": "int32"}
-        
-        self.vectors2 = {
-            # fragment lengthes
-            "fraglens1": "int32", "fraglens2": "int32",
-             # fragid as defined in the manual
-            "fragids1": "int64", "fragids2": "int64",
-            # midpoint of a fragment, determined as "(start+end)/2"
+            "chrms1": "int8", "chrms2": "int8",
+
             "mids1": "int32", "mids2": "int32",
-            # distance from a cut site to the restriction fragment
-            "dists1": "int32", "dists2": "int32",
-             # distance between fragments. If -1, different chromosomes.
-             # If -2, different arms.
+            # midpoint of a fragment, determined as "(start+end)/2"
+
+            "fraglens1": "int32", "fraglens2": "int32",
+            # fragment lengthes
+
             "distances": "int32",
+            # distance between fragments. If -1, different chromosomes.
+            # If -2, different arms.
+
+            "fragids1": "int64", "fragids2": "int64",
+            # IDs of fragments. fragIDmult * chromosome + location
+            # distance to rsite
+            "dists1": "int32", "dists2": "int32",
+            # precise location of cut-site
+            "cuts1": "int32", "cuts2": "int32",
+            "strands1": "bool", "strands2": "bool"
             }
-        self.vectors3 = {
-            # absolute ID of a restriction fragment (0,1,2,... numFragments)
-            "rfragAbsIdxs1": "int32", "rfragAbsIdxs2": "int32"}
-        
-        if dictToStoreIDs == "dict":
-            self.rfragIDDict = {}
-        elif dictToStoreIDs == "h5dict":
-            self.rfragIDDict = h5dict()
-        else:
-            self.rfragIDDict = dictToStoreIDs
-            
         self.metadata = {}
-        self.tmpDir = tmpFolder
-        if not os.path.exists(self.tmpDir):
-            os.makedirs(self.tmpDir)
 
         #-------Initialization of the genome and parameters-----
         self.mode = mode
@@ -108,29 +91,24 @@ class cHiCdataset(HiCdataset):
 
         self.chromosomeCount = self.genome.chrmCount
         self.fragIDmult = self.genome.fragIDmult  # used for building heatmaps
-        self.rFragIDs = self.genome.rfragMidIds
-        self.rFragLens = np.concatenate(self.genome.rfragLens)
-        self.rFragMids = np.concatenate(self.genome.rfragMids)
-        self.rsites = self.genome.rsiteIds
-        # to speed up searchsorted we use positive-only numbers
-        self.rsitesPositive = self.rsites + 2*self.fragIDmult
 
         self.maximumMoleculeLength = maximumMoleculeLength
-        
-        # File to save the data
-        self.filename = os.path.abspath(os.path.expanduser(filename))
-        # Chunk size for h5dict operation, external sorting, etc.
-        self.chunksize = 10000000
 
-        self.h5dict = h5dict(self.filename, mode=mode, in_memory=False)
-        self.h5dict.setCompression(compression, compression_opts)
+        self.filename = os.path.abspath(os.path.expanduser(filename))  # File to save the data
+        self.chunksize = 5000000
+        # Chunk size for h5dict operation, external sorting, etc.
+
+        self.inMemory = inMemory
+
+        self.h5dict = h5dict(self.filename, mode = mode, in_memory = inMemory)
         
-        if "chrms1" in list(self.h5dict.keys()):
-            self.N = len(self.h5dict.get_dataset("chrms1"))
-        if "metadata" in self.h5dict:
-            self.metadata = self.h5dict["metadata"]
+        if 'chrms1' in self.h5dict.keys():
+            chrms1 = self.chrms1
+            self.DSnum = self.N = len(chrms1)
     
     def parseInputData(self, dictLike, **kwargs):
+        
+        import numexpr
         
         if not os.path.exists(dictLike):
             raise IOError('File not found: %s' % dictLike)
@@ -143,19 +121,41 @@ class cHiCdataset(HiCdataset):
         self.cuts2 = dictLike['cuts2']
         self.strands1 = dictLike['strands1']
         self.strands2 = dictLike['strands2']
+        self.dists1 = np.abs(dictLike['rsites1'] - self.cuts1)
+        self.dists2 = np.abs(dictLike['rsites2'] - self.cuts2)
+        self.mids1 = (dictLike['uprsites1'] + dictLike['downrsites1']) / 2
+        self.mids2 = (dictLike['uprsites2'] + dictLike['downrsites2']) / 2
+        self.fraglens1 = np.abs(
+            (dictLike['uprsites1'] - dictLike['downrsites1']))
+        self.fraglens2 = np.abs(
+            (dictLike['uprsites2'] - dictLike['downrsites2']))
+        self.fragids1 = self.mids1 + np.array(self.chrms1,
+                                              dtype='int64') * self.fragIDmult
+        self.fragids2 = self.mids2 + np.array(self.chrms2,
+                                              dtype='int64') * self.fragIDmult
+        
+        distances = np.abs(self.mids1 - self.mids2)
+        distances[self.chrms1 != self.chrms2] = -1
+        self.distances = distances  # Distances between restriction fragments
+        del distances
         
         self.N = len(self.chrms1)
-        
-        dictLike['misc']['genome']['idx2label']
-        self.updateGenome(self.genome,
-                          oldGenome = dictLike["misc"]["genome"]["idx2label"])
-        
+
+        try:
+            dictLike['misc']['genome']['idx2label']
+            self.updateGenome(self.genome,
+                              oldGenome = dictLike["misc"]["genome"]["idx2label"])
+        except KeyError:
+            assumedGenome = myGenome(self.genome.genomePath)
+            self.updateGenome(self.genome, oldGenome = assumedGenome)
+
+        ## Discard dangling ends and self-circles ...
         DSmask = (self.chrms1 >= 0) * (self.chrms2 >= 0)
-        self.metadata['100_DoubleUniqueMapped'] = DSmask.sum()
-        
-        # Discard dangling ends and self-circles
-        sameFragMask = self.evaluate("a = (rfragAbsIdxs1 == rfragAbsIdxs2)", 
-                                     ["rfragAbsIdxs1", "rfragAbsIdxs2"]) * DSmask
+        self.metadata['100_NormalPairs'] = DSmask.sum()
+
+        sameFragMask = self.evaluate("a = (fragids1 == fragids2)",
+                     ["fragids1", "fragids2"]) * DSmask
+
         cutDifs = self.cuts2[sameFragMask] > self.cuts1[sameFragMask]
         s1 = self.strands1[sameFragMask]
         s2 = self.strands2[sameFragMask]
@@ -170,6 +170,7 @@ class cHiCdataset(HiCdataset):
         self.metadata['122_SelfLigationReads'] = SS_N
         self.metadata['124_DanglingReads'] = DM_N
         self.metadata['126_UnknownMechanism'] = sameFrag_N - SSDE_N
+        
         mask = DSmask * (~sameFragMask)
         noSameFrag = mask.sum()
         
@@ -180,8 +181,8 @@ class cHiCdataset(HiCdataset):
         Ddists2 = self.fraglens2 - self.dists2
         extD1 = Ddists1[sameFragMask][DM]
         extD2 = Ddists2[sameFragMask][DM]
-        extLen = self.fraglens1[sameFragMask][DM].astype(float)
-        extD = np.r_['0,2', extD1, extD2].min(0)
+        self.h5dict['extLen'] = self.fraglens1[sameFragMask][DM].astype(float)
+        self.h5dict['extD'] = np.r_['0,2', extD1, extD2].min(0)
         
         del Ddists1, Ddists2, extD1, extD2
         
@@ -190,30 +191,29 @@ class cHiCdataset(HiCdataset):
                              "cuts2 * (2 * strands2 - 1)')",
                              ["cuts1", "cuts2", "strands1", "strands2"],
                              constants={"numexpr":numexpr})
-        extSpace = dist[sameFragMask][DM]
         
-        self.h5dict['_DanglingDetials'] = np.column_stack((extLen, extD, extSpace))
+        self.h5dict['extSpace'] = dist[sameFragMask][DM]
         
-        del sameFragMask, extLen, extD, extSpace
+        del sameFragMask
 
         readsMolecules = self.evaluate(
-            "a = numexpr.evaluate('(chrms1==chrms2) & (strands1!=strands2) & (dist>=0) &"
-            " (dist<=maximumMoleculeLength)')",
+            "a = numexpr.evaluate('(chrms1 == chrms2) & (strands1 != strands2) &  (dist >=0) &"
+            " (dist <= maximumMoleculeLength)')",
             internalVariables=["chrms1", "chrms2", "strands1", "strands2"],
             externalVariables={"dist": dist},
             constants={"maximumMoleculeLength": self.maximumMoleculeLength, "numexpr": numexpr})
         
-        mask *= (readsMolecules==False)
+        mask *= (readsMolecules == False)
         extraDE = mask.sum()
         self.metadata['210_ExtraDanglingReads'] = -extraDE + noSameFrag
         if mask.sum() == 0:
-            raise Exception('No reads left after filtering. Please check the input data')
+            raise Exception('No reads left after filtering. Please, check the input data')
 
         del dist, readsMolecules
         
         self.maskFilter(mask)
     
-    def updateGenome(self, newGenome, oldGenome='current'):
+    def updateGenome(self, newGenome, oldGenome = 'current'):
 
         assert isinstance(newGenome, myGenome)
         
@@ -222,8 +222,9 @@ class cHiCdataset(HiCdataset):
             oldGenome = self.genome
         upgrade = newGenome.upgradeMatrix(oldGenome)
         if isinstance(oldGenome, myGenome):
-            if (oldGenome.hasEnzyme()==True) and (newGenome.hasEnzyme()==False):
+            if oldGenome.hasEnzyme():
                 newGenome.setEnzyme(oldGenome.enzymeName)
+            oldGenome = oldGenome.idx2label
         
         chrms1 = np.array(self.chrms1, int)
         chrms2 = np.array(self.chrms2, int)
@@ -237,97 +238,58 @@ class cHiCdataset(HiCdataset):
 
             chrms2 = upgrade[chrms2]
             self.chrms2 = chrms2
-            del chrms2
             
         mask = ((self.chrms1 < newN) * (self.chrms2 < newN))
         self.genome = newGenome
         self.maskFilter(mask)
-        
-    def make_tempfile(self):
-        
-        tl = time.strftime('%Y%m%d%H%M%S', time.localtime(time.time()))
-        kw = {'suffix':tl, 'dir':self.tmpDir}
-        fd, tmpfil = tempfile.mkstemp(**kw)
-        os.close(fd)
-        
-        return tmpfil
-        
-    def filterDuplicates(self, chunkSize=50000000):
-        
-        if self.N > 200000000:
-            mode = "hdd"
-        else:
-            mode = "ram"
-        
-        if mode == "ram":
-            dups = np.zeros((self.N, 2), dtype="int64", order="C")
-            dups[:, 0] = self.chrms1
-            dups[:, 0] *= self.fragIDmult
-            dups[:, 0] += self.cuts1
-            dups[:, 1] = self.chrms2
-            dups[:, 1] *= self.fragIDmult
-            dups[:, 1] += self.cuts2
-            dups.sort(axis=1)
-            dups.shape = (self.N * 2)
-            strings = dups.view("|S16")
+    
+    def filterDuplicates(self):
+
+        Nds = self.N
+
+        # an array to determine unique rows. Eats 16 bytes per DS record
+        dups = np.zeros((Nds, 2), dtype="int64", order="C")
+
+        dups[:, 0] = self.chrms1
+        dups[:, 0] *= self.fragIDmult
+        dups[:, 0] += self.cuts1
+        dups[:, 1] = self.chrms2
+        dups[:, 1] *= self.fragIDmult
+        dups[:, 1] += self.cuts2
+        dups.sort(axis=1)
+        dups.shape = (Nds * 2)
+        strings = dups.view("|S16")
             # Converting two indices to a single string to run unique
-            uids = uniqueIndex(strings)
-            del strings, dups
-            stay = np.zeros(self.N, bool)
-            stay[uids] = True  # indexes of unique DS elements
-            del uids
-        else:
-            tmpfil = self.make_tempfile()
-            a = h5dict(tmpfil)
-            a.add_empty_dataset("duplicates", (self.N,), dtype="|S24")
-            a.add_empty_dataset("temp", (self.N,), dtype="|S24")
-            dset = a.get_dataset("duplicates")
-            tempdset = a.get_dataset("temp")
-            code = dedent("""
-            tmp = np.array(chrms1, dtype=np.int64) * fragIDmult + cuts1
-            tmp2 = np.array(chrms2, dtype=np.int64) * fragIDmult + cuts2
-            newarray = np.zeros((len(tmp),3), dtype = np.int64)
-            newarray[:,0] = tmp
-            newarray[:,1] = tmp2
-            newarray[:,:2].sort(axis=1)
-            newarray[:,2] = np.arange(start, end, dtype=np.int64)
-            newarray.shape = (3*len(tmp))
-            a = np.array(newarray.view("|S24"))
-            assert len(a) == len(chrms1)
-            """)
-            self.evaluate(code, ["chrms1", "cuts1", "chrms2", "cuts2"],
-                          constants={"np":np, "fragIDmult":self.fragIDmult},
-                          outVariable=("a", dset))
-            stay = np.zeros(self.N, bool)
-            numutils.externalMergeSort(dset, tempdset, chunkSize=chunkSize)
-            bins = list(range(0, self.N-1000, self.chunksize)) + [self.N-1]
-            for start, end in zip(bins[:-1], bins[1:]):
-                curset = dset[start:end+1]
-                curset = curset.view(dtype=np.int64)
-                curset.shape = (len(curset)//3, 3)
-                unique = (curset[:-1,0] != curset[1:,0]) + (curset[:-1,1] != curset[1:,1])
-                stay[curset[:,2][unique]] = True
-                if end == self.N-1:
-                    stay[curset[-1,2]] = True
-            del a
-            os.remove(tmpfil)
-            
+        uids = uniqueIndex(strings)
+        del strings, dups
+        stay = np.zeros(Nds, bool)
+        stay[uids] = True  # indexes of unique DS elements
+        del uids
+        
         self.metadata["310_DuplicatedRemoved"] = len(stay) - stay.sum()
         self.maskFilter(stay)
+    
+    def filterRsiteStart(self, offset=5):
+
+        expression = "mask = (np.abs(dists1 - fraglens1) >= offset) * "\
+        "((np.abs(dists2 - fraglens2) >= offset) )"
+        
+        mask = self.evaluate(expression,
+                             internalVariables=["dists1", "fraglens1",
+                                                "dists2", "fraglens2"],
+                             constants={"offset": offset, "np": np},
+                             outVariable=("mask", np.zeros(self.N, bool)))
+                             
+        self.metadata["320_StartNearRsiteReads"] = len(mask) - mask.sum()
+        self.maskFilter(mask)
     
     def maskFilter(self, mask):
         
         # Uses 16 bytes per read
-        for i in list(self.rfragIDDict.keys()):
-            del self.rfragIDDict[i]
-        
         length = 0
         ms = mask.sum()
         assert mask.dtype == np.bool
         self.N = ms
-        if ms == 0:
-            return
-
         for name in self.vectors:
             data = self._getData(name)
             ld = len(data)
@@ -336,76 +298,18 @@ class cHiCdataset(HiCdataset):
             else:
                 if ld != length:
                     self.delete()
-            newdata = data[mask]
+            newdata = fasterBooleanIndexing(data, mask, outLen=ms,
+                                        bounds=False)  # see mirnylib.numutils
             del data
             self._setData(name, newdata)
             del newdata
         del mask
         
-        self.h5dict['metadata'] = self.metadata
-    
-    def _sortData(self):
-
-        if not hasattr(self, "dataSorted"):
-            tmpfil = self.make_tempfile()
-            mydict = h5dict(tmpfil, 'w')
-            data = mydict.add_empty_dataset("sortedData", (self.N,), mydtype)
-            tmp = mydict.add_empty_dataset("trash", (self.N,), mydtype)
-            code = dedent("""
-            a = np.empty(len(chrms1), dtype = mydtype)
-            mask = (chrms1 > chrms2) | ( (chrms1 == chrms2) & (cuts1 > cuts2))
-
-            chrms2[mask],chrms1[mask] = chrms1[mask].copy(), chrms2[mask].copy()
-            cuts1[mask],cuts2[mask] = cuts2[mask].copy(), cuts1[mask].copy()
-            strands1[mask],strands2[mask] = strands2[mask].copy(),strands1[mask].copy()
-
-            a["chrms1"] = chrms1
-            a["pos1"] = cuts1
-            a["chrms2"] = chrms2
-            a["pos2"] = cuts2
-            a["strands1"] = strands1
-            a["strands2"] = strands2
-            """)
-            self.evaluate(expression=code, internalVariables=["chrms1","chrms2","cuts1","cuts2","strands1","strands2"],
-                          constants={"np":np, "mydtype":mydtype}, outVariable=("a", data))
-
-            externalMergeSort(data, tmp, sorter=mydtypeSorter, searchsorted=searchsorted,
-                              chunkSize=max(150000000, self.chunksize))
-            sdata = mydict.get_dataset("sortedData")
-
-            c1 = self.h5dict.get_dataset("chrms1")
-            c2 = self.h5dict.get_dataset("chrms2")
-            p1 = self.h5dict.get_dataset("cuts1")
-            p2 = self.h5dict.get_dataset("cuts2")
-            s1 = self.h5dict.get_dataset("strands1")
-            s2 = self.h5dict.get_dataset("strands2")
-
-            for start, end in self._getChunks():
-                data = sdata[start:end]
-                c1[start:end] = data["chrms1"]
-                c2[start:end] = data["chrms2"]
-                p1[start:end] = data["pos1"]
-                p2[start:end] = data["pos2"]
-                s1[start:end] = data["strands1"]
-                s2[start:end] = data["strands2"]
-            self.dataSorted = True
-            del mydict
-            os.remove(tmpfil)
-            gc.collect()
-    
-    def _getChunks(self, chunkSize="default"):
-        
-        if chunkSize == "default":
-            chunkSize = self.chunksize
-        if chunkSize > 0.5 * self.N:
-            return [(0, self.N)]
-        points = list(range(0,self.N-chunkSize//2,chunkSize)) + [self.N]
-        
-        return list(zip(points[:-1], points[1:]))
+        self.h5dict["metadata"] = self.metadata
     
     def merge(self, filenames):
 
-        h5dicts = [h5dict(i, mode='r') for i in filenames]
+        h5dicts = [h5dict(i, mode = 'r') for i in filenames]
         
         if all(["metadata" in i for i in h5dicts]):
             metadatas = [mydict["metadata"] for mydict in h5dicts]
@@ -420,45 +324,50 @@ class cHiCdataset(HiCdataset):
                                     key)
             self.metadata = newMetadata
             self.h5dict["metadata"] = self.metadata
-        
-        self.N = sum([len(i.get_dataset("strands1")) for i in h5dicts])
 
         for name in self.vectors.keys():
-            if name in self.h5dict:
-                del self.h5dict[name]
-            self.h5dict.add_empty_dataset(name, (self.N,), self.vectors[name])
-            dset = self.h5dict.get_dataset(name)
-            position = 0
+            res = []
+            IfIn = [(name in mydict.keys()) for mydict in h5dicts]
+            if not all(IfIn):
+                continue
             for mydict in h5dicts:
-                cur = mydict[name]
-                dset[position:position+len(cur)] = cur
-                position += len(cur)
+                res.append(mydict[name])
+            res = np.concatenate(res)
+            self.N = len(res)
+            self.DSnum = self.N
+            self._setData(name, res)
             self.h5dict.flush()
             time.sleep(0.2)  # allow buffers to flush
         
-        self._sortData()
-        
-        check = all([('_DanglingDetials' in h) for h in h5dicts])
+        stats = ['extLen', 'extD', 'extSpace']
+        check = all([(i in j) for i in stats for j in h5dicts])
         if check:
-            pool = []
-            for mydict in h5dicts:
-                tmp = mydict['_DanglingDetials']
-                if type(tmp) == dict: # Backward compatibility
-                    tmp = np.column_stack((tmp['extLen'],tmp['extD'],tmp['extSpace']))
-                pool.append(tmp)
-            pool = np.vstack(pool)
-            self.h5dict['_DanglingDetials'] = pool
+            for name in stats:
+                res = []
+                for mydict in h5dicts:
+                    res.append(mydict[name])
+                res = np.concatenate(res)
+                self.h5dict[name] = res
+                self.h5dict.flush()
+                time.sleep(0.2)
         
         Types = ['LeftType', 'RightType', 'InnerType', 'OuterType']
-        pool = {}
-        check = all([('_DirectionTypeStats' in h) for h in h5dicts])
+        check = all([(i in j) for i in Types for j in h5dicts])
         if check:
-            for Type in Types:
-                tmp = np.zeros(50, dtype=int)
-                for mydict in h5dicts:
-                    tmp += mydict['_DirectionTypeStats'][Type]
-                pool[Type] = tmp
-            self.h5dict['_DirectionTypeStats'] = pool
+            LeftType = np.zeros(50, dtype = int)
+            RightType = np.zeros(50, dtype = int)
+            InnerType = np.zeros(50, dtype = int)
+            OuterType = np.zeros(50, dtype = int)
+            for mydict in h5dicts:
+                LeftType += mydict['LeftType']
+                RightType += mydict['RightType']
+                InnerType += mydict['InnerType']
+                OuterType += mydict['OuterType']
+        
+            self.h5dict['LeftType'] = LeftType
+            self.h5dict['RightType'] = RightType
+            self.h5dict['InnerType'] = InnerType
+            self.h5dict['OuterType'] = OuterType
         
         tempDict = {}
         for mydict in h5dicts:
@@ -474,14 +383,16 @@ class cHiCdataset(HiCdataset):
         longrange = self.metadata['412_IntraLongRangeReads(>=20Kb)']
         contacts = self.metadata['400_TotalContacts']
         longRatio = float(longrange) / contacts
-                         
+        
+        ##-----------------------------------------------------------------
+        # Try to support older versions
         fromMapping = ['000_SequencedReads', '010_UniqueMappedReads',
                        '020_LigationCounts']
         
-        check = all([m in self.metadata for m in fromMapping])
+        check = all([mem in self.metadata for mem in fromMapping])
         if check:
             Total = self.metadata['000_SequencedReads']
-            Ureads = self.metadata['100_DoubleUniqueMapped']
+            Ureads = self.metadata['010_UniqueMappedReads']
             ligSeq = self.metadata['020_LigationCounts']
             selfLig = self.metadata['122_SelfLigationReads']
             dangling = self.metadata['124_DanglingReads']
@@ -503,7 +414,7 @@ class cHiCdataset(HiCdataset):
                 myfile.write('\n')
             myfile.write('\nCritical Indicators:\n')
             if check:
-                myfile.write('Double Unique Mapped Ratio = %d / %d = %.4f\n' % (Ureads, Total, Uratio))
+                myfile.write('Unique-Mapping Ratio = %d / %d = %.4f\n' % (Ureads, Total, Uratio))
                 myfile.write('Ligation-Junction Ratio = %d / %d = %.4f\n' % (ligSeq, Total, Lratio))
                 myfile.write('Self-Ligation Ratio = %d / %d = %.4f\n' % (selfLig, Total, Fratio))
                 myfile.write('Dangling-Reads Ratio = %d / %d = %.4f\n' % (dangling, Total, Dratio))
@@ -511,71 +422,110 @@ class cHiCdataset(HiCdataset):
             if check:
                 myfile.write('Data Usage = %d / %d = %.4f\n' % (contacts, Total, usage))
                 
-    def saveHeatmap(self, filename, resolution, gInfo):
+    def saveHeatmap(self, filename, resolution, gInfo, countDiagonalReads = 'Once'):
 
         try:
             os.remove(filename)
         except:
             pass
 
-        tosave = h5dict(path=filename, mode='w')
+        tosave = h5dict(path = filename, mode = 'w')
         
-        heatmap = self.buildAllHeatmap(resolution)
+        heatmap = self.buildAllHeatmap(resolution, countDiagonalReads)
 
         tosave['heatmap'] = heatmap
         
         del heatmap
         
         chromosomeStarts = np.array(self.genome.chrmStartsBinCont)
+        numBins = self.genome.numBins
             
         tosave['resolution'] = resolution
+        tosave['genomeBinNum'] = numBins
+        tosave['genomeIdxToLabel'] = self.genome.idx2label
         tosave['chromosomeStarts'] = chromosomeStarts
         tosave['genomeInformation'] = gInfo
     
-    def saveByChromosomeHeatmap(self, filename, resolution, gInfo,
-                                includeTrans=False):
+    def saveByChromosomeHeatmap(self, filename, gInfo, resolution = 40000,
+                                includeTrans = False,
+                                countDiagonalReads = "Once"):
+        """
+        Saves chromosome by chromosome heatmaps to h5dict.
         
-        self.genome.setResolution(resolution)
+        This method is not as memory demanding as saving all x all heatmap.
 
+        Keys of the h5dict are of the format ["1 1"], where chromosomes are
+        zero-based, and there is one space between numbers.
+
+        Parameters
+        ----------
+        filename : str
+            Filename of the h5dict with the output
+            
+        resolution : int
+            Resolution to save heatmaps
+            
+        includeTrans : bool, optional
+            Build inter-chromosomal heatmaps (default: False)
+            
+        countDiagonalReads : "once" or "twice"
+            How many times to count reads in the diagonal bin
+
+        """
+        if countDiagonalReads.lower() not in ["once", "twice"]:
+            raise ValueError("Bad value for countDiagonalReads")
+            
+        self.genome.setResolution(resolution)
+        
+        pos1 = self.evaluate("a = np.array(mids1 / {res}, dtype = 'int32')"
+                             .format(res=resolution), "mids1")
+        pos2 = self.evaluate("a = np.array(mids2 / {res}, dtype = 'int32')"
+                             .format(res=resolution), "mids2")
+                             
+        chr1 = self.chrms1
+        chr2 = self.chrms2
+        
+        # DS = self.DS  # 13 bytes per read up to now, 16 total
         mydict = h5dict(filename)
 
-        for chrom in range(self.genome.chrmCount):
-            c1 = self.h5dict.get_dataset("chrms1")
-            p1 = self.h5dict.get_dataset("cuts1")
-            low = h5dictBinarySearch(c1, p1, (chrom,-1), "left")
-            high = h5dictBinarySearch(c1, p1, (chrom,999999999), "right")
+        for chrom in xrange(self.genome.chrmCount):
+            if includeTrans == True:
+                mask = ((chr1 == chrom) + (chr2 == chrom))
+            else:
+                mask = ((chr1 == chrom) * (chr2 == chrom))
+            # Located chromosomes and positions of chromosomes
+            c1, c2, p1, p2 = chr1[mask], chr2[mask], pos1[mask], pos2[mask]
+            if includeTrans == True:
+                # moving different chromosomes to c2
+                # c1 == chrom now
+                mask = (c2 == chrom) * (c1 != chrom)
+                c1[mask], c2[mask], p1[mask], p2[mask] = c2[mask].copy(), c1[
+                    mask].copy(), p2[mask].copy(), p1[mask].copy()
+                del c1  # ignore c1
+                args = np.argsort(c2)
+                c2 = c2[args]
+                p1 = p1[args]
+                p2 = p2[args]
 
-            chr1 = self._getVector("chrms1", low, high)
-            chr2 = self._getVector("chrms2", low, high)
-            pos1 = np.array(self._getVector("mids1",low,high)//resolution,
-                            dtype=np.int32)
-            pos2 = np.array(self._getVector("mids2",low,high)//resolution,
-                            dtype=np.int32)
-
-            assert (chr1==chrom).all()  # getting sure that bincount worked
-
-            args = np.argsort(chr2)
-            chr2 = chr2[args]
-            pos1 = pos1[args]
-            pos2 = pos2[args]
-
-            for chrom2 in range(chrom, self.genome.chrmCount):
+            for chrom2 in xrange(chrom, self.genome.chrmCount):
                 if (includeTrans == False) and (chrom2 != chrom):
                     continue
-                start = np.searchsorted(chr2, chrom2, "left")
-                end = np.searchsorted(chr2, chrom2, "right")
-                cur1 = pos1[start:end]
-                cur2 = pos2[start:end]
-                label = np.array(cur1, "int64")
+                start = np.searchsorted(c2, chrom2, "left")
+                end = np.searchsorted(c2, chrom2, "right")
+                cur1 = p1[start:end]
+                cur2 = p2[start:end]
+                label = np.asarray(cur1, "int64")
                 label *= self.genome.chrmLensBin[chrom2]
                 label += cur2
                 maxLabel = self.genome.chrmLensBin[chrom] * \
                            self.genome.chrmLensBin[chrom2]
-                counts = np.bincount(label, minlength=maxLabel)
+                counts = np.bincount(label, minlength = maxLabel)
+                assert len(counts) == maxLabel
                 mymap = counts.reshape((self.genome.chrmLensBin[chrom], -1))
-                if chrom==chrom2:
+                if chrom == chrom2:
                     mymap = mymap + mymap.T
-                    fillDiagonal(mymap, np.diag(mymap).copy()/2)
+                    if countDiagonalReads.lower() == "once":
+                        fillDiagonal(mymap, np.diag(mymap).copy() / 2)
                 mydict["%d %d" % (chrom, chrom2)] = mymap
         
         mydict['resolution'] = resolution
@@ -583,58 +533,62 @@ class cHiCdataset(HiCdataset):
 
         return
     
-    def buildAllHeatmap(self, resolution):
+    def buildAllHeatmap(self, resolution, countDiagonalReads = 'Once'):
         
-        for start, end in self._getChunks(30000000):
-            # 8 bytes per record + heatmap
-            self.genome.setResolution(resolution)
-            numBins = self.genome.numBins
-            label = self.genome.chrmStartsBinCont[self._getVector("chrms1",start,end)]
-            label = np.asarray(label,dtype="int64")
-            label += (self._getVector("mids1",start,end)//resolution).astype(np.int64)
-            label *= numBins
-            label += self.genome.chrmStartsBinCont[self._getVector("chrms2",start,end)]
-            label += (self._getVector("mids2",start,end)//resolution).astype(np.int64)
-            counts = np.bincount(label, minlength=numBins**2)
-            if len(counts) > numBins ** 2:
-                raise StandardError("\nHeatMap exceed length of the genome!")
-
-            counts.shape = (numBins, numBins)
-            try:
-                heatmap += counts  # @UndefinedVariable
-            except:
-                heatmap = counts
-
-        for i in range(len(heatmap)):
-            heatmap[i,i:] += heatmap[i:,i]
-            heatmap[i:,i] = heatmap[i,i:]
-        diag = np.diag(heatmap)
-        fillDiagonal(heatmap, diag/2)
+        # 8 bytes per record + heatmap
+        self.genome.setResolution(resolution)
+        numBins = self.genome.numBins
+        label = self.genome.chrmStartsBinCont[self.chrms1]
+        label = np.asarray(label, dtype="int64")
+        label += self.mids1 / resolution
+        label *= numBins
+        label += self.genome.chrmStartsBinCont[self.chrms2]
+        label += self.mids2 / resolution
         
-        return heatmap
+        counts = np.bincount(label, minlength=numBins ** 2)
+        if len(counts) > numBins ** 2:
+            raise StandardError("\nHeatMap exceed length of the genome!")
+
+        counts.shape = (numBins, numBins)
+        for i in xrange(len(counts)):
+            counts[i, i:] += counts[i:, i]
+            counts[i:, i] = counts[i, i:]
+        if countDiagonalReads.lower() == "once":
+            diag = np.diag(counts)
+            fillDiagonal(counts, diag / 2)
+        elif countDiagonalReads.lower() == "twice":
+            pass
+        else:
+            raise ValueError("Bad value for countDiagonalReads")
+            
+        return counts
     
     def typePlot(self, outfile, dpi = 500):
         
-        LT = self.h5dict['_DirectionTypeStats']['LeftType'][:25]
-        RT = self.h5dict['_DirectionTypeStats']['RightType'][:25]
-        IT = self.h5dict['_DirectionTypeStats']['InnerType'][:25]
-        OT = self.h5dict['_DirectionTypeStats']['OuterType'][:25]
+        Keys = ['LeftType', 'RightType', 'InnerType', 'OuterType']
+        if not all([(i in self.h5dict for i in Keys)]):
+            raise StandardError
         
-        Total = LT + RT + IT + OT
+        LeftType = self.h5dict['LeftType'][:25]
+        RightType = self.h5dict['RightType'][:25]
+        InnerType = self.h5dict['InnerType'][:25]
+        OuterType = self.h5dict['OuterType'][:25]
+        
+        Total = LeftType + RightType + InnerType + OuterType
         Total = Total.astype(np.float)
         
-        LR = LT / Total
-        RR = RT / Total
-        IR = IT / Total
-        OR = OT / Total
+        LeftRatio = LeftType / Total
+        RightRatio = RightType / Total
+        InnerRatio = InnerType / Total
+        OuterRatio = OuterType / Total
         
         fig = plt.figure(figsize = (15, 9))
         ax = fig.add_subplot(111)
         lines = []
         labels = ['Left Type', 'Right Type', 'Inner Type', 'Outer Type']
-        x = np.arange(1, LR.size + 1)
+        x = np.arange(1, LeftRatio.size + 1)
         idx = 0
-        for y in [LR, RR, IR, OR]:
+        for y in [LeftRatio, RightRatio, InnerRatio, OuterRatio]:
             L = ax.plot(x, y, color = colorPool[idx], linewidth = 2)
             lines.extend(L)
             idx += 1
@@ -656,14 +610,15 @@ class cHiCdataset(HiCdataset):
     
     def dangStats(self, prefix, offset = 2, dpi = 500):
         
-        extD = self.h5dict['_DanglingDetials'][:,1]
-        extLen = self.h5dict['_DanglingDetials'][:,0]
-        extSpace = self.h5dict['_DanglingDetials'][:,2]
+        Keys = ['extD', 'extLen', 'extSpace']
+        if not all([(i in self.h5dict for i in Keys)]):
+            raise StandardError
         
-        m = int(np.percentile(extD[extD<0],0.5))
-        extLen = extLen[extD>=m]
-        extSpace = extSpace[extD>=m]
-        extD = extD[extD>=m]
+        extD = self.h5dict['extD']
+        extLen = self.h5dict['extLen']
+        extSpace = self.h5dict['extSpace']
+        
+        m = extD.min()
         if offset < -m:
             offset = -m
         
@@ -695,35 +650,49 @@ class cHiCdataset(HiCdataset):
         ax.yaxis.set_ticks_position('left')
         plt.savefig('-'.join([prefix, 'librarySize']) + '.png', dpi = dpi)
         plt.close()
-
-class cBinnedData(binnedData):
-    
-    def export(self, name, outFilename):
-
-        if not name in self.dataDict:
-            raise ValueError("No data {name}".format(name=name))
-            
-        toexport = {}
-        toexport["heatmap"] = self.dataDict[name]
-        toexport["resolution"] = self.resolution
-        toexport["chromosomeStarts"] = self.chromosomeStarts
-        myh5dict = h5dict(outFilename, mode="w")
-        myh5dict.update(toexport)
-
-class HiResHiC(object):
-    
-    def __init__(self, genome, resolution, raw):
         
-        self.genome = genome
-        self.resolution = resolution
-        self.rawdata = h5dict(raw, 'r')
-        self.cisKeys = ['{0} {0}'.format(i) for i in self.genome.idx2label]
-    
-    def iterativeCorrection(self, outname):
         
-        mydict = h5dict(outname)
-        for key in self.cisKeys:
-            bychr = self.rawdata[key]
-            corrected = completeIC(bychr, returnBias=False)
-            mydict[key] = corrected
+    def __setattr__(self, x, value):
+        
+        if x == 'vectors':
+            return object.__setattr__(self, x, value)
+
+        if x in self.vectors.keys():
+            self._setData(x, value)
+        else:
+            return object.__setattr__(self, x, value)
+    
+    def __getattribute__(self, x):
+        
+        if x == 'vectors':
+            return object.__getattribute__(self, x)
+
+        if x in self.vectors.keys():
+            a = self._getData(x)
+            return a
+        else:
+            return object.__getattribute__(self, x)
+    
+    def _getData(self, name):
+        
+        return self.h5dict[name]
+    
+    def _setData(self, name, data):
+        
+        dtype = np.dtype(self.vectors[name])
+        data = np.asarray(data, dtype=dtype)
+        self.h5dict[name] = data
+
+class cHiResHiC(HiResHiC):
+    
+    def export(self, filename, mode = 'cis'):
+        mydict = h5dict(filename)
+        if mode == 'cis':
+            for i in self.cisKeys:
+                data = self.data[i].getData()
+                mydict["%d %d" % i] = data
+        else:
+            for i in self.allKeys:
+                data = self.data[i].getData()
+                mydict["%d %d" % i] = data
         mydict["resolution"] = self.resolution
