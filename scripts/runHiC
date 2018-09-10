@@ -30,7 +30,8 @@ except:
 
 def getargs():
     ## Construct an ArgumentParser object for command-line arguments
-    parser = argparse.ArgumentParser(description = '''A user-friendly Hi-C data processing software''',
+    parser = argparse.ArgumentParser(description = '''A easy-to-use Hi-C data processing software
+                                     supporting distributed computation''',
                                      formatter_class = argparse.ArgumentDefaultsHelpFormatter)
     # Version
     parser.add_argument('-v', '--version', action = 'version',
@@ -50,8 +51,9 @@ def getargs():
                                  genome. It works well with .sra, .fastq and .fastq.gz formats.
                                  And you can specify either bwa-mem (<=100bp) or minimap2 (>100bp)
                                  as the underlying aligner. After mapping has been done, it will
-                                 utilize pairtools to parse the attained SAM/BAM file, detect ligation
-                                 junctions, and output a .pairs complied with 4DN standards.''',
+                                 utilize pairtools to parse SAM/BAM files, detect ligation
+                                 junctions, and output .pairsam format files which comply with
+                                 4DN standards.''',
                                  formatter_class = argparse.ArgumentDefaultsHelpFormatter)
     iterM.add_argument('-m', '--metadata', default = 'datasets.tsv',
                        help = '''Metadata file describing each SRA file. You should place
@@ -64,7 +66,7 @@ def getargs():
     iterM.add_argument('-g', '--genomeName',
                        help = '''Name of the folder containing reference genome data. If your reference
                        genome is hg38, the path to it should: look like this: dataFolder/hg38/hg38.fa''')
-    iterM.add_argument('-C', '--chromsizes',
+    iterM.add_argument('-C', '--chromsizes-file',
                        help = '''Path to the file containing chromosome size information. Both absoulte and
                        relative path are supported. If not specified, we will try to generate one under
                        your genome folder by UCSC fetchChromSizes command.''')
@@ -91,16 +93,16 @@ def getargs():
     iterM.add_argument('--walks-policy', default = 'mask', choices = ['mask', '5any', '5unique', '3any', '3unique'],
                        help = '''The policy used by pairtools to report unrescuable walks.''')
     iterM.add_argument('--include-readid', action = 'store_true',
-                       help = '''If specified, add read IDs in final .pairs files.''')
+                       help = '''If specified, add read IDs in final .pairsam files.''')
     iterM.add_argument('--include-sam', action = 'store_true',
-                       help = '''If specified, add sam columns in final .pairs files.''')
+                       help = '''If specified, add sam columns in final .pairsam files.''')
     iterM.add_argument('--drop-seq', action = 'store_true',
-                       help = '''If specified, exclude SEQ and QUAL from the sam fields in final .pairs files.''')
+                       help = '''If specified, exclude SEQ and QUAL from the sam fields in final .pairsam files.''')
     iterM.add_argument('--chunkSize', type = int, help = '''On a low-memory machine, it's better
                        to split the raw read file into chunks and map them separatively. This
                        parameter specifies the size of each chunk. By default, no split is performed.''')
     iterM.add_argument('--removeInters', action = 'store_true',
-                       help = '''If specified, remove intermediate results, and only the final .pairs files
+                       help = '''If specified, remove intermediate results, and only the final .pairsam files
                        will be retained.''')
     iterM.add_argument('--logFile', default = 'runHiC-mapping.log', help = '''Logging file name.''')
     iterM.set_defaults(func = mapping)
@@ -271,7 +273,7 @@ def run(args, commands):
             arglist.extend(['# MetaData = {0}'.format(args.metadata), 
                             '# Data Root Folder = {0}'.format(args.dataFolder),
                             '# Genome Name = {0}'.format(args.genomeName),
-                            '# Chromsome Sizes = {0}'.format(args.chromsizes),
+                            '# Chromsome Sizes = {0}'.format(args.chromsizes_file),
                             '# Sequencing Data Folder = {0}'.format(args.fastqDir),
                             '# Sequencing Format = {0}'.format(args.Format),
                             '# Alignment Software = {0}'.format(args.aligner),
@@ -329,8 +331,8 @@ def run(args, commands):
 def mapping(args, commands):
     ## Import necessary modules
     import subprocess
-    from runHiC.mapping import splitSRA, splitSingleFastq, uncompressSRA, buildMapIndex, map_core, fetchChromsizes, parse_bam
-    from runHiC.utilities import cleanDirectory, cleanFile
+    from runHiC.mapping import splitSRA, splitSingleFastq, uncompressSRA, buildMapIndex, map_core, parse_bam
+    from runHiC.utilities import cleanDirectory, cleanFile, fetchChromsizes
     
     # Preparing
     genomeFolder = os.path.join(args.dataFolder, args.genomeName)
@@ -347,12 +349,12 @@ def mapping(args, commands):
         else:
             indexpath = os.path.join(genomeFolder, '.'.join([genomeName, 'fa']))
     
-    if args.chromsizes is None:
+    if args.chromsizes_file is None:
         logging.log(21, 'Chromosome sizes are not provided, attempt to fetch from UCSC ...')
         chromsize_file = fetchChromsizes(genomeFolder, genomeName)
         logging.log(21, 'Done')
     else:
-        chromsize_file = os.path.abspath(os.path.expanduser(args.chromsizes))
+        chromsize_file = os.path.abspath(os.path.expanduser(args.chromsizes_file))
     
     if args.Index is None:
         logging.log(21, 'You didn\'t specify the Genome Index Path. Try to find it under {0}'.format(genomeFolder))
@@ -374,13 +376,14 @@ def mapping(args, commands):
     bamFolder = 'alignments-{0}'.format(genomeName)
     pairFolder = 'pairs-{0}'.format(genomeName)
     args.pairFolder = pairFolder # To communicate with next processing step (filtering)
+    args.chromsizes_file = chromsize_file
     if not os.path.exists(bamFolder):
         os.makedirs(bamFolder)
     if not os.path.exists(pairFolder):
         os.makedirs(pairFolder)
     
     logging.log(21, 'Alignment results will be outputed in {0} under {1}'.format(outformat, bamFolder))
-    logging.log(21, '{0} files will be parsed into .pairs format under {1}'.format(outformat, pairFolder))
+    logging.log(21, '{0} files will be parsed into .pairsam format under {1}'.format(outformat, pairFolder))
     
     # Read Metadata
     metadata = [l.rstrip().split() for l in open(mFile, 'r') if not l.isspace()]
@@ -483,17 +486,17 @@ def mapping(args, commands):
         Read_1 = sorted([f for f in ReadFiles if (f.endswith('_1.fastq.gz') or f.endswith('_1.fastq'))])
         Read_2 = sorted([f for f in ReadFiles if (f.endswith('_2.fastq.gz') or f.endswith('_2.fastq'))])
         if all([f.endswith('_1.fastq') for f in Read_1]) and all([f.endswith('_2.fastq') for f in Read_2]):
-            OutFiles = [os.path.join(subPair, os.path.split(f)[1].replace('_1.fastq', '.pairs.gz')) for f in Read_1]
+            OutFiles = [os.path.join(subPair, os.path.split(f)[1].replace('_1.fastq', '.pairsam.gz')) for f in Read_1]
         else:
-            OutFiles = [os.path.join(subPair, os.path.split(f)[1].replace('_1.fastq.gz', '.pairs.gz')) for f in Read_1]
+            OutFiles = [os.path.join(subPair, os.path.split(f)[1].replace('_1.fastq.gz', '.pairsam.gz')) for f in Read_1]
             
         Assignments = zip(Read_1, Read_2, OutFiles)
         
         for count, (r1, r2, out) in enumerate(Assignments):
             if len(Read_1)>1:
                 logging.log(21, 'Chunk {0} ...'.format(count))
-            Indicator = os.path.join(subPair, os.path.split(out)[1].replace('.pairs.gz', '.completed'))
-            lockFile = os.path.join(subPair, os.path.split(out)[1].replace('.pairs.gz', '.lock'))
+            Indicator = os.path.join(subPair, os.path.split(out)[1].replace('.pairsam.gz', '.completed'))
+            lockFile = os.path.join(subPair, os.path.split(out)[1].replace('.pairsam.gz', '.lock'))
 
             if os.path.exists(Indicator):
                 logging.log(21, 'Completed work, skip')
@@ -516,7 +519,7 @@ def mapping(args, commands):
             parse_bam(bampath, out, chromsize_file, genomeName, args.min_mapq, args.max_molecule_size,
                       args.max_inter_align_gap, args.walks_policy, args.include_readid, args.include_sam,
                       args.drop_seq)
-                      
+
             completed = open(Indicator, 'wb')
             completed.close()
 
@@ -534,70 +537,58 @@ def mapping(args, commands):
 
 def filtering(args, commands):
     # Necessary Modules
-    from runHiC.chiclib import cHiCdataset
-    from mirnylib.h5dict import h5dict
+    from runHiC.utilities import cleanDirectory, cleanFile
+    from runHiC.filtering import merge_pairs, stats_pairs
     
     ## Validity of arguments
-    Sources = os.path.abspath(os.path.expanduser(args.HDF5))
-    if not os.path.exists(Sources):
-        logging.error('There is no folder named %s on your system!', Sources)
-        logging.error('Exit ...')
-        sys.exit(1)
+    Sources = os.path.abspath(os.path.expanduser(args.pairFolder))
     mFile = args.metadata
-    if not os.path.exists(mFile):
-        logging.error('%s can not be found under current working directory!', mFile)
-        logging.error('Exit ...')
-        sys.exit(1)
     
     # Output Folder
-    filteredFolder = os.path.split(Sources)[-1].replace('hdf5-', 'filtered-')
+    filteredFolder = os.path.split(Sources)[-1].replace('pairs-', 'filtered-')
     if not os.path.exists(filteredFolder):
         os.makedirs(filteredFolder)
     
-    logging.log(21, 'Filtered files will be saved under %s', filteredFolder)
+    logging.log(21, 'Filtered files will be saved under {0}'.format(filteredFolder))
     
     metadata = [l.rstrip().split() for l in open(mFile) if not l.isspace()]
     database = dict([(i[0], i[-1]) for i in metadata])
     ## Hierarchical merging structures
-    bioReps = set((i[1], i[3], i[2]) for i in metadata if not os.path.exists(os.path.join(filteredFolder, '%s-%s-%s.completed' % (i[1], i[3], i[2]))))
-    cellLines = set((i[1], i[3]) for i in metadata if not os.path.exists(os.path.join(filteredFolder, '%s-%s-allReps.completed' % (i[1], i[3]))))
+    bioReps = set((i[1], i[3], i[2]) for i in metadata if not os.path.exists(os.path.join(filteredFolder, '{0}-{1}-{2}.completed'.format(i[1], i[3], i[2]))))
+    cellLines = set((i[1], i[3]) for i in metadata if not os.path.exists(os.path.join(filteredFolder, '{0}-{1}-allReps.completed'.format(i[1], i[3]))))
     
-    preList1 = [i[0] for i in metadata if os.path.exists(os.path.join(filteredFolder, '%s-%s-%s.completed' % (i[1], i[3], i[2])))]
-    preList2 = [i[0] for i in metadata if os.path.exists(os.path.join(filteredFolder, '%s-%s-allReps.completed' % (i[1], i[3])))]
+    preList1 = [i[0] for i in metadata if os.path.exists(os.path.join(filteredFolder, '{0}-{1}-{2}.completed'.format(i[1], i[3], i[2])))]
+    preList2 = [i[0] for i in metadata if os.path.exists(os.path.join(filteredFolder, '{0}-{1}-allReps.completed'.format(i[1], i[3])))]
     preSet = set(preList1) | set(preList2)
     for ps in preSet:
         if ps in database:
             del database[ps]
     
     # To communicate with next processing step (binning)
-    args.filteredDir = []
+    args.filtered = []
     for i in glob.glob(os.path.join(filteredFolder, '*.completed')):
-        corHDF5 = i.replace('.completed', '-filtered.hdf5')
-        args.filteredDir.append(corHDF5)
+        filtered = i.replace('.completed', '-filtered.pairs.gz')
+        args.filtered.append(filtered)
     
-    logging.log(21, 'Filtering data at SRA level ...')
+    logging.log(21, 'Merge chunks ...')
     for SRR in database:
-        logging.log(21, 'Current SRR: %s ...', SRR)
-        subHDF5 = os.path.join(Sources, SRR)
-        if not os.path.exists(os.path.join(subHDF5, '%s.completed' % SRR)):
-            logging.log(21, '%s is still in mapping stage, skipping ...', SRR)
+        logging.log(21, 'Current SRA/FASTQ: {0} ...'.format(SRR))
+        subPair = os.path.join(Sources, SRR)
+        if not os.path.exists(os.path.join(subPair, '{0}.completed'.format(SRR))):
+            logging.log(21, '{0} is still in mapping stage, skipp'.format(SRR))
             continue
-        
-        ## Read-in Corresponding Genome Information
-        gInfo = cPickle.load(open(os.path.join(subHDF5, 'referenceGenome'),'rb'))
-        args.__dict__.update(gInfo)
         
         subFilter = os.path.join(filteredFolder, SRR)
         
-        Indicator = os.path.join(subFilter, '%s.completed' % SRR)
-        lockFile = os.path.join(subFilter, '%s.lock' % SRR)
+        Indicator = os.path.join(subFilter, '{0}.completed'.format(SRR))
+        lockFile = os.path.join(subFilter, '{0}.lock'.format(SRR))
         
-        if os.path.exists(Indicator) and not os.path.exists(lockFile):
-            logging.log(21, 'Completed work, skipping ...')
+        if os.path.exists(Indicator):
+            logging.log(21, 'Completed work, skip')
             continue
         
         if os.path.exists(lockFile):
-            logging.log(21, 'Someone is working on %s, skipping', SRR)
+            logging.log(21, 'Someone is working on it, skip')
             continue
         
         if not os.path.exists(subFilter):
@@ -610,91 +601,11 @@ def filtering(args, commands):
         
         atexit.register(cleanFile, lockFile)
         
-        logging.log(21, 'Filtering ...')
-        inFiles = glob.glob(os.path.join(subHDF5, SRR + '*.hdf5'))
-        outFiles = []
-        for infile in inFiles:
-            dataLocation, genomeFolder, genome_db = initialize(args)
-            FileAlone = os.path.split(infile)[1]
-            outfile = os.path.join(subFilter, FileAlone.replace('.hdf5', '-parsed.hdf5'))
-            outFiles.append(outfile)
-            enzyme = database[SRR]
-            genome_db.setEnzyme(enzyme)
-            parseF = cHiCdataset(filename = outfile, genome = genome_db,
-                                 maximumMoleculeLength = args.libSize,
-                                 mode = 'w', inMemory = False)
-            parseF.parseInputData(infile)
-            
-            if args.startNearRsite:
-                parseF.filterRsiteStart(offset=5)
-            
-            # Save ref-genome information
-            gInfo['enzyme'] = enzyme
-            parseF.h5dict['genomeInformation'] = gInfo
-         
-        poolName = os.path.join(subFilter, SRR + '-filtered.hdf5')
-        # Merge chunks
-        fragments = cHiCdataset(filename = poolName, genome = genome_db,
-                                mode = 'w', inMemory = False)
-        fragments.merge(outFiles)
-         
-        ## Additional filtering
-        if args.duplicates:
-            fragments.filterDuplicates()
+        inFiles = glob.glob(os.path.join(subPair, SRR + '*.pairsam.gz'))
+        poolName = os.path.join(subFilter, SRR + '.pairsam.gz')
+        merge_pairs(inFiles, poolName)
         
-        ## Other Stats
-        if os.path.exists(os.path.join(subHDF5, 'Read-Level-Stats')):
-            oriStats = cPickle.load(open(os.path.join(subHDF5, 'Read-Level-Stats'),'rb'))
-            fragments.metadata['000_SequencedReads'] = oriStats['Sequenced-Reads']
-            fragments.metadata['010_UniqueMappedReads'] = oriStats['Unique-Reads']
-            fragments.metadata['020_LigationCounts'] = oriStats['Ligation-Counts']
-            
-        fragments.metadata['110_AfterFilteringReads'] = fragments.N
-        fragments.metadata['400_TotalContacts'] = fragments.N
-        sameChrom = (fragments.chrms1 == fragments.chrms2)
-        sameChromNum = sameChrom.sum()
-        fragments.metadata['410_IntraChromosomalReads'] = sameChromNum
-        fragments.metadata['420_InterChromosomalReads'] = fragments.N - sameChromNum
-        shortRange = sameChrom & (np.abs(fragments.mids1 - fragments.mids2) < 20000)
-        shortRangeNum = shortRange.sum()
-        fragments.metadata['412_IntraShortRangeReads(<20Kb)'] = shortRangeNum
-        fragments.metadata['412_IntraLongRangeReads(>=20Kb)'] = sameChromNum - shortRangeNum
-        
-        if 'M' in genome_db.label2idx:
-            MChromIdx = genome_db.label2idx['M']
-            IntraM = (fragments.chrms1==MChromIdx) & (fragments.chrms2==MChromIdx)
-            fragments.metadata['500_IntraMitochondrial'] = IntraM.sum()
-            InterMN = np.logical_or((fragments.chrms1!=MChromIdx) & (fragments.chrms2==MChromIdx),
-                                    (fragments.chrms1==MChromIdx) & (fragments.chrms2!=MChromIdx))
-            fragments.metadata['600_InterNuclearMitochondrial'] = InterMN.sum()
-        
-        fragments.h5dict['metadata'] = fragments.metadata
-        
-        ## Read pair types
-        genomeDis = np.abs(fragments.mids1[sameChrom] - fragments.mids2[sameChrom])
-        cuts1 = fragments.cuts1[sameChrom]
-        cuts2 = fragments.cuts2[sameChrom]
-        strands1 = fragments.strands1[sameChrom]
-        strands2 = fragments.strands2[sameChrom]
-        RightType = (strands1 == 1) & (strands2 == 1)
-        LeftType = (strands1 == 0) & (strands2 == 0)
-        InnerType = np.logical_or((strands1 > strands2) & (cuts1 > cuts2),
-                                  (strands1 < strands2) & (cuts1 < cuts2))
-        OuterType = np.logical_or((strands1 > strands2) & (cuts1 < cuts2),
-                                  (strands1 < strands2) & (cuts1 > cuts2))
-        
-        binDis = genomeDis // 1000 # Bin Size: 1000
-        binCount_R = np.bincount(binDis[RightType])[:50]
-        binCount_L = np.bincount(binDis[LeftType])[:50]
-        binCount_I = np.bincount(binDis[InnerType])[:50]
-        binCount_O = np.bincount(binDis[OuterType])[:50]
-        
-        fragments.h5dict['LeftType'] = binCount_L
-        fragments.h5dict['RightType'] = binCount_R
-        fragments.h5dict['InnerType'] = binCount_I
-        fragments.h5dict['OuterType'] = binCount_O
-        
-        logging.log(21, 'Done!')
+        logging.log(21, 'Done')
         
         completed = open(Indicator, 'wb')
         completed.close()
@@ -702,24 +613,24 @@ def filtering(args, commands):
         os.remove(lockFile)
     
     ## The First level, biological replicates
-    logging.log(21, 'Merging data from the same biological replicates ...')
+    logging.log(21, 'Merge biological replicates and perform read/fragment-level filtering ...')
     for rep in bioReps:
-        logging.log(21, 'Current work ID: %s-%s-%s' % rep)
-        checkComplete = [os.path.join(filteredFolder, i[0], '%s.completed' % i[0]) for i in metadata
+        logging.log(21, 'Current work ID: {0}-{1}-{2}'.format(*rep))
+        checkComplete = [os.path.join(filteredFolder, i[0], '{0}.completed'.format(i[0])) for i in metadata
                          if ((i[1], i[3], i[2]) == rep)]
         if not all([os.path.exists(i) for i in checkComplete]):
-            logging.log(21, 'Filtering for some SRR hasn\'t been completed, skipping ...')
+            logging.log(21, 'Merging on some SRA/FASTQ hasn\'t been completed, skip')
             continue
         
-        Indicator = os.path.join(filteredFolder, '%s-%s-%s.completed' % rep)
-        lockFile = os.path.join(filteredFolder, '%s-%s-%s.lock' % rep)
+        Indicator = os.path.join(filteredFolder, '{0}-{1}-{2}.completed'.format(*rep))
+        lockFile = os.path.join(filteredFolder, '{0}-{1}-{2}.lock'.format(*rep))
         
-        if os.path.exists(Indicator) and not os.path.exists(lockFile):
-            logging.log(21, 'Completed work, skipping ...')
+        if os.path.exists(Indicator):
+            logging.log(21, 'Completed work, skip')
             continue
         
         if os.path.exists(lockFile):
-            logging.log(21, 'Conflicted work, skipping ...')
+            logging.log(21, 'Conflicted work, skip')
             continue
         
         lock = open(lockFile, 'w')
@@ -727,29 +638,18 @@ def filtering(args, commands):
         
         atexit.register(cleanFile, lockFile)
         
-        filenames = [os.path.join(filteredFolder, i[0], '%s-filtered.hdf5' % i[0]) for i in metadata
+        filenames = [os.path.join(filteredFolder, i[0], '{0}.pairsam.gz'.format(i[0])) for i in metadata
                     if ((i[1], i[3], i[2]) == rep)]
-        outfile = os.path.join(filteredFolder, '%s-%s-%s-filtered.hdf5' % rep)
-        args.filteredDir.append(outfile)
-        
-        # Genome information from HDF5
-        gInfo = h5dict(filenames[0], 'r')['genomeInformation']
-        args.__dict__.update(gInfo)
-        enzyme = rep[1]
-        
-        dataLocation, genomeFolder, genome_db = initialize(args)
-        genome_db.setEnzyme(enzyme)
-        ## Merge lane data altogether
-        fragments = cHiCdataset(filename = outfile, genome = genome_db,
-                                mode = 'w', inMemory = False)
-        fragments.merge(filenames)
+        outpre = os.path.join(filteredFolder, '{0}-{1}-{2}-filtered'.format(*rep))
+
+        args.filtered.append(outfile)
         
         completed = open(Indicator, 'wb')
         completed.close()
                
         os.remove(lockFile)
         
-        logging.log(21, 'Done!')
+        logging.log(21, 'Done')
     
     if args.level == 2:
         ## The Second level, cell lines, optional
@@ -784,7 +684,7 @@ def filtering(args, commands):
             filenames = [os.path.join(filteredFolder, '%s-%s-%s-filtered.hdf5' % i) for i in bioList
                          if ((i[0], i[1]) == cell)]
             outfile = os.path.join(filteredFolder, '%s-%s-allReps-filtered.hdf5' % cell)
-            args.filteredDir.append(outfile)
+            args.filtered.append(outfile)
             
             # Genome information from HDF5
             gInfo = h5dict(filenames[0], 'r')['genomeInformation']

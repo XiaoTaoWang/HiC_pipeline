@@ -9,6 +9,14 @@ from mirnylib.h5dict import h5dict
 
 log = logging.getLogger(__name__)
 
+def sleep():
+    
+    for _ in range(3):
+        time.sleep(0.1)
+    gc.collect()
+    for _ in range(3):
+        time.sleep(0.1)
+
 def cleanFile(filename):
     if os.path.exists(filename):
         os.remove(filename)
@@ -16,6 +24,25 @@ def cleanFile(filename):
 def cleanDirectory(dirName):
     for i in os.listdir(dirName):
         os.remove(os.path.join(dirName, i))
+
+def fetchChromsizes(genomeFolder, genomeName):
+
+    chromsizes = []
+    pread = subprocess.Popen(['fetchChromSizes', genomeName], stdout=subprocess.PIPE)
+    inStream = pread.stdout
+    for line in inStream:
+        parse = line.decode().rstrip().split()
+        c, s = parse[0], parse[1]
+        chromsizes.append((c, s))
+    chromsizes.sort()
+    pread.communicate()
+
+    outfile = os.path.join(genomeFolder, '.'.join([genomeName, 'chrom', 'sizes']))
+    with open(outfile, 'w') as out:
+        for line in chromsizes:
+            out.write('\t'.join(line)+'\n')
+    
+    return outfile
     
 # Convert Matrix to Scipy Sparse Matrix
 def toSparse(source, csr = False):

@@ -1,22 +1,9 @@
-#!/usr/bin/env python
-
 # Created on Fri Sep 7 19:15:32 2018
 
 # Author: XiaoTao Wang
 
-import logging, os, subprocess, time, gc, atexit, glob
-import numpy as np
-from runHiC.utilities import cleanFile
-
-log = logging.getLogger(__name__)
-
-def sleep():
-    
-    for _ in range(3):
-        time.sleep(0.1)
-    gc.collect()
-    for _ in range(3):
-        time.sleep(0.1)
+import os, subprocess, atexit
+from runHiC.utilities import cleanFile, sleep
 
 def commandExists(command):
     "Check if the bash command exists"
@@ -178,25 +165,6 @@ def splitSingleFastq(filename, folder, splitBy = 4000000):
         
     return counters
 
-def fetchChromsizes(genomeFolder, genomeName):
-
-    chromsizes = []
-    pread = subprocess.Popen(['fetchChromSizes', genomeName], stdout=subprocess.PIPE)
-    inStream = pread.stdout
-    for line in inStream:
-        parse = line.decode().rstrip().split()
-        c, s = parse[0], parse[1]
-        chromsizes.append((c, s))
-    chromsizes.sort()
-    pread.communicate()
-
-    outfile = os.path.join(genomeFolder, '.'.join([genomeName, 'chrom', 'sizes']))
-    with open(outfile, 'w') as out:
-        for line in chromsizes:
-            out.write('\t'.join(line)+'\n')
-    
-    return outfile
-
 def buildMapIndex(aligner, genomeFolder, genomeName):
     """
     Build bwa/minimap2 index files.
@@ -277,9 +245,28 @@ def parse_bam(bam, outfile, chromsizes, assembly, min_mapq, max_molecule_size, m
     if drop_seq:
         basic_command.append('--drop-seq')
     
-    basic_command.extend(['-o', outfile])
+    pipeline = []
+    try:
+        pipeline.append(
+            subprocess.Popen(basic_command,
+                stdout=subprocess.PIPE,
+                bufsize=-1)
+        )
 
-    subprocess.call(' '.join(basic_command), shell=True)
+        sort_command = ['pairtools', 'sort', '-o', outfile, '--nproc', '8', '--memory', '2G']
+        pipeline.append(
+            subprocess.Popen(sort_command,
+                stdin=pipeline[-1].stdout,
+                stdout=None,
+                bufsize=-1)
+        )
+        pipeline[-1].wait()
+
+    finally:
+        sleep()
+        for process in pipeline:
+            if process.poll() is None:
+                process.terminate()
 
 
 
