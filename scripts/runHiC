@@ -538,8 +538,8 @@ def mapping(args, commands):
 def filtering(args, commands):
     # Necessary Modules
     from runHiC.utilities import cleanDirectory, cleanFile
-    from runHiC.filtering import merge_pairs, stats_pairs
-    
+    from runHiC.filtering import merge_pairs, stats_pairs, biorep_level
+
     ## Validity of arguments
     Sources = os.path.abspath(os.path.expanduser(args.pairFolder))
     mFile = args.metadata
@@ -641,8 +641,7 @@ def filtering(args, commands):
         filenames = [os.path.join(filteredFolder, i[0], '{0}.pairsam.gz'.format(i[0])) for i in metadata
                     if ((i[1], i[3], i[2]) == rep)]
         outpre = os.path.join(filteredFolder, '{0}-{1}-{2}-filtered'.format(*rep))
-
-        args.filtered.append(outfile)
+        biorep_level(filenames, outpre, args.chromsizes_file, enzyme)
         
         completed = open(Indicator, 'wb')
         completed.close()
