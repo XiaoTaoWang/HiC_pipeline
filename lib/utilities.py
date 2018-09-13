@@ -66,7 +66,7 @@ def chromsizes_from_pairs(pairpath):
     
     instream.close()
     
-    return outpath
+    return outpath, genomeName
 
     
 # Convert Matrix to Scipy Sparse Matrix
