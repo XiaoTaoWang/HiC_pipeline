@@ -1,0 +1,208 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Parallel Computation &#8212; runHiC 0.7.0 documentation</title>
+    
+    <link rel="stylesheet" href="_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    './',
+        VERSION:     '0.7.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Experiment Quality Assessment" href="quality.html" />
+    <link rel="prev" title="Quick Start" href="quickstart.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head>
+  <body role="document">
+  <div class="document">
+    
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="index.html">runHiC</a></h1>
+
+
+
+<p class="blurb">A user-friendly Hi-C data processing software based on hiclib </p>
+
+
+
+
+<p>
+<iframe src="https://ghbtns.com/github-btn.html?user=XiaoTaoWang&repo=HiC_pipeline&type=star&count=true&size=large&v=2"
+  allowtransparency="true" frameborder="0" scrolling="0" width="200px" height="35px"></iframe>
+</p>
+
+
+
+
+
+<h3>Navigation</h3>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="install.html">Install runHiC</a></li>
+<li class="toctree-l1"><a class="reference internal" href="quickstart.html">Quick Start</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Parallel Computation</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#example">Example</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#performance">Performance</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="quality.html">Experiment Quality Assessment</a></li>
+<li class="toctree-l1"><a class="reference internal" href="changelog.html">Release Notes</a></li>
+</ul>
+
+
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="parallel-computation">
+<h1>Parallel Computation<a class="headerlink" href="#parallel-computation" title="Permalink to this headline">¶</a></h1>
+<p>runHiC supports parallel processing of large Hi-C datasets on both SMP (systems
+with multiple processors or cores) and PBS-based clusters (computers connected
+via network).</p>
+<p>All you need to know is another 3 command-line arguments (refer to <a class="reference external" href="http://xiaotaowang.github.io/HiC_pipeline/quickstart.html">quickstart</a>
+for basic usage):</p>
+<ul>
+<li><p class="first"><code class="docutils literal"><span class="pre">-r/--running-mode</span></code></p>
+<p>Running mode of the program. &#8220;local&#8221; (Run on a local computer) or &#8220;pbs&#8221; (Run on
+a PBS-based cluster).</p>
+</li>
+<li><p class="first"><code class="docutils literal"><span class="pre">--nworker</span></code></p>
+<p>The maximum number of task processes to launch on a single machine (which means
+the local computer for &#8220;local&#8221; mode and a compute node for &#8220;pbs&#8221; mode).</p>
+</li>
+<li><p class="first"><code class="docutils literal"><span class="pre">--chunkSize</span></code></p>
+<p>To make parallelized computation possible, our pipeline splits the original read file into
+chunks and maps them to the reference genome separately. This parameter specifies the size
+of each chunk. By default, no split is performed.</p>
+</li>
+</ul>
+<div class="section" id="example">
+<h2>Example<a class="headerlink" href="#example" title="Permalink to this headline">¶</a></h2>
+<p>To show how to launch runHiC on our example data (see <cite>Data Preparation</cite>) across
+multiple nodes of a cluster, let&#8217;s create a sub-folder and copy the meta data file
+into it:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span>$ mkdir run-on-cluster
+$ cp datasets.tsv ./run-on-cluster
+</pre></div>
+</div>
+<p>Then change to the sub-folder and write (vi) a simple PBS script. My job script is
+shown below:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span>#PBS -N runHiC
+#PBS -l nodes=4:ppn=20
+#PBS -l walltime=50:00:00
+#PBS -q batch
+#PBS -V
+#PBS -S /bin/bash
+
+cd $PBS_O_WORKDIR
+
+runHiC pileup -r pbs --nworker 2 -p ../../data -g hg19 -f HiC-gzip -F FASTQ -b ~/Tools/anaconda2/bin/bowtie2 -t 20 --chunkSize 2000000 -M byChromosome -R 2000000 --logFile runHiC.log
+</pre></div>
+</div>
+<p>Now submit your PBS script by using the <code class="docutils literal"><span class="pre">qsub</span></code> command:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span>$ qsub pileup.pbs
+</pre></div>
+</div>
+<p>That&#8217;s it! Just a single-line command and no tedious setup required.</p>
+</div>
+<div class="section" id="performance">
+<h2>Performance<a class="headerlink" href="#performance" title="Permalink to this headline">¶</a></h2>
+<p>The table below shows the performance test of runHiC with low-depth and high-depth sequencing
+data. (Running time means the wall time runHiC took from raw read files to corrected sparse
+contact matrices)</p>
+<table border="1" class="docutils">
+<colgroup>
+<col width="20%" />
+<col width="23%" />
+<col width="22%" />
+<col width="35%" />
+</colgroup>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">Cell Line</th>
+<th class="head">Number of reads</th>
+<th class="head">Number of nodes</th>
+<th class="head">Running time (hr: min: sec)</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr class="row-even"><td>GM06990</td>
+<td>14,332,993</td>
+<td>1</td>
+<td>0:56:01</td>
+</tr>
+<tr class="row-odd"><td>GM06990</td>
+<td>14,332,993</td>
+<td>4</td>
+<td>0:16:58</td>
+</tr>
+<tr class="row-even"><td>MCF7</td>
+<td>944,178,846</td>
+<td>10</td>
+<td>11:14:24</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+    <div class="clearer"></div>
+  </div>
+    <div class="footer">
+      &copy;2017, XiaoTao Wang.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.5.1</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.10</a>
+      
+      |
+      <a href="_sources/parallel.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+    <a href="https://github.com/XiaoTaoWang/HiC_pipeline" class="github">
+        <img style="position: absolute; top: 0; right: 0; border: 0;" src="https://s3.amazonaws.com/github/ribbons/forkme_right_darkblue_121621.png" alt="Fork me on GitHub"  class="github"/>
+    </a>
+    
+
+    
+  </body>
+</html>
