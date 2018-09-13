@@ -19,7 +19,7 @@ def merge_pairs(pair_paths, outpath):
 
         subprocess.call(' '.join(merge_command), shell=True)
 
-def stats_pairs(inpath, refkey, matchpre):
+def stats_pairs(inpath, refkey, matchpre=[]):
     
     stat_command = ['pairtools', 'stats', inpath]
     pipe = subprocess.Popen(stat_command, stdout=subprocess.PIPE)
@@ -67,38 +67,46 @@ def stats_samfrag(samfrag_pairs):
         else:
             stats['126_UnknownMechanism'] += 1
     
+    instream.close()
+    
     os.remove(samfrag_pairs)
+
+    libsize = np.r_[libsize]
+    danglingStart = np.r_[danglingStart]
     
     return stats, libsize, danglingStart
 
-def create_frag(chromsizes_file, enzyme):
+def create_frag(genomepath, chromsizes_file, enzyme):
 
-    # Next
+    Folder, fastaName = os.path.split(genomepath)
+    genomeName = fastaName.split('.')[0]
+    outbed = os.path.join(Folder, '.'.join([genomeName, 'frags', enzyme, 'bed']))
+    if os.path.exists(outbed):
+        return outbed
+    
+    digest_command = ['cooler', 'digest', '-o', outbed, chromsizes_file, genomepath, enzyme]
+    subprocess.call(' '.join(digest_command), shell=True)
 
+    return outbed
 
 def biorep_level(pair_paths, outpre, frag_path):
 
-    # a temporary file to store unfiltered all alignments, for stats and PCR duplicate detection
+    # a temporary file to store unfiltered all alignments
     out_total = outpre + '.total.pairsam.gz'
     merge_pairs(pair_paths, out_total)
-    # cis/trans/dist_freq*/chrom_freq* are all subsets of non duplicates
     # pair_type stats include duplicates
     refkey = {'total':'000_SequencedReads',
               'total_mapped':'010_DoubleSideMappedReads',
               'total_single_sided_mapped':'020_SingleSideMappedReads',
-              'total_unmapped':'030_UnmappedReads',
-              'total_dups':'130_DuplicateRemoved',
-              'total_nodups':'total_nodups',
-              'cis':'410_IntraChromosomalReads',
-              'trans':'420_InterChromosomalReads',
-              'cis_20kb+':'412_IntraLongRangeReads(>=20Kb)'}
+              'total_unmapped':'030_UnmappedReads'
+              }
 
-    stats = stats_pairs(out_total, refkey, matchpre=['pair_types','dist_freq'])
-    stats['412_IntraShortRangeReads(<20Kb)'] = stats['410_IntraChromosomalReads'] - stats['412_IntraLongRangeReads(>=20Kb)']
+    stats = stats_pairs(out_total, refkey)
     stats['100_NormalPairs'] = stats['010_DoubleSideMappedReads']
     # Final biorep level pairsam
-    outpath_1 = outpre + '.pairsam.gz'
-    outpath_2 = outpre + '.samfrag.pairsam.gz'
+    outpath = outpre + '.pairsam.gz' # select.dedup.filter
+    outpath_1 = outpre + '.select.dedup.pairsam.gz'
+    outpath_2 = outpre + '.select.dedup.samefrag.pairsam.gz'
 
     pipeline = []
     try:
@@ -110,24 +118,38 @@ def biorep_level(pair_paths, outpre, frag_path):
                 bufsize=-1
             )
         )
-        dedup_command = ['pairtools', 'dedup', '--max-mismatch', '2', '--method', 'max']
+        dedup_command = ['pairtools', 'dedup', '--max-mismatch', '1', '--method', 'max', '-o', outpath_1]
         pipeline.append(
             subprocess.Popen(dedup_command,
                 stdin=pipeline[-1].stdout,
-                stdout=subprocess.PIPE,
+                stdout=None,
                 bufsize=-1)
         )
+        pipeline[-1].wait()
+    finally:
+        sleep()
+        for process in pipeline:
+            if process.poll() is None:
+                process.terminate()
+    
+    os.remove(out_total)
+    
+    refkey = {'total_nodups':'total_nodups'}
+    dupstats = stats_pairs(outpath_1, refkey)
+    stats['130_DuplicateRemoved'] = stats['100_NormalPairs'] - dupstats['total_nodups']
+
+    try:
         # assign fragment
-        restrict_command = ['pairtools', 'restrict', '-f', frag_path]
+        restrict_command = ['pairtools', 'restrict', '-f', frag_path, outpath_1]
         pipeline.append(
             subprocess.Popen(restrict_command,
-                stdin=pipeline[-1].stdout,
                 stdout=subprocess.PIPE,
                 bufsize=-1)
         )
 
-        select_command = ['pairtools', 'select', '--output-rest', outpath_1, '-o', outpath_2,
-                          '(rfrag_idx1==rfrag_idx2) and (chrom1==chrom2)']
+        ####### COLS[-6]==COLS[-3], the index may change to follow pairtools
+        select_command = ['pairtools', 'select', '--output-rest', outpath, '-o', outpath_2,
+                          '(COLS[-6]==COLS[-3]) and (chrom1==chrom2)']
         pipeline.append(
             subprocess.Popen(select_command,
                 stdin=pipeline[-1].stdout,
@@ -141,37 +163,58 @@ def biorep_level(pair_paths, outpre, frag_path):
             if process.poll() is None:
                 process.terminate()
 
-    os.remove(out_total)
-    os.remove(frag_path)
+    os.remove(outpath_1)
 
     substats, libsize, danglingStart = stats_samfrag(outpath_2)
 
-    stats['110_AfterFilteringReads'] = stats['total_nodups'] = substats['120_SameFragmentReads']
+    stats['110_AfterFilteringReads'] = dupstats['total_nodups'] - substats['120_SameFragmentReads']
     stats['400_TotalContacts'] = stats['110_AfterFilteringReads']
     stats.update(substats)
-    del stats['total_nodups']
+
+    refkey = {'cis':'410_IntraChromosomalReads',
+              'trans':'420_InterChromosomalReads',
+              'cis_20kb+':'412_IntraLongRangeReads(>=20Kb)'
+              }
+    
+    substats = stats_pairs(outpath, refkey, matchpre=['dist_freq'])
+    stats.update(substats)
+    stats['412_IntraShortRangeReads(<20Kb)'] = stats['410_IntraChromosomalReads'] - stats['412_IntraLongRangeReads(>=20Kb)']
+
     # we would never re-count the ligation junction site in original reads
-    # we just estimate this ratio
-    stats['Ligation Junction Ratio'] = (stats['pair_types/UR'] + stats['pair_types/RU']) / stats['010_DoubleSideMappedReads']
-    for key in stats:
-        if key.startswith('pair_types'):
-            del stats[key]
     
     stats['libsize'] = libsize
     stats['danglingStart'] = danglingStart
 
-    return stats
+    os.remove(outpath_2)
 
-
-
+    return stats, outpath
     
 
-    
+def enzyme_level(pair_paths, outpre, keys, outkey, stats_pool):
 
+    ## pair_paths --> outpre
+    ## keys --> outkey
+    outall = outpre + '.pairsam.gz'
+    merge_pairs(pair_paths, outall)
+    stats_pool[outkey] = stats_pool[keys[0]]
+    for i in stats_pool[outkey].keys():
+        for k in keys[1:]:
+            if not i in ['libsize', 'danglingStart']:
+                stats_pool[outkey][i] += stats_pool[k][i]
+            else:
+                stats_pool[outkey][i] = np.r_[stats_pool[outkey][i], stats_pool[k][i]]
 
+    return stats_pool, outall
 
+def split_pairsam(pairsam_path):
 
+    pairpath = pairsam_path.replace('.pairsam.gz', '.pairs.gz')
+    bampath = pairsam_path.replace('.pairsam.gz', '.bam')
+    split_command = ['pairtools', 'split', '--output-pairs', pairpath, '--output-sam', bampath,
+                     pairsam_path]
+    subprocess.call(' '.join(split_command), shell=True)
 
+    return pairpath, bampath
 
 
 

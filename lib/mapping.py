@@ -244,6 +244,7 @@ def parse_bam(bam, outfile, chromsizes, assembly, min_mapq, max_molecule_size, m
     
     if drop_seq:
         basic_command.append('--drop-seq')
+    basic_command.append(bam)
     
     pipeline = []
     try:
@@ -267,8 +268,6 @@ def parse_bam(bam, outfile, chromsizes, assembly, min_mapq, max_molecule_size, m
         for process in pipeline:
             if process.poll() is None:
                 process.terminate()
-
-
 
         
 

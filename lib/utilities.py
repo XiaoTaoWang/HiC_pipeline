@@ -25,24 +25,49 @@ def cleanDirectory(dirName):
     for i in os.listdir(dirName):
         os.remove(os.path.join(dirName, i))
 
-def fetchChromsizes(genomeFolder, genomeName):
+def chromsizes_from_fasta(genomeFolder, genomeName):
 
-    chromsizes = []
-    pread = subprocess.Popen(['fetchChromSizes', genomeName], stdout=subprocess.PIPE)
-    inStream = pread.stdout
-    for line in inStream:
-        parse = line.decode().rstrip().split()
-        c, s = parse[0], parse[1]
-        chromsizes.append((c, s))
-    chromsizes.sort()
-    pread.communicate()
+    from Bio import SeqIO
 
+    genomepath = os.path.join(genomeFolder, '.'.join([genomeName, 'fa']))
+    chromsizes = {}
+    fasta_genome = SeqIO.parse(genomepath, 'fasta')
+    for fasta in fasta_genome:
+        chromsizes[fasta.id] = len(fasta.seq)
+    
     outfile = os.path.join(genomeFolder, '.'.join([genomeName, 'chrom', 'sizes']))
     with open(outfile, 'w') as out:
-        for line in chromsizes:
+        for c in sorted(chromsizes):
+            line = [c, str(chromsizes[c])]
             out.write('\t'.join(line)+'\n')
     
     return outfile
+
+def chromsizes_from_pairs(pairpath):
+
+    from pairtools import _fileio, _headerops
+
+    instream = _fileio.auto_open(pairpath, mode='r')
+    header, _ = _headerops.get_header(instream)
+    genomeName = 'Unknown'
+    chromsizes = []
+    for r in header:
+        if r.startswith('#genome_assembly:'):
+            genomeName = r.split(':')[1].strip()
+        if r.startswith('#chromsize:'):
+            pair = r.split(':')[1].strip().split()
+            chromsizes.append(pair)
+    
+    folder = os.path.split(pairpath)[0]
+    outpath = os.path.join(folder, '.'+genomeName+'.chrom.sizes') # invisible to users
+    with open(outpath, 'w') as out:
+        for line in chromsizes: # order unchanged
+            out.write('\t'.join(line)+'\n')
+    
+    instream.close()
+    
+    return outpath
+
     
 # Convert Matrix to Scipy Sparse Matrix
 def toSparse(source, csr = False):
