@@ -49,9 +49,10 @@ def uncompressSRA(filename, folder):
     count = 0
     while True:
         line = inStream.readline()
+        textline = line.decode()
         
         try:
-            assert line[0] == b'@'
+            assert textline[0] == '@'
         except AssertionError:
             raise IOError('{0} is an invalid fastq file'.format(filename))
         except IndexError:
@@ -90,9 +91,10 @@ def splitSRA(filename, folder, splitBy = 4000000):
         for j in range(splitBy):
 
             line = inStream.readline()
+            textline = line.decode()
 
             try:
-                assert line[0] == b'@'
+                assert textline[0] == '@'
             except AssertionError:
                 raise IOError('{0} is an invalid fastq file'.format(filename))
             except IndexError:
@@ -141,9 +143,10 @@ def splitSingleFastq(filename, folder, splitBy = 4000000):
         for j in range(splitBy):
 
             line = inStream.readline()
+            textline = line.decode()
 
             try:
-                assert line[0] == b'@'
+                assert textline[0] == '@'
             except AssertionError:
                 raise IOError('{0} is not a fastq file'.format(filename))
             except IndexError:
@@ -169,7 +172,7 @@ def buildMapIndex(aligner, genomeFolder, genomeName):
     """
     Build bwa/minimap2 index files.
     """
-    lockFile = os.path.join(genomeFolder, '.'.join([genomeName, 'lock']))
+    lockFile = os.path.join(genomeFolder, '.'.join([genomeName, aligner, 'lock']))
     # Aquire lock
     lock = open(lockFile, 'wb')
     lock.close()
@@ -180,7 +183,7 @@ def buildMapIndex(aligner, genomeFolder, genomeName):
 
     if aligner=='minimap2':
         indexOut = os.path.join(genomeFolder, '.'.join([genomeName, 'mmi']))
-        build_command = ['minimap', '-x', 'sr', '-d', indexOut, wholeGenome]
+        build_command = ['minimap2', '-x', 'sr', '-d', indexOut, wholeGenome]
     else:
         build_command = ['bwa', 'index', wholeGenome]
     
