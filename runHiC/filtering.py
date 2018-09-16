@@ -17,7 +17,7 @@ def merge_pairs(pair_paths, outpath):
         merge_command = ['pairtools', 'merge', '-o', outpath, '--nproc', '8', '--memory', '2G',
                          '--max-nmerge', '8'] + pair_paths
 
-        subprocess.call(' '.join(merge_command), shell=True)
+        subprocess.check_call(' '.join(merge_command), shell=True)
 
 def stats_pairs(inpath, refkey, matchpre=[]):
     
@@ -48,20 +48,17 @@ def stats_samfrag(samfrag_pairs):
 
     stats = defaultdict(int)
     libsize = []
-    danglingStart = []
     for line in body_stream:
         cols = line.rstrip().split(_pairsam_format.PAIRSAM_SEP)
         pos1 = int(cols[_pairsam_format.COL_P1])
         strand1 = cols[_pairsam_format.COL_S1]
         pos2 = int(cols[_pairsam_format.COL_P2])
         strand2 = cols[_pairsam_format.COL_S2]
-        fragstart, fragend = int(cols[-2]), int(cols[-1]) # The index may change in the future
+        #fragstart, fragend = int(cols[-2]), int(cols[-1]) # The index may change in the future
         stats['120_SameFragmentReads'] += 1
         if (strand1=='+') and (strand2=='-'): # dangling reads
             stats['124_DanglingReads'] += 1
             libsize.append(pos2-pos1)
-            startsite = min(abs(pos1-fragstart), abs(fragend-pos2))
-            danglingStart.append(startsite/(fragend-fragstart))
         elif (strand1=='-') and (strand2=='+'): # self ligation
             stats['122_SelfLigationReads'] += 1
         else:
@@ -72,9 +69,8 @@ def stats_samfrag(samfrag_pairs):
     os.remove(samfrag_pairs)
 
     libsize = np.r_[libsize]
-    danglingStart = np.r_[danglingStart]
     
-    return stats, libsize, danglingStart
+    return stats, libsize
 
 def create_frag(genomepath, chromsizes_file, enzyme):
 
@@ -85,7 +81,7 @@ def create_frag(genomepath, chromsizes_file, enzyme):
         return outbed
     
     digest_command = ['cooler', 'digest', '-o', outbed, chromsizes_file, genomepath, enzyme]
-    subprocess.call(' '.join(digest_command), shell=True)
+    subprocess.check_call(' '.join(digest_command), shell=True)
 
     return outbed
 
@@ -165,7 +161,7 @@ def biorep_level(pair_paths, outpre, frag_path):
 
     os.remove(outpath_1)
 
-    substats, libsize, danglingStart = stats_samfrag(outpath_2)
+    substats, libsize = stats_samfrag(outpath_2)
 
     stats['110_AfterFilteringReads'] = dupstats['total_nodups'] - substats['120_SameFragmentReads']
     stats['400_TotalContacts'] = stats['110_AfterFilteringReads']
@@ -183,9 +179,6 @@ def biorep_level(pair_paths, outpre, frag_path):
     # we would never re-count the ligation junction site in original reads
     
     stats['libsize'] = libsize
-    stats['danglingStart'] = danglingStart
-
-    os.remove(outpath_2)
 
     return stats, outpath
     
@@ -199,7 +192,7 @@ def enzyme_level(pair_paths, outpre, keys, outkey, stats_pool):
     stats_pool[outkey] = stats_pool[keys[0]]
     for i in stats_pool[outkey].keys():
         for k in keys[1:]:
-            if not i in ['libsize', 'danglingStart']:
+            if not i in ['libsize']:
                 stats_pool[outkey][i] += stats_pool[k][i]
             else:
                 stats_pool[outkey][i] = np.r_[stats_pool[outkey][i], stats_pool[k][i]]
@@ -227,10 +220,10 @@ def split_pairsam(pairsam_path):
         bampath = pairsam_path.replace('.pairsam.gz', '.bam')
         split_command = ['pairtools', 'split', '--output-pairs', pairpath,
                          '--output-sam', bampath, pairsam_path]
-        subprocess.call(' '.join(split_command), shell=True)
+        subprocess.check_call(' '.join(split_command), shell=True)
     else:
-        mv_command = ['mv', pairsam_path, pairpath]
-        subprocess.call(' '.join(mv_command), shell=True)
+        mv_command = ['cp', pairsam_path, pairpath]
+        subprocess.check_call(' '.join(mv_command), shell=True)
 
     return pairpath
 

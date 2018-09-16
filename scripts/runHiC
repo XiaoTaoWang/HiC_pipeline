@@ -6,7 +6,7 @@
 
 ## Required Modules
 import os, sys, argparse, logging, logging.handlers, glob, atexit, \
-       traceback, pickle, xmlrpc.client, runHiC
+       traceback, pickle, xmlrpc.client, time, runHiC
 from pkg_resources import parse_version as V
 
 try:
@@ -99,18 +99,14 @@ def getargs():
     iterM.add_argument('--chunkSize', type = int, help = '''On a low-memory machine, it's better
                        to split the raw read file into chunks and map them separatively. This
                        parameter specifies the size of each chunk. By default, no split is performed.''')
-    iterM.add_argument('--removeInters', action = 'store_true',
-                       help = '''If specified, remove intermediate results, and only the final .pairsam files
-                       will be retained.''')
     iterM.add_argument('--logFile', default = 'runHiC.log', help = '''Logging file name.''')
     iterM.set_defaults(func = mapping)
     
     ## Merging and Filtering
     removeNoise = subparser.add_parser('filtering',
                                        help = '''Perform read-/fragment-level filtering processes.
-                                       Data with the same biological replicate label (level 1),
-                                       and multiple replicates from the same cell line with same
-                                       restriction enzyme will also be merged together at this stage.
+                                       Data with the same biological replicate label, and multiple replicates
+                                       from the same cell line will also be merged together at this stage.
                                        ''',
                                        epilog = '''Please find the final valid contact pairs in *.pairs.gz.
                                        If you specified the "--include-sam" flag when you ran "runHiC mapping",
@@ -128,7 +124,7 @@ def getargs():
     removeNoise.add_argument('--genomepath',
                              help = '''Path to the .fa file containing reference genome data.''')
     removeNoise.add_argument('--stats-cache', default = 'allinone.cache',
-                             help = 'Name the output cache file containing data quality statistics.')
+                             help = 'Name the output cache file for data quality statistics.')
     removeNoise.add_argument('--logFile', default = 'runHiC.log', help = '''Logging file name.''')
     removeNoise.set_defaults(func = filtering)
     
@@ -140,8 +136,8 @@ def getargs():
                                     contact matrices in .cooler format.''',
                                     formatter_class = argparse.ArgumentDefaultsHelpFormatter)
     binReads.add_argument('-f', '--filtered', nargs = '+',
-                          help = '''Path to the filtered HDF5 files generated during the filtering stage.
-                          Wild cards are allowed. If the path points to a folder, the *binning* procedure
+                          help = '''Path to the filtered *.pairs.gz files generated during the filtering stage.
+                          Wild cards are allowed. If the path points to a folder, the binning procedure
                           will be performed on each .pairs.gz file under that folder.''')
     binReads.add_argument('-R', '--resolution', type = int, default = 100000,
                           help = 'Resolution of the contact matrix. Unit: bp')
@@ -241,8 +237,7 @@ def run(args, commands):
                             '# Include Read ID = {0}'.format(args.include_readid),
                             '# Include Sam = {0}'.format(args.include_sam),
                             '# Drop SEQ and QUAL = {0}'.format(args.drop_seq),
-                            '# Chunk size = {0}'.format(args.chunkSize),
-                            '# Remove Intermediates = {0}'.format(args.removeInters)
+                            '# Chunk size = {0}'.format(args.chunkSize)
                             ])
                             
         if commands[0] == 'filtering':
@@ -257,7 +252,7 @@ def run(args, commands):
                             '# Number of processes = {0}'.format(args.nproc)])
         
         if commands[0] == 'pileup':
-            arglist.extend(['# Resolution = %s' % args.resolution])
+            arglist.extend(['# Resolution = {0}'.format(args.resolution)])
         
         if commands[0] == 'quality':
             arglist.extend(['# MetaData = {0}'.format(args.metadata),
@@ -271,7 +266,6 @@ def run(args, commands):
 
 def mapping(args, commands):
     ## Import necessary modules
-    import subprocess
     from runHiC.mapping import splitSRA, splitSingleFastq, uncompressSRA, buildMapIndex, map_core, parse_bam
     from runHiC.utilities import cleanDirectory, cleanFile, chromsizes_from_fasta
     
@@ -335,7 +329,6 @@ def mapping(args, commands):
         logging.log(21, 'Current: {0}'.format(i))
             
         chunkFolder = os.path.join(fastqDir, i)
-        subbamFolder = os.path.join(bamFolder, i)
         
         Indicator = os.path.join(fastqDir, '{0}.completed'.format(i))
         lockFile = os.path.join(fastqDir, '{0}.lock'.format(i))
@@ -347,6 +340,11 @@ def mapping(args, commands):
         if os.path.exists(lockFile):
             logging.log(21, 'Conflict process, skip')
             continue
+        
+        if not os.path.exists(chunkFolder):
+            os.makedirs(chunkFolder)
+            
+        cleanDirectory(chunkFolder)
         
         # Chunking/Dumping lock, not the mapping lock
         lock = open(lockFile, 'wb')
@@ -373,13 +371,6 @@ def mapping(args, commands):
             else:
                 logging.warning('No proper FASTQ pairs can be found, skip')
                 continue
-        
-        for folder in [chunkFolder, subbamFolder]:
-            if not os.path.exists(folder):
-                os.makedirs(folder)
-            
-        for folder in [chunkFolder, subbamFolder]:
-            cleanDirectory(folder)
         
         ## Make chunks according to --chunksize
         if readformat == 'sra':
@@ -414,10 +405,11 @@ def mapping(args, commands):
         chunkFolder = os.path.join(fastqDir, i)
         subbamFolder = os.path.join(bamFolder, i)
         subPair = os.path.join(pairFolder, i)
-        if not os.path.exists(subPair):
-            os.makedirs(subPair)
+        for folder in [subbamFolder, subPair]:
+            if not os.path.exists(folder):
+                os.makedirs(folder)
         
-        globalIndicator = os.path.join(pairFolder, '%s.completed' % i)
+        globalIndicator = os.path.join(pairFolder, '{0}.completed'.format(i))
 
         if os.path.exists(globalIndicator):
             logging.log(21, 'Completed work, skip')
@@ -433,11 +425,14 @@ def mapping(args, commands):
             
         Assignments = zip(Read_1, Read_2, OutFiles)
         
+        childchecks = []
         for count, (r1, r2, out) in enumerate(Assignments):
             if len(Read_1)>1:
                 logging.log(21, 'Chunk {0} ...'.format(count))
             Indicator = os.path.join(subPair, os.path.split(out)[1].replace('.pairsam.gz', '.completed'))
             lockFile = os.path.join(subPair, os.path.split(out)[1].replace('.pairsam.gz', '.lock'))
+
+            childchecks.append(Indicator)
 
             if os.path.exists(Indicator):
                 logging.log(21, 'Completed work, skip')
@@ -453,8 +448,6 @@ def mapping(args, commands):
 
             atexit.register(cleanFile, lockFile)
 
-            cleanDirectory(subPair)
-
             # BAM/SAM
             bampath = map_core(r1, r2, indexpath, subbamFolder, aligner, outformat, nthread=args.threads)
             parse_bam(bampath, out, chromsize_file, genomeName, args.min_mapq, args.max_molecule_size,
@@ -467,19 +460,16 @@ def mapping(args, commands):
             logging.log(21, 'Done')
 
             os.remove(lockFile)
-            
-        if args.removeInters:
-            for folder in [chunkFolder, subbamFolder]:
-                rmcommand = ['rm', '-rf', folder]
-                subprocess.call(' '.join(rmcommand), shell=True)
         
-        completed = open(globalIndicator, 'wb')
-        completed.close()
+        if all([os.path.exists(child) for child in childchecks]):
+            completed = open(globalIndicator, 'wb')
+            completed.close()
 
 def filtering(args, commands):
     # Necessary Modules
-    from runHiC.utilities import cleanDirectory, cleanFile
-    from runHiC.filtering import merge_pairs, biorep_level, enzyme_level, chromsizes_from_pairs, create_frag, split_pairsam
+    from runHiC.utilities import cleanDirectory, cleanFile, chromsizes_from_pairs
+    from runHiC.filtering import merge_pairs, biorep_level, enzyme_level, create_frag, split_pairsam
+    from runHiC.quality import outStatsCache, checkKeys, update_stats_pool
 
     ## Validity of arguments
     Sources = os.path.abspath(os.path.expanduser(args.pairFolder))
@@ -490,6 +480,9 @@ def filtering(args, commands):
     filteredFolder = os.path.split(Sources)[-1].replace('pairs-', 'filtered-')
     if not os.path.exists(filteredFolder):
         os.makedirs(filteredFolder)
+    filteredFolder = os.path.abspath(filteredFolder)
+
+    stats_out_pre = os.path.join(filteredFolder, args.stats_cache)
     
     logging.log(21, 'Filtered files will be saved under {0}'.format(filteredFolder))
     
@@ -516,7 +509,7 @@ def filtering(args, commands):
     for SRR in database:
         logging.log(21, 'Current SRA/FASTQ: {0} ...'.format(SRR))
         subPair = os.path.join(Sources, SRR)
-        if not os.path.exists(os.path.join(subPair, '{0}.completed'.format(SRR))):
+        if not os.path.exists(os.path.join(Sources, '{0}.completed'.format(SRR))):
             logging.log(21, '{0} is still in mapping stage, skipp'.format(SRR))
             continue
         
@@ -554,7 +547,6 @@ def filtering(args, commands):
                     
         os.remove(lockFile)
     
-    garbage = []
     stats_pool = {}
     ## The First level, biological replicates
     logging.log(21, 'Merge data of the same biological replicates and perform read/fragment-level filtering ...')
@@ -593,8 +585,6 @@ def filtering(args, commands):
 
         pairpath = split_pairsam(outpath)
         args.filtered.append(pairpath)
-
-        garbage.append(outpath)
         
         completed = open(Indicator, 'wb')
         completed.close()
@@ -630,23 +620,32 @@ def filtering(args, commands):
         keys = [i for i in bioList if ((i[0], i[1]) == cell)] # for stats
         outkey = cell + ('allReps',) # for stats
         outpre = os.path.join(filteredFolder, '{0}-{1}-allReps-filtered'.format(*cell))
+
+        save_keys = list(stats_pool.keys()) + [outkey]
+        # merge stats pool from other processes
+        while not checkKeys(stats_pool, keys):
+            time.sleep(3)
+            update_stats_pool(stats_pool, keys, stats_out_pre)
+
         stats_pool, outpath = enzyme_level(filenames, outpre, keys, outkey, stats_pool)
+        for k in list(stats_pool.keys()):
+            if not k in save_keys:
+                del stats_pool[k]
 
         pairpath = split_pairsam(outpath)
         args.filtered.append(pairpath)
-        garbage.append(outpath)
+
+        for f in filenames:
+            cleanFile(f)
+        cleanFile(outpath)
         
         completed = open(Indicator, 'wb')
         completed.close()
 
         os.remove(lockFile)
         logging.log(21, 'Done')
-    
-    for pairsam in garbage:
-        cleanFile(pairsam) # safely remove
-    
-    with open(os.path.join(filteredFolder, args.stats_cache), 'wb') as out:
-        pickle.dump(stats_pool, out) # Extract stats for certain dataset by using ``runHiC quality``.
+
+    outStatsCache(stats_pool, stats_out_pre)
     
 
 def binning(args, commands):
@@ -655,6 +654,8 @@ def binning(args, commands):
     from runHiC.utilities import cleanFile
     
     Sources = [os.path.abspath(os.path.expanduser(i)) for i in args.filtered]
+
+    logging.log(21, 'Binning start ...')
     
     ## Generate Matrices
     for S in Sources:
@@ -676,7 +677,7 @@ def binning(args, commands):
         nLabel = str(args.resolution // denominator) + unit
             
         for f in queue:
-            logging.log(21, 'Current pairs file: %s', f)
+            logging.log(21, 'Current pairs file: {0}'.format(f))
             completeFile = f.replace('-filtered.pairs.gz', '.completed')
             if not os.path.exists(completeFile):
                 logging.log(21, 'Filtering not completed, skip')
@@ -710,14 +711,11 @@ def binning(args, commands):
 
 def quality(args, commands):
 
-    from runHiC.quality import printStats, plot_libsize, plot_dangling_details, typePlot
+    from runHiC.quality import loadStats, printStats, plot_libsize, typePlot
     
     locator = os.path.abspath(os.path.expanduser(args.Locator))
-    cache_file = os.path.join(locator, args.stats_cache)
-    if not os.path.exists(cache_file):
-        raise Exception('Cache file {0} can not be found'.format(cache_file))
-    with open(cache_file, 'rb') as source:
-        stats_pool = pickle.load(source)
+    cache_pre = os.path.join(locator, args.stats_cache)
+    stats_pool = loadStats(cache_pre)
     
     mFile = args.metadata
     
@@ -728,40 +726,36 @@ def quality(args, commands):
     
     logging.log(21, 'Replicate-level assessment ...')
     for rep in bioReps:
-        logging.log(21, 'Current rep ID: {0}-{0}-{0}'.format(*rep))
+        logging.log(21, 'Current rep ID: {0}-{1}-{2}'.format(*rep))
         logging.log(21, 'Generate statistic table ...')
-        outStats = os.path.join(locator, '{0}-{0}-{0}.stats'.format(*rep))
+        outStats = os.path.join(locator, '{0}-{1}-{2}.stats'.format(*rep))
         stats = stats_pool[rep]
         printStats(stats, outStats)
         logging.log(21, 'Done')
         logging.log(21, 'Figure for read-pair types ...')
-        outFig = os.path.join(locator, '{0}-{0}-{0}-PairType.png'.format(*rep))
+        outFig = os.path.join(locator, '{0}-{1}-{2}-PairType.png'.format(*rep))
         typePlot(stats, outFig, dpi = 300)
         logging.log(21, 'Done')
-        logging.log(21, 'Statistics on dangling reads ...')
-        outFig = os.path.join(locator, '{0}-{0}-{0}-librarySize.png'.format(*rep))
+        logging.log(21, 'Estimate library size with dangling reads ...')
+        outFig = os.path.join(locator, '{0}-{1}-{2}-librarySize.png'.format(*rep))
         plot_libsize(stats, outFig, dpi = 300)
-        outFig = os.path.join(locator, '{0}-{0}-{0}-danglingStart.png'.format(*rep))
-        plot_dangling_details(stats, outFig, dpi = 300)
         logging.log(21, 'Done')
     
     logging.log(21, 'Cell-line-level assessment ...')
     for cell in cellLines:
         logging.log(21, 'Current cell ID: {0}-{1}'.format(*cell))
         logging.log(21, 'Generate statistic table ...')
-        outStats = os.path.join(locator, '{0}-{0}-allReps.stats'.format(*cell))
+        outStats = os.path.join(locator, '{0}-{1}-allReps.stats'.format(*cell))
         stats = stats_pool[cell + ('allReps',)]
         printStats(stats, outStats)
         logging.log(21, 'Done')
         logging.log(21, 'Figure for read-pair types ...')
-        outFig = os.path.join(locator, '{0}-{0}-allReps-PairType.png'.format(*cell))
+        outFig = os.path.join(locator, '{0}-{1}-allReps-PairType.png'.format(*cell))
         typePlot(stats, outFig, dpi = 300)
         logging.log(21, 'Done')
-        logging.log(21, 'Statistics on dangling reads ...')
-        outFig = os.path.join(locator, '{0}-{0}-allReps-librarySize.png'.format(*cell))
+        logging.log(21, 'Estimate library size with dangling reads ...')
+        outFig = os.path.join(locator, '{0}-{1}-allReps-librarySize.png'.format(*cell))
         plot_libsize(stats, outFig, dpi = 300)
-        outFig = os.path.join(locator, '{0}-{0}-allReps-danglingStart.png'.format(*cell))
-        plot_dangling_details(stats, outFig, dpi = 300)
         logging.log(21, 'Done')
 
           

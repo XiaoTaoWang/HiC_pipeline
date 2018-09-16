@@ -187,25 +187,28 @@ def buildMapIndex(aligner, genomeFolder, genomeName):
     else:
         build_command = ['bwa', 'index', wholeGenome]
     
-    subprocess.call(' '.join(build_command), shell=True)
+    subprocess.check_call(' '.join(build_command), shell=True)
     
 
 def map_core(fastq_1, fastq_2, ref, outdir, aligner='minimap2', outformat='SAM', 
              nthread=1):
 
+    outformat = '.' + outformat.lower()
     # output file name
     if fastq_1.endswith('_1.fastq.gz'):
-        outpath = os.path.join(outdir, fastq_1.replace('_1.fastq.gz',outformat))
+        outpath = os.path.join(outdir,
+                        os.path.split(fastq_1)[1].replace('_1.fastq.gz',outformat))
     else:
-        outpath = os.path.join(outdir, fastq_1.replace('_1.fastq',outformat))
+        outpath = os.path.join(outdir,
+                        os.path.split(fastq_1)[1].replace('_1.fastq',outformat))
     
     # ref: reference genome index
     if aligner=='minimap2':
         map_command = ['minimap2', '-ax', 'sr', '-t', str(nthread), ref, fastq_1, fastq_2]
     else:
-        map_command = ['bwa mem', '-SP', '-t', str(nthread), ref, fastq_1, fastq_2]
+        map_command = ['bwa', 'mem', '-SP', '-t', str(nthread), ref, fastq_1, fastq_2]
     
-    if outformat=='SAM':
+    if outformat=='.sam':
         bam_command = []
     else:
         bam_command = ['samtools', 'view', '-bS', '-']

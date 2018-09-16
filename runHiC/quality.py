@@ -2,7 +2,7 @@
 # Author: XiaoTao Wang
 
 import numpy as np
-import matplotlib
+import matplotlib, pickle, glob
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 
@@ -92,6 +92,8 @@ def typePlot(stats, outfile, dpi = 300):
         if not k.startswith('dist_freq'):
             continue
         _, dist, t = k.split('/')
+        if not '-' in dist:
+            continue
         dist = int(dist.split('-')[1])
         if (dist > 10000000) and (dist <= 1):
             continue
@@ -130,7 +132,7 @@ def typePlot(stats, outfile, dpi = 300):
     labels = ['Left Type', 'Right Type', 'Inner Type', 'Outer Type']
     idx = 0
     for y in [lt, rt, it, ot]:
-        L = ax.plot(x, y, color = colorPool[idx], linewidth = 2)
+        L = ax.plot(x, y[:x.size], color = colorPool[idx], linewidth = 2)
         lines.extend(L)
         idx += 1
     
@@ -180,3 +182,49 @@ def plot_dangling_details(stats, outplot, dpi = 300):
     ax.yaxis.set_ticks_position('left')
     plt.savefig(outplot, dpi = dpi)
     plt.close()
+
+
+def outStatsCache(stats_pool, outpre):
+
+    pattern = outpre + '*'
+    allfile = glob.glob(pattern)
+    if not len(allfile):
+        cache = outpre + '.1'
+    else:
+        counts = [int(f.split('.')[-1]) for f in allfile]
+        counts.sort()
+        suffix = str(counts[-1]+1)
+        cache = '.'.join([outpre, suffix])
+    
+    with open(cache, 'wb') as out:
+        pickle.dump(stats_pool, out)
+
+def loadStats(cache_pre):
+
+    pattern = cache_pre + '*'
+    allfile = glob.glob(pattern)
+    if not len(allfile):
+        raise Exception('Stats cache {0} cannot be found, exit'.format(cache_pre))
+    stats_pool = {}
+    for f in allfile:
+        with open(f, 'rb') as source:
+            tmp = pickle.load(source)
+        stats_pool.update(tmp)
+    
+    return stats_pool
+
+def checkKeys(stats_pool, keys):
+
+    return all([(k in stats_pool) for k in keys])
+
+def update_stats_pool(stats_pool, keys, cache_pre):
+
+    pattern = cache_pre + '*'
+    allfile = glob.glob(pattern)
+    for f in allfile:
+        with open(f, 'rb') as source:
+            tmp = pickle.load(source)
+        for k in keys:
+            if k in tmp:
+                stats_pool[k] = tmp[k]
+    return stats_pool
