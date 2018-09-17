@@ -1,5 +1,12 @@
 Release Notes
 =============
+Version 0.8.0 (2018-9-16)
+-------------------------
+- Migrate to Python 3 (will not support Python 2 anymore)
+- Change data container from HDF5 to Pairs and Cooler (to comply with 4DN standards)
+- Two aligner options: bwa-mem (short reads) / minimap2 (long reads)
+- Optionally output filtered SAM/BAM for further analysis
+- Merge *binning* and *correcting*.
 
 Version 0.7.0 (2017-10-29)
 --------------------------
