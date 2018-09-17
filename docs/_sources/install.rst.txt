@@ -53,7 +53,7 @@ that the order is important to guarantee the correct priority)::
 
 Then just type and execute this one-line command to satisfy the requirements::
 
-    conda install numpy matplotlib biopython sra-tools bwa minimap2 samtools pigz
+    conda install numpy matplotlib biopython pairtools cooler sra-tools bwa minimap2 samtools pigz
 
 Install runHiC
 --------------
