@@ -1,33 +1,28 @@
 runHiC
 ******
-runHiC is a easy-to-use Hi-C processing software based on hiclib (https://bitbucket.org/mirnylab/hiclib)
-Different from hiclib, which was born for flexibility, runHiC is a customized pipeline, and can be
-run from command line directly.
+runHiC is an easy-to-use command-line tool for Hi-C data processing.
 
-Since version 0.7.0, runHiC has been able to execute concurrently either on a single laptop with multiple
-processors or on a PBS-based clusters.
+Since version 0.8.0, runHiC has changed its default data container/format from HDF5 to
+`Pairs <https://github.com/4dn-dcic/pairix/blob/master/pairs_format_specification.md>`_ and
+`Cooler <https://github.com/mirnylab/cooler>`_, to comply with 4DN standards.
+(See `Release Notes <http://xiaotaowang.github.io/HiC_pipeline/changelog.html>`_)
 
 Design Concepts
 ===============
 runHiC is designed to process Hi-C data from raw sequencing reads(.sra, .fastq, .fastq.gz) to the corrected
-contact matrices. It separates the whole procedure into 4 stages(*mapping*, *filtering*, *binning*,
-*correcting*) and contains 7 subcommands:
+contact matrices. It currently contains 5 subcommand:
 
-+------------+------------------------------------------------------------------------------+
-| mapping    | Iteratively map pair-end sequencing reads to a supplied genome               |
-+------------+------------------------------------------------------------------------------+
-| filtering  | Perform read-level and fragment-level noise removing                         |
-+------------+------------------------------------------------------------------------------+
-| binning    | Generate the original contact matrices                                       |
-+------------+------------------------------------------------------------------------------+
-| correcting | Perform iterative corrections on original contact matrices                   |
-+------------+------------------------------------------------------------------------------+
-| tosparse   | Convert the dense intra-chromosomal contact matrices to sparse ones          |
-+------------+------------------------------------------------------------------------------+
-| pileup     | Streamline all stages from *mapping* to *correcting*                         |
-+------------+------------------------------------------------------------------------------+
-| quality    | Assess the quality of your Hi-C data                                         |
-+------------+------------------------------------------------------------------------------+
++------------+-------------------------------------------------------------------------------------+
+| mapping    | Map raw pair-end sequencing data to a supplied genome. Support bwa and minimap2.    |
++------------+-------------------------------------------------------------------------------------+
+| filtering  | Perform read-level and fragment-level noise removing                                |
++------------+-------------------------------------------------------------------------------------+
+| binning    | 1.Generate contact matirx; 2. Perform ICE                                           |
++------------+-------------------------------------------------------------------------------------+
+| pileup     | Perform entire processing from *mapping* to *binning*                               |
++------------+-------------------------------------------------------------------------------------+
+| quality    | Assess the quality of your Hi-C data                                                |
++------------+-------------------------------------------------------------------------------------+
 
 
 User Guide

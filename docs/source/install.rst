@@ -8,106 +8,57 @@ or softwares are required:
 
 Python requirements:
 
-- Python (2.7, not compatible with 3.x for now)
+- Python 3.5+
 - numpy
-- numexpr 
-- scipy
-- statsmodels
 - matplotlib
-- h5py
-- cython
 - biopython
-- bx-python
-- pysam
-- joblib
-- pp
-- mirnylib
-- hiclib
+- pairtools
+- cooler
 
 Other requirements:
 
-- gcc (>= 4.8.5)
-- bzip2
 - sra-tools
-- bowtie2
+- bwa
+- minimap2
 - samtools
 
 Optional:
 
 - pigz
 
-Install Conda
--------------
-All above requirements except for mirnylib and hiclib can be installed through the
-conda package manager.
+Install Requirements through Conda
+----------------------------------
+All above requirements can be installed through the conda package manager.
 
-.. note:: If you have the Anaconda Distribution installed, you already have it, feel free to jump to
-   the `Set up Channels`_ section.
+.. note:: If you have the Anaconda Distribution installed, you already have it.
 
-Download the latest `Linux Miniconda installer for Python 2.7 <https://conda.io/miniconda.html>`_,
+Choose an appropriate `Miniconda installer <https://conda.io/miniconda.html>`_ for your system,
 then in your terminal window type the following and follow the prompts on the installer screens::
 
-    $ bash Miniconda2-latest-Linux-x86_64.sh
+    $ bash Miniconda3-latest-Linux-x86_64.sh
 
 After that, update the environment variables to finish the Conda installation::
 
     $ source ~/.bashrc
 
-Set up Channels
----------------
 Conda allows separation of packages into separate repositories, or channels. The main *defaults*
-channel has a large amount of common packages including *numpy*, *numexpr*, *scipy*, *statsmodels*,
-*matplotlib*, *h5py*, *cython* and *biopython* listed above. *bx-python*, *pysam*, *joblib*, *pp*,
-*sra-tools*, *bowtie2* and *samtools* are not available in the *defaults* channel but included in
-the *bioconda* channel, and to make them accessible, you will need to add the *bioconda* channel
-as well as the other channels bioconda depends on (note that the order is important to guarantee
-the correct priority)::
+channel only covers *numpy*, *matplotlib* and *biopython* listed above. And to make all the other packages
+accessible, you need to add the *bioconda* channel and *conda-forge* channel in the following way (note
+that the order is important to guarantee the correct priority)::
 
     $ conda config --add channels conda-forge
     $ conda config --add channels defaults
     $ conda config --add channels r
     $ conda config --add channels bioconda
 
-Install Packages through Conda
-------------------------------
-Then it's straightforward to install all the required packages except for *mirnylib* and *hiclib*
-through the following one-line command::
+Then just type and execute this one-line command to satisfy the requirements::
 
-    conda install numpy numexpr scipy statsmodels matplotlib h5py cython biopython bx-python pysam joblib pp bzip2 sra-tools bowtie2 samtools pigz gcc=4.8.5
-
-Install mirnylib and hiclib
----------------------------
-To make it easy, I have included the *mirnylib* and *hiclib* source code in the `runHiC <https://pypi.python.org/pypi/runHiC>`_
-distribution under the "mirnylab" sub-foler since version 0.7.0::
-
-    $ cd mirnylab
-
-To install *mirnylib*::
-
-    $ unzip mirnylib.zip
-    $ cd mirnylib
-    $ python setup.py install
-
-.. note:: During my tests on mirnylib installation, I came across such gcc errors for some cases,
-   ``/tmp/ccX1ZZgk.s: Assembler messages:.../tmp/ccX1ZZgk.s:6751: Error: no such instruction: 
-   `vextracti128 $0x1,%ymm0,%xmm0'...``. Then I would remove local gcc installed just now (``conda remove gcc``) and
-   re-compile mirnylib.
-   
-   And after mirnylib had been successfully installed, command ``conda install gcc=4.8.5`` should be executed to ensure the
-   installation of hiclib.
-
-To install *hiclib*::
-
-    $ unzip hiclib.zip
-    $ cd hiclib
-    $ python setup.py install
+    conda install numpy matplotlib biopython sra-tools bwa minimap2 samtools pigz
 
 Install runHiC
 --------------
-Now just run the setup.py script under the distribution root folder to finish the installation.
-Suppose you are still in the extracted hiclib folder::
-
-    $ cd ../..
-    $ python setup.py install
+Finally, *runHiC* can be installed from PyPI by pip::
+    
+    $ pip install runHiC
 
 runHiC has been installed successfully if no exception occurs in the above processes.
