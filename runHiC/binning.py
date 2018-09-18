@@ -10,11 +10,6 @@ log = logging.getLogger(__name__)
 def binning_from_pairs(pairpath, res, outpath, ignore_diags=1, nproc=1):
 
     chromsizes_file, assembly = chromsizes_from_pairs(pairpath)
-    # generate pairix index
-    log.log(21, 'Indexing {0} with pairix ...'.format(pairpath))
-    pairix_command = ['pairix', pairpath]
-    subprocess.check_call(' '.join(pairix_command), shell=True)
-    log.log(21, 'Done')
     
     log.log(21, 'Building contact matrix ...')
     bin_label = ':'.join([chromsizes_file, str(res)])

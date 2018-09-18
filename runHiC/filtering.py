@@ -224,6 +224,10 @@ def split_pairsam(pairsam_path):
     else:
         mv_command = ['cp', pairsam_path, pairpath]
         subprocess.check_call(' '.join(mv_command), shell=True)
+    
+    # generate pairix index
+    pairix_command = ['pairix', pairpath]
+    subprocess.check_call(' '.join(pairix_command), shell=True)
 
     return pairpath
 
