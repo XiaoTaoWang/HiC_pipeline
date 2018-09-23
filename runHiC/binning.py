@@ -7,7 +7,7 @@ from runHiC.utilities import chromsizes_from_pairs
 
 log = logging.getLogger(__name__)
 
-def binning_from_pairs(pairpath, res, outpath, ignore_diags=1, nproc=1, mad_max=5, min_nnz=10
+def binning_from_pairs(pairpath, res, outpath, ignore_diags=1, nproc=1, mad_max=5, min_nnz=10,
                        min_count=0):
 
     chromsizes_file, assembly = chromsizes_from_pairs(pairpath)
