@@ -185,11 +185,13 @@ def biorep_level(pair_paths, outpre, frag_path):
 
 def enzyme_level(pair_paths, outpre, keys, outkey, stats_pool):
 
+    from copy import deepcopy
+
     ## pair_paths --> outpre
     ## keys --> outkey
     outall = outpre + '.pairsam.gz'
     merge_pairs(pair_paths, outall)
-    stats_pool[outkey] = stats_pool[keys[0]]
+    stats_pool[outkey] = deepcopy(stats_pool[keys[0]])
     for i in stats_pool[outkey].keys():
         for k in keys[1:]:
             if not i in ['libsize']:
