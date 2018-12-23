@@ -5,6 +5,7 @@
 import os, time, gc
 import numpy as np
 import pandas as pd
+from cooler.util import load_fasta, read_chromsizes
 
 def sleep():
     for _ in range(3):
