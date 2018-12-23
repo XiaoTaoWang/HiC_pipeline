@@ -21,8 +21,9 @@ if (sys.version_info.major==3) and (sys.version_info.minor<5):
     sys.exit(2)
 
 # Guarantee Unix Format
-text = open('scripts/runHiC', 'r').read().replace('\r\n', '\n')
-open('scripts/runHiC', 'w').write(text)
+for src in glob.glob('scripts/*'):
+    text = open(src, 'r').read().replace('\r\n', '\n')
+    open(src, 'w').write(text)
 
 setuptools.setup(
     name = 'runHiC',
@@ -31,7 +32,7 @@ setuptools.setup(
     author_email = 'wangxiaotao686@gmail.com',
     url = 'https://github.com/XiaoTaoWang/HiC_pipeline',
     description = 'A easy-to-use Hi-C processing software supporting distributed computation',
-    keywords = 'Hi-C ICE Contact interaction pipeline',
+    keywords = 'Hi-C Arima ICE cooler pairs bioinformatics pipeline',
     long_description = read('README.rst'),
     long_description_content_type='text/x-rst',
     scripts = glob.glob('scripts/*'),
