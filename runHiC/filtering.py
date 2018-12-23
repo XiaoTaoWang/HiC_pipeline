@@ -80,7 +80,7 @@ def create_frag(genomepath, chromsizes_file, enzyme):
     if os.path.exists(outbed):
         return outbed
     
-    digest_command = ['runHiC-digest', '-o', outbed, chromsizes_file, genomepath, enzyme]
+    digest_command = ['runHiC-digest', '-O', outbed, '-C', chromsizes_file, '--fasta-path', genomepath, '--enzyme', enzyme]
     subprocess.check_call(' '.join(digest_command), shell=True)
 
     return outbed

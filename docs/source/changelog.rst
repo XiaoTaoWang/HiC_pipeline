@@ -1,5 +1,9 @@
 Release Notes
 =============
+Version 0.8.1 (2018-12-23)
+--------------------------
+- Support Arima Hi-C
+
 Version 0.8.0 (2018-9-16)
 -------------------------
 - Migrate to Python 3 (will not support Python 2 anymore)

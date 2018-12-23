@@ -5,6 +5,9 @@ runHiC
 
 runHiC is an easy-to-use command-line tool for Hi-C data processing.
 
+Since version 0.8.1, runHiC can be used directly on `Arima HiC <https://arimagenomics.com>`_ data
+by setting the enzyme name to *Arima*.
+
 Since version 0.8.0, runHiC has changed its default data container/format from HDF5 to
 `Pairs <https://github.com/4dn-dcic/pairix/blob/master/pairs_format_specification.md>`_ and
 `Cooler <https://github.com/mirnylab/cooler>`_, to comply with 4DN standards.
