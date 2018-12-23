@@ -49,7 +49,11 @@ def digest():
 
         import runHiC.utilities as util
 
-    
+        chromsizes = op.abspath(op.expanduser(args.chromsizes_path))
+        fasta = op.abspath(op.expanduser(args.fasta_path))
+        enzyme = args.enzyme
+        out = args.output
+        
         chromsizes = util.read_chromsizes(chromsizes, all_names=True)
         chroms = list(chromsizes.keys())
 
@@ -83,4 +87,4 @@ def digest():
             f.close()
 
 if __name__ == '__main__':
-    run()
+    digest()
