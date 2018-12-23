@@ -3,6 +3,8 @@
 # Author: XiaoTao Wang
 
 import os, time, gc
+import numpy as np
+import pandas as pd
 
 def sleep():
     for _ in range(3):
@@ -61,3 +63,56 @@ def chromsizes_from_pairs(pairpath):
     instream.close()
     
     return outpath, genomeName
+
+def digest(fasta_records, enzyme):
+    """
+    Divide a genome into restriction fragments. Support Arima-HiC enzyme cocktail
+    which digest chromatin at ^GATC and G^ANTC.
+
+    Parameters
+    ----------
+    fasta_records : OrderedDict
+        Dictionary of chromosome names to sequence records.
+
+    enzyme: str
+        Name of restriction enzyme.
+
+    Returns
+    -------
+    Dataframe with columns: 'chrom', 'start', 'end'.
+
+    """
+    import Bio.Restriction as biorst
+    import Bio.Seq as bioseq
+    # http://biopython.org/DIST/docs/cookbook/Restriction.html#mozTocId447698
+    chroms = fasta_records.keys()
+    try:
+        if enzyme.lower()=='arima':
+            cocktail = biorst.RestrictionBatch(['MboI', 'HinfI'])
+            cut_finder = cocktail.search
+        else:
+            cut_finder = getattr(biorst, enzyme).search
+    except AttributeError:
+        raise ValueError('Unknown enzyme name: {}'.format(enzyme))
+
+    def _each(chrom):
+        seq = bioseq.Seq(str(fasta_records[chrom]))
+        tmp = cut_finder(seq)
+        if type(tmp)==list:
+            cut_sites = tmp
+        elif type(tmp)==dict:
+            cut_sites = []
+            for e in tmp:
+                cut_sites.extend(tmp[e])
+            cut_sites.sort()
+        cuts = np.r_[0, np.array(cut_sites) + 1, len(seq)].astype(int)
+        n_frags = len(cuts) - 1
+
+        frags = pd.DataFrame({
+            'chrom': [chrom] * n_frags,
+            'start': cuts[:-1],
+            'end': cuts[1:]},
+            columns=['chrom', 'start', 'end'])
+        return frags
+
+    return pd.concat(map(_each, chroms), axis=0, ignore_index=True)
