@@ -46,10 +46,9 @@ channel only covers *numpy*, *matplotlib* and *biopython* listed above. And to m
 accessible, you need to add the *bioconda* channel and *conda-forge* channel in the following way (note
 that the order is important to guarantee the correct priority)::
 
-    $ conda config --add channels conda-forge
     $ conda config --add channels defaults
-    $ conda config --add channels r
     $ conda config --add channels bioconda
+    $ conda config --add channels conda-forge
 
 Then just type and execute this one-line command to satisfy the requirements::
 
