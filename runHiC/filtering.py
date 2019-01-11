@@ -5,8 +5,9 @@
 import subprocess, os
 from runHiC.utilities import sleep
 import numpy as np
+import time, tempfile
 
-def merge_pairs(pair_paths, outpath):
+def merge_pairs(pair_paths, outpath, tmpdir):
 
     if len(pair_paths)==1:
         # Just make a soft link to original .pairsam
@@ -15,7 +16,7 @@ def merge_pairs(pair_paths, outpath):
         # runHiC doesn't provide interface for changing detailed parameters of
         # pairtools merge for simplicity
         merge_command = ['pairtools', 'merge', '-o', outpath, '--nproc', '8', '--memory', '2G',
-                         '--max-nmerge', '8'] + pair_paths
+                         '--max-nmerge', '8', '--tmpdir', tmpdir] + pair_paths
 
         subprocess.check_call(' '.join(merge_command), shell=True)
 
@@ -72,24 +73,27 @@ def stats_samfrag(samfrag_pairs):
     
     return stats, libsize
 
-def create_frag(genomepath, chromsizes_file, enzyme):
+def create_frag(genomepath, chromsizes_file, enzyme, tmpdir):
 
-    Folder, fastaName = os.path.split(genomepath)
+    _, fastaName = os.path.split(genomepath)
     genomeName = fastaName.split('.')[0]
-    outbed = os.path.join(Folder, '.'.join([genomeName, 'frags', enzyme, 'bed']))
-    if os.path.exists(outbed):
-        return outbed
+    prefix = '.'.join([genomeName, 'frags', enzyme])
+    tl = time.strftime('%Y%m%d%H%M%S', time.localtime(time.time()))
+    suffix = '.'.join([tl, 'bed'])
+    kw = {'suffix':suffix, 'dir':tmpdir, 'prefix':prefix}
+    fd, outbed = tempfile.mkstemp(**kw)
+    os.close(fd)
     
     digest_command = ['runHiC-digest', '-O', outbed, '-C', chromsizes_file, '--fasta-path', genomepath, '--enzyme', enzyme]
     subprocess.check_call(' '.join(digest_command), shell=True)
 
     return outbed
 
-def biorep_level(pair_paths, outpre, frag_path):
+def biorep_level(pair_paths, outpre, frag_path, tmpdir):
 
     # a temporary file to store unfiltered all alignments
     out_total = outpre + '.total.pairsam.gz'
-    merge_pairs(pair_paths, out_total)
+    merge_pairs(pair_paths, out_total, tmpdir)
     # pair_type stats include duplicates
     refkey = {'total':'000_SequencedReads',
               'total_mapped':'010_DoubleSideMappedReads',
@@ -183,14 +187,14 @@ def biorep_level(pair_paths, outpre, frag_path):
     return stats, outpath
     
 
-def enzyme_level(pair_paths, outpre, keys, outkey, stats_pool):
+def enzyme_level(pair_paths, outpre, keys, outkey, stats_pool, tmpdir):
 
     from copy import deepcopy
 
     ## pair_paths --> outpre
     ## keys --> outkey
     outall = outpre + '.pairsam.gz'
-    merge_pairs(pair_paths, outall)
+    merge_pairs(pair_paths, outall, tmpdir)
     stats_pool[outkey] = deepcopy(stats_pool[keys[0]])
     for i in stats_pool[outkey].keys():
         for k in keys[1:]:
