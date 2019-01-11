@@ -3,4 +3,4 @@
 # Author: XiaoTao Wang
 
 __author__ = 'XiaoTao Wang'
-__version__ = '0.8.1'
+__version__ = '0.8.2'

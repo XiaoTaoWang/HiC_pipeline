@@ -237,7 +237,7 @@ def map_core(fastq_1, fastq_2, ref, outdir, aligner='minimap2', outformat='SAM',
     return outpath
 
 def parse_bam(bam, outfile, chromsizes, assembly, min_mapq, max_molecule_size, max_inter_align_gap,
-              walks_policy, include_readid, include_sam, drop_seq):
+              walks_policy, include_readid, include_sam, drop_seq, tmpdir):
     
     basic_command = ['pairtools', 'parse', '-c', chromsizes, '--assembly', assembly,
                      '--min-mapq', str(min_mapq), '--max-molecule-size', str(max_molecule_size),
@@ -260,7 +260,7 @@ def parse_bam(bam, outfile, chromsizes, assembly, min_mapq, max_molecule_size, m
                 bufsize=-1)
         )
 
-        sort_command = ['pairtools', 'sort', '-o', outfile, '--nproc', '8', '--memory', '2G']
+        sort_command = ['pairtools', 'sort', '-o', outfile, '--nproc', '8', '--memory', '2G', '--tmpdir', tmpdir]
         pipeline.append(
             subprocess.Popen(sort_command,
                 stdin=pipeline[-1].stdout,

@@ -99,6 +99,7 @@ def getargs():
     iterM.add_argument('--chunkSize', type = int, help = '''On a low-memory machine, it's better
                        to split the raw read file into chunks and map them separatively. This
                        parameter specifies the size of each chunk. By default, no split is performed.''')
+    iterM.add_argument('--tmpdir', default='/tmp', help='''Temporary folder for intermediate results.''')
     iterM.add_argument('--logFile', default = 'runHiC.log', help = '''Logging file name.''')
     iterM.set_defaults(func = mapping)
     
@@ -123,6 +124,7 @@ def getargs():
                              during the mapping stage.''')
     removeNoise.add_argument('--genomepath',
                              help = '''Path to the .fa file containing reference genome data.''')
+    removeNoise.add_argument('--tmpdir', default='/tmp', help='''Temporary folder for intermediate results.''')
     removeNoise.add_argument('--stats-cache', default = 'allinone.cache',
                              help = 'Name the output cache file for data quality statistics.')
     removeNoise.add_argument('--logFile', default = 'runHiC.log', help = '''Logging file name.''')
@@ -245,14 +247,16 @@ def run(args, commands):
                             '# Include Read ID = {0}'.format(args.include_readid),
                             '# Include Sam = {0}'.format(args.include_sam),
                             '# Drop SEQ and QUAL = {0}'.format(args.drop_seq),
-                            '# Chunk size = {0}'.format(args.chunkSize)
+                            '# Chunk size = {0}'.format(args.chunkSize),
+                            '# Temporary Dir = {0}'.format(args.tmpdir)
                             ])
                             
         if commands[0] == 'filtering':
             arglist.extend(['# Original Pairs = {0}'.format(args.pairFolder),
                             '# MetaData = {0}'.format(args.metadata),
                             '# Genome Path = {0}'.format(args.genomepath),
-                            '# Stats Cache = {0}'.format(args.stats_cache)])
+                            '# Stats Cache = {0}'.format(args.stats_cache),
+                            '# Temporary Dir = {0}'.format(args.tmpdir)])
         if commands[0] == 'binning':
             arglist.extend(['# Filtered Pairs = {0}'.format(args.filtered),
                             '# Resolution = {0}'.format(args.resolution),
@@ -279,6 +283,11 @@ def mapping(args, commands):
     ## Import necessary modules
     from runHiC.mapping import splitSRA, splitSingleFastq, uncompressSRA, buildMapIndex, map_core, parse_bam
     from runHiC.utilities import cleanDirectory, cleanFile, chromsizes_from_fasta
+
+    # customize temporary dir
+    tmpdir = os.path.abspath(os.path.expanduser(args.tmpdir))
+    if not os.path.exists(tmpdir):
+        os.makedirs(tmpdir)
     
     # Preparing
     genomeFolder = os.path.join(args.dataFolder, args.genomeName)
@@ -463,7 +472,7 @@ def mapping(args, commands):
             bampath = map_core(r1, r2, indexpath, subbamFolder, aligner, outformat, nthread=args.threads)
             parse_bam(bampath, out, chromsize_file, genomeName, args.min_mapq, args.max_molecule_size,
                       args.max_inter_align_gap, args.walks_policy, args.include_readid, args.include_sam,
-                      args.drop_seq)
+                      args.drop_seq, tmpdir)
 
             completed = open(Indicator, 'wb')
             completed.close()
@@ -481,6 +490,11 @@ def filtering(args, commands):
     from runHiC.utilities import cleanDirectory, cleanFile, chromsizes_from_pairs
     from runHiC.filtering import merge_pairs, biorep_level, enzyme_level, create_frag, split_pairsam
     from runHiC.quality import outStatsCache, checkKeys, update_stats_pool
+
+    # customize temporary dir
+    tmpdir = os.path.abspath(os.path.expanduser(args.tmpdir))
+    if not os.path.exists(tmpdir):
+        os.makedirs(tmpdir)
 
     ## Validity of arguments
     Sources = os.path.abspath(os.path.expanduser(args.pairFolder))
@@ -549,7 +563,7 @@ def filtering(args, commands):
         
         inFiles = glob.glob(os.path.join(subPair, SRR + '*.pairsam.gz'))
         poolName = os.path.join(subFilter, SRR + '.pairsam.gz')
-        merge_pairs(inFiles, poolName)
+        merge_pairs(inFiles, poolName, tmpdir)
         
         logging.log(21, 'Done')
         
@@ -590,8 +604,8 @@ def filtering(args, commands):
         outpre = os.path.join(filteredFolder, '{0}-{1}-{2}-filtered'.format(*rep))
         chromsizes_file, _ = chromsizes_from_pairs(filenames[0])
         # rep: (cell line, enzyme, replicate label)
-        frag_path = create_frag(genomepath, chromsizes_file, rep[1])
-        stats, outpath = biorep_level(filenames, outpre, frag_path)
+        frag_path = create_frag(genomepath, chromsizes_file, rep[1], tmpdir)
+        stats, outpath = biorep_level(filenames, outpre, frag_path, tmpdir)
         stats_pool[rep] = stats
 
         pairpath = split_pairsam(outpath)
@@ -638,7 +652,7 @@ def filtering(args, commands):
             time.sleep(3)
             update_stats_pool(stats_pool, keys, stats_out_pre)
 
-        stats_pool, outpath = enzyme_level(filenames, outpre, keys, outkey, stats_pool)
+        stats_pool, outpath = enzyme_level(filenames, outpre, keys, outkey, stats_pool, tmpdir)
         for k in list(stats_pool.keys()):
             if not k in save_keys:
                 del stats_pool[k]
