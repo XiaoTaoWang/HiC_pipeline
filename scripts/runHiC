@@ -156,6 +156,8 @@ def getargs():
                           median absolute deviations below the median log marginal sum.''')
     binReads.add_argument('--nproc', type = int, default = 1, help = '''Number of proccesses used in building
                           and correcting.''')
+    binReads.add_argument('--max-split', type = int, default = 2, help = '''Divide the pairs from each chromosome
+                          into at most this many chunks.''')
     binReads.add_argument('--logFile', default = 'runHiC.log', help = '''Logging file name.''')
     binReads.set_defaults(func = binning)
     
@@ -185,6 +187,8 @@ def getargs():
                                       add_help = False)
     streamline.add_argument('-R', '--resolution', type = int, default = 100000,
                           help = 'Resolution of the contact matrix. Unit: bp')
+    streamline.add_argument('--max-split', type = int, default = 2, help = '''Divide the pairs from each chromosome
+                            into at most this many chunks.''')
     streamline.set_defaults(func = pileup)
     
      ## Parse the command-line arguments
@@ -728,7 +732,8 @@ def binning(args, commands):
             
             hFile = os.path.join(hFolder, os.path.basename(f).replace('.pairs.gz', '-{0}.cool'.format(nLabel)))
             binning_from_pairs(f, args.resolution, hFile, ignore_diags=args.ignore_diags, nproc=args.nproc,
-                               mad_max=args.mad_max, min_count=args.min_count, min_nnz=args.min_nnz)
+                               mad_max=args.mad_max, min_count=args.min_count, min_nnz=args.min_nnz,
+                               max_split=args.max_split)
             
             completed = open(Indicator, 'wb')
             completed.close()
