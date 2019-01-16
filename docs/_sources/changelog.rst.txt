@@ -1,5 +1,9 @@
 Release Notes
 =============
+Version 0.8.2 (2019-01-16)
+--------------------------
+- Fix the bug of large dataset overflow in binning
+
 Version 0.8.1 (2018-12-23)
 --------------------------
 - Support Arima Hi-C
