@@ -5,7 +5,7 @@
 import subprocess, os
 from runHiC.utilities import sleep
 import numpy as np
-import time, tempfile
+import time
 
 def merge_pairs(pair_paths, outpath, tmpdir):
 
@@ -78,16 +78,20 @@ def create_frag(genomepath, chromsizes_file, enzyme, tmpdir):
     _, fastaName = os.path.split(genomepath)
     genomeName = fastaName.split('.')[0]
     prefix = '.'.join([genomeName, 'frags', enzyme])
-    tl = time.strftime('%Y%m%d%H%M%S', time.localtime(time.time()))
-    suffix = '.'.join([tl, 'bed'])
-    kw = {'suffix':suffix, 'dir':tmpdir, 'prefix':prefix}
-    fd, outbed = tempfile.mkstemp(**kw)
-    os.close(fd)
-    
-    digest_command = ['runHiC-digest', '-O', outbed, '-C', chromsizes_file, '--fasta-path', genomepath, '--enzyme', enzyme]
-    subprocess.check_call(' '.join(digest_command), shell=True)
+    outbed = os.path.join(tmpdir, '.'.join([prefix, 'bed']))
+    lockfil = os.path.join(tmpdir, '.'.join([prefix, 'lock']))
+    if os.path.exists(outbed) or os.path.exists(lockfil):
+        while os.path.exists(lockfil):
+            time.sleep(0.5)
+        return outbed
+    else:
+        lock = open(lockfil, 'wb') # aquire the file lock
+        lock.close()
+        digest_command = ['runHiC-digest', '-O', outbed, '-C', chromsizes_file, '--fasta-path', genomepath, '--enzyme', enzyme]
+        subprocess.check_call(' '.join(digest_command), shell=True)
+        os.remove(lockfil)
 
-    return outbed
+        return outbed
 
 def biorep_level(pair_paths, outpre, frag_path, tmpdir):
 
