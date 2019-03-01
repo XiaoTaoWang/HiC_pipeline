@@ -16,7 +16,7 @@ import setuptools
 def read(fname):
     return open(os.path.join(os.path.dirname(__file__), fname)).read()
 
-if (sys.version_info.major==3) and (sys.version_info.minor<5):
+if (sys.version_info.major!=3) or (sys.version_info.minor<5):
     print('PYTHON 3.5+ IS REQUIRED. YOU ARE CURRENTLY USING PYTHON {}'.format(sys.version.split()[0]))
     sys.exit(2)
 

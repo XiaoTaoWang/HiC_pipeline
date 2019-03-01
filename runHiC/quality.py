@@ -1,6 +1,7 @@
 # Created on Thu Sep 13 21:44:24 2018
 # Author: XiaoTao Wang
 
+import os, time
 import numpy as np
 import matplotlib, pickle, glob
 matplotlib.use('Agg')
@@ -186,6 +187,13 @@ def plot_dangling_details(stats, outplot, dpi = 300):
 
 def outStatsCache(stats_pool, outpre):
 
+    lockfil = outpre + '.lock'
+    while os.path.exists(lockfil):
+        time.sleep(0.5)
+    
+    lock = open(lockfil, 'wb') # aquire the file lock
+    lock.close()
+
     pattern = outpre + '*'
     allfile = glob.glob(pattern)
     if not len(allfile):
@@ -198,6 +206,9 @@ def outStatsCache(stats_pool, outpre):
     
     with open(cache, 'wb') as out:
         pickle.dump(stats_pool, out)
+    
+    os.remove(lockfil) # release the lock
+
 
 def loadStats(cache_pre):
 
@@ -227,4 +238,7 @@ def update_stats_pool(stats_pool, keys, cache_pre):
         for k in keys:
             if k in tmp:
                 stats_pool[k] = tmp[k]
+                if os.path.exists(f):
+                    os.remove(f) # clean duplicate records
+
     return stats_pool

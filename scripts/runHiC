@@ -576,7 +576,6 @@ def filtering(args, commands):
                     
         os.remove(lockFile)
     
-    stats_pool = {}
     ## The First level, biological replicates
     logging.log(21, 'Merge data of the same biological replicates and perform read/fragment-level filtering ...')
     for rep in bioReps:
@@ -610,7 +609,10 @@ def filtering(args, commands):
         # rep: (cell line, enzyme, replicate label)
         frag_path = create_frag(genomepath, chromsizes_file, rep[1], tmpdir)
         stats, outpath = biorep_level(filenames, outpre, frag_path, tmpdir)
+        stats_pool = {}
         stats_pool[rep] = stats
+
+        outStatsCache(stats_pool, stats_out_pre)
 
         pairpath = split_pairsam(outpath)
         args.filtered.append(pairpath)
@@ -650,16 +652,17 @@ def filtering(args, commands):
         outkey = cell + ('allReps',) # for stats
         outpre = os.path.join(filteredFolder, '{0}-{1}-allReps-filtered'.format(*cell))
 
+        stats_pool = {}
         save_keys = list(stats_pool.keys()) + [outkey]
         # merge stats pool from other processes
-        while not checkKeys(stats_pool, keys):
-            time.sleep(3)
-            update_stats_pool(stats_pool, keys, stats_out_pre)
+        update_stats_pool(stats_pool, keys, stats_out_pre)
 
         stats_pool, outpath = enzyme_level(filenames, outpre, keys, outkey, stats_pool, tmpdir)
         for k in list(stats_pool.keys()):
             if not k in save_keys:
                 del stats_pool[k]
+        
+        outStatsCache(stats_pool, stats_out_pre)
 
         pairpath = split_pairsam(outpath)
         args.filtered.append(pairpath)
@@ -673,8 +676,6 @@ def filtering(args, commands):
 
         os.remove(lockFile)
         logging.log(21, 'Done')
-
-    outStatsCache(stats_pool, stats_out_pre)
     
 
 def binning(args, commands):
