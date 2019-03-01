@@ -5,6 +5,7 @@
 import subprocess, os
 from runHiC.utilities import sleep
 import numpy as np
+from copy import deepcopy
 import time
 
 def merge_pairs(pair_paths, outpath, tmpdir):
@@ -39,7 +40,7 @@ def stats_pairs(inpath, refkey, matchpre=[]):
     
     return stats
 
-def stats_samfrag(samfrag_pairs):
+def stats_samfrag(samfrag_pairs, sample_size=100000):
 
     from pairtools import _fileio, _pairsam_format, _headerops
     from collections import defaultdict
@@ -70,6 +71,8 @@ def stats_samfrag(samfrag_pairs):
     os.remove(samfrag_pairs)
 
     libsize = np.r_[libsize]
+    np.random.shuffle(libsize)
+    libsize = libsize[:sample_size]
     
     return stats, libsize
 
@@ -184,21 +187,12 @@ def biorep_level(pair_paths, outpre, frag_path, tmpdir):
     stats.update(substats)
     stats['412_IntraShortRangeReads(<20Kb)'] = stats['410_IntraChromosomalReads'] - stats['412_IntraLongRangeReads(>=20Kb)']
 
-    # we would never re-count the ligation junction site in original reads
-    
     stats['libsize'] = libsize
 
     return stats, outpath
-    
 
-def enzyme_level(pair_paths, outpre, keys, outkey, stats_pool, tmpdir):
+def merge_stats(stats_pool, keys, outkey, sample_size=100000):
 
-    from copy import deepcopy
-
-    ## pair_paths --> outpre
-    ## keys --> outkey
-    outall = outpre + '.pairsam.gz'
-    merge_pairs(pair_paths, outall, tmpdir)
     stats_pool[outkey] = deepcopy(stats_pool[keys[0]])
     for i in stats_pool[outkey].keys():
         for k in keys[1:]:
@@ -206,6 +200,16 @@ def enzyme_level(pair_paths, outpre, keys, outkey, stats_pool, tmpdir):
                 stats_pool[outkey][i] += stats_pool[k][i]
             else:
                 stats_pool[outkey][i] = np.r_[stats_pool[outkey][i], stats_pool[k][i]]
+    
+    return stats_pool
+    
+def enzyme_level(pair_paths, outpre, keys, outkey, stats_pool, tmpdir):
+
+    ## pair_paths --> outpre
+    ## keys --> outkey
+    outall = outpre + '.pairsam.gz'
+    merge_pairs(pair_paths, outall, tmpdir)
+    stats_pool = merge_stats(stats_pool, keys, outkey)
 
     return stats_pool, outall
 

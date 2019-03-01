@@ -4,6 +4,7 @@
 
 import os, subprocess, atexit
 from runHiC.utilities import cleanFile, sleep
+from runHiC.filtering import create_frag, stats_pairs, stats_samfrag
 
 def commandExists(command):
     "Check if the bash command exists"
@@ -236,8 +237,11 @@ def map_core(fastq_1, fastq_2, ref, outdir, aligner='minimap2', outformat='SAM',
     
     return outpath
 
-def parse_bam(bam, outfile, chromsizes, assembly, min_mapq, max_molecule_size, max_inter_align_gap,
-              walks_policy, include_readid, include_sam, drop_seq, tmpdir):
+def parse_bam(bam, outfile, genomepath, chromsizes, assembly, min_mapq, max_molecule_size, max_inter_align_gap,
+              walks_policy, include_readid, include_sam, drop_seq, tmpdir, enzyme):
+    
+    frag_path = create_frag(genomepath, chromsizes, enzyme, tmpdir)
+    out_total = outfile.replace('.pairsam.gz', '.total.pairsam.gz')
     
     basic_command = ['pairtools', 'parse', '-c', chromsizes, '--assembly', assembly,
                      '--min-mapq', str(min_mapq), '--max-molecule-size', str(max_molecule_size),
@@ -260,13 +264,14 @@ def parse_bam(bam, outfile, chromsizes, assembly, min_mapq, max_molecule_size, m
                 bufsize=-1)
         )
 
-        sort_command = ['pairtools', 'sort', '-o', outfile, '--nproc', '8', '--memory', '2G', '--tmpdir', tmpdir]
+        sort_command = ['pairtools', 'sort', '-o', out_total, '--nproc', '8', '--memory', '2G', '--tmpdir', tmpdir]
         pipeline.append(
             subprocess.Popen(sort_command,
                 stdin=pipeline[-1].stdout,
                 stdout=None,
                 bufsize=-1)
         )
+
         pipeline[-1].wait()
 
     finally:
@@ -274,6 +279,74 @@ def parse_bam(bam, outfile, chromsizes, assembly, min_mapq, max_molecule_size, m
         for process in pipeline:
             if process.poll() is None:
                 process.terminate()
+    
+    # stats at the bottom level
+    refkey = {'total':'000_SequencedReads',
+              'total_mapped':'010_DoubleSideMappedReads',
+              'total_single_sided_mapped':'020_SingleSideMappedReads',
+              'total_unmapped':'030_UnmappedReads'
+              }
+    stats = stats_pairs(out_total, refkey)
+    stats['100_NormalPairs'] = stats['010_DoubleSideMappedReads']
+
+    outpath_1 = outfile.replace('.pairsam.gz', '.select.pairsam.gz')
+    pipeline = []
+    try:
+        select_command = ['pairtools', 'select', '(pair_type=="UU") or (pair_type=="UR") or (pair_type=="RU")',
+                          '-o', outpath_1, out_total]
+        pipeline.append(
+            subprocess.Popen(select_command,
+                stdout=None,
+                bufsize=-1
+            )
+        )
+
+        pipeline[-1].wait()
+    
+    finally:
+        sleep()
+        for process in pipeline:
+            if process.poll() is None:
+                process.terminate()
+    
+    os.remove(out_total)
+
+    outpath_2 = outfile.replace('.pairsam.gz', '.select.samefrag.pairsam.gz')
+    pipeline = []
+    try:
+        # assign fragment
+        restrict_command = ['pairtools', 'restrict', '-f', frag_path, outpath_1]
+        pipeline.append(
+            subprocess.Popen(restrict_command,
+                stdout=subprocess.PIPE,
+                bufsize=-1)
+        )
+
+        ####### COLS[-6]==COLS[-3], the index may change to follow pairtools
+        select_command = ['pairtools', 'select', '--output-rest', outfile, '-o', outpath_2,
+                          '(COLS[-6]==COLS[-3]) and (chrom1==chrom2)']
+        pipeline.append(
+            subprocess.Popen(select_command,
+                stdin=pipeline[-1].stdout,
+                stdout=None,
+                bufsize=-1)
+        )
+
+        pipeline[-1].wait()
+    finally:
+        sleep()
+        for process in pipeline:
+            if process.poll() is None:
+                process.terminate()
+    
+    os.remove(outpath_1)
+
+    substats, libsize = stats_samfrag(outpath_2)
+    stats['110_AfterFilteringReads'] = stats['100_NormalPairs'] - substats['120_SameFragmentReads']
+    stats['400_TotalContacts'] = stats['110_AfterFilteringReads']
+    stats.update(substats)
+
+
 
         
 

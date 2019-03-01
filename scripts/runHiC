@@ -300,6 +300,7 @@ def mapping(args, commands):
     outformat = args.outformat
     aligner = args.aligner
     mFile = args.metadata
+    genomepath = os.path.join(genomeFolder, '.'.join([genomeName, 'fa']))
     if not args.Index is None:
         indexpath = os.path.abspath(os.path.expanduser(args.Index))
     else:
@@ -349,7 +350,7 @@ def mapping(args, commands):
     database = dict([(i[0], i[-1]) for i in metadata])
     readformat = args.Format.lower()
     logging.log(21, 'Dump/chunk read pairs from {0} format ...'.format(readformat))
-    for i in database:
+    for i, enzyme in database.items():
         logging.log(21, 'Current: {0}'.format(i))
             
         chunkFolder = os.path.join(fastqDir, i)
@@ -474,9 +475,9 @@ def mapping(args, commands):
 
             # BAM/SAM
             bampath = map_core(r1, r2, indexpath, subbamFolder, aligner, outformat, nthread=args.threads)
-            parse_bam(bampath, out, chromsize_file, genomeName, args.min_mapq, args.max_molecule_size,
+            parse_bam(bampath, out, genomepath, chromsize_file, genomeName, args.min_mapq, args.max_molecule_size,
                       args.max_inter_align_gap, args.walks_policy, args.include_readid, args.include_sam,
-                      args.drop_seq, tmpdir)
+                      args.drop_seq, tmpdir, enzyme) # self-ligation / dangling detection, reduce computing burden in filtering
 
             completed = open(Indicator, 'wb')
             completed.close()
