@@ -568,7 +568,8 @@ def filtering(args, commands):
         
         inFiles = glob.glob(os.path.join(subPair, SRR + '*.pairsam.gz'))
         poolName = os.path.join(subFilter, SRR + '.pairsam.gz')
-        merge_pairs(inFiles, poolName, tmpdir)
+        stats = merge_pairs(inFiles, poolName, tmpdir)
+        outStatsCache(stats, poolName.replace('.pairsam.gz', '.pstats'))
         
         logging.log(21, 'Done')
         

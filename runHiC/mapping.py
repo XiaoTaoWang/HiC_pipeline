@@ -5,6 +5,7 @@
 import os, subprocess, atexit
 from runHiC.utilities import cleanFile, sleep
 from runHiC.filtering import create_frag, stats_pairs, stats_samfrag
+from runHiC.quality import outStatsCache
 
 def commandExists(command):
     "Check if the bash command exists"
@@ -345,6 +346,13 @@ def parse_bam(bam, outfile, genomepath, chromsizes, assembly, min_mapq, max_mole
     stats['110_AfterFilteringReads'] = stats['100_NormalPairs'] - substats['120_SameFragmentReads']
     stats['400_TotalContacts'] = stats['110_AfterFilteringReads']
     stats.update(substats)
+
+    stats['libsize'] = libsize
+
+    stats_pool = {'pseudo': stats}
+    stats_pre = outfile.replace('.pairsam.gz', '.pstats') # pickled stats
+    outStatsCache(stats_pool, stats_pre)
+
 
 
 

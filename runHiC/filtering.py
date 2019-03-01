@@ -2,7 +2,7 @@
 
 # Author: XiaoTao Wang
 
-import subprocess, os
+import subprocess, os, pickle
 from runHiC.utilities import sleep
 import numpy as np
 from copy import deepcopy
@@ -20,6 +20,18 @@ def merge_pairs(pair_paths, outpath, tmpdir):
                          '--max-nmerge', '8', '--tmpdir', tmpdir] + pair_paths
 
         subprocess.check_call(' '.join(merge_command), shell=True)
+    
+    stats_pool = {}
+    for i, p in enumerate(pair_paths):
+        stats_path = p.replace('.pairsam.gz', '.pstats.1')
+        with open(stats_path, 'rb') as source:
+            stats_pool[str(i)] = pickle.load(source)
+    
+    merge_stats(stats_pool, list(stats_pool.keys()), 'pseudo')
+    stats_pool = {'pseudo': stats_pool['pseudo']}
+
+    return stats_pool
+
 
 def stats_pairs(inpath, refkey, matchpre=[]):
     
@@ -100,35 +112,16 @@ def biorep_level(pair_paths, outpre, frag_path, tmpdir):
 
     # a temporary file to store unfiltered all alignments
     out_total = outpre + '.total.pairsam.gz'
-    merge_pairs(pair_paths, out_total, tmpdir)
-    # pair_type stats include duplicates
-    refkey = {'total':'000_SequencedReads',
-              'total_mapped':'010_DoubleSideMappedReads',
-              'total_single_sided_mapped':'020_SingleSideMappedReads',
-              'total_unmapped':'030_UnmappedReads'
-              }
+    stats = merge_pairs(pair_paths, out_total, tmpdir)['pseudo']
 
-    stats = stats_pairs(out_total, refkey)
-    stats['100_NormalPairs'] = stats['010_DoubleSideMappedReads']
     # Final biorep level pairsam
     outpath = outpre + '.pairsam.gz' # select.dedup.filter
-    outpath_1 = outpre + '.select.dedup.pairsam.gz'
-    outpath_2 = outpre + '.select.dedup.samefrag.pairsam.gz'
 
     pipeline = []
     try:
-        select_command = ['pairtools', 'select', '(pair_type=="UU") or (pair_type=="UR") or (pair_type=="RU")',
-                          out_total]
-        pipeline.append(
-            subprocess.Popen(select_command,
-                stdout=subprocess.PIPE,
-                bufsize=-1
-            )
-        )
-        dedup_command = ['pairtools', 'dedup', '--max-mismatch', '1', '--method', 'max', '-o', outpath_1]
+        dedup_command = ['pairtools', 'dedup', '--max-mismatch', '1', '--method', 'max', '-o', outpath, out_total]
         pipeline.append(
             subprocess.Popen(dedup_command,
-                stdin=pipeline[-1].stdout,
                 stdout=None,
                 bufsize=-1)
         )
@@ -141,53 +134,17 @@ def biorep_level(pair_paths, outpre, frag_path, tmpdir):
     
     os.remove(out_total)
     
-    refkey = {'total_nodups':'total_nodups'}
-    dupstats = stats_pairs(outpath_1, refkey)
-    stats['130_DuplicateRemoved'] = stats['100_NormalPairs'] - dupstats['total_nodups']
-
-    try:
-        # assign fragment
-        restrict_command = ['pairtools', 'restrict', '-f', frag_path, outpath_1]
-        pipeline.append(
-            subprocess.Popen(restrict_command,
-                stdout=subprocess.PIPE,
-                bufsize=-1)
-        )
-
-        ####### COLS[-6]==COLS[-3], the index may change to follow pairtools
-        select_command = ['pairtools', 'select', '--output-rest', outpath, '-o', outpath_2,
-                          '(COLS[-6]==COLS[-3]) and (chrom1==chrom2)']
-        pipeline.append(
-            subprocess.Popen(select_command,
-                stdin=pipeline[-1].stdout,
-                stdout=None,
-                bufsize=-1)
-        )
-        pipeline[-1].wait()
-    finally:
-        sleep()
-        for process in pipeline:
-            if process.poll() is None:
-                process.terminate()
-
-    os.remove(outpath_1)
-
-    substats, libsize = stats_samfrag(outpath_2)
-
-    stats['110_AfterFilteringReads'] = dupstats['total_nodups'] - substats['120_SameFragmentReads']
-    stats['400_TotalContacts'] = stats['110_AfterFilteringReads']
-    stats.update(substats)
-
     refkey = {'cis':'410_IntraChromosomalReads',
               'trans':'420_InterChromosomalReads',
               'cis_20kb+':'412_IntraLongRangeReads(>=20Kb)'
-              }
-    
+              'total_nodups':'total_nodups'}
+
     substats = stats_pairs(outpath, refkey, matchpre=['dist_freq'])
+    stats['130_DuplicateRemoved'] = stats['110_AfterFilteringReads'] - substats['total_nodups']
+    stats['110_AfterFilteringReads'] = substats['total_nodups']
+    stats['400_TotalContacts'] = stats['110_AfterFilteringReads']
     stats.update(substats)
     stats['412_IntraShortRangeReads(<20Kb)'] = stats['410_IntraChromosomalReads'] - stats['412_IntraLongRangeReads(>=20Kb)']
-
-    stats['libsize'] = libsize
 
     return stats, outpath
 
@@ -201,7 +158,8 @@ def merge_stats(stats_pool, keys, outkey, sample_size=100000):
             else:
                 stats_pool[outkey][i] = np.r_[stats_pool[outkey][i], stats_pool[k][i]]
     
-    return stats_pool
+    np.random.shuffle(stats_pool[outkey]['libsize'])
+    stats_pool[outkey]['libsize'] = stats_pool[outkey]['libsize'][:sample_size] # limit sample size
     
 def enzyme_level(pair_paths, outpre, keys, outkey, stats_pool, tmpdir):
 
@@ -209,7 +167,7 @@ def enzyme_level(pair_paths, outpre, keys, outkey, stats_pool, tmpdir):
     ## keys --> outkey
     outall = outpre + '.pairsam.gz'
     merge_pairs(pair_paths, outall, tmpdir)
-    stats_pool = merge_stats(stats_pool, keys, outkey)
+    merge_stats(stats_pool, keys, outkey)
 
     return stats_pool, outall
 
