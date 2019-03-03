@@ -494,7 +494,7 @@ def filtering(args, commands):
     # Necessary Modules
     from runHiC.utilities import cleanDirectory, cleanFile, chromsizes_from_pairs
     from runHiC.filtering import merge_pairs, biorep_level, enzyme_level, create_frag, split_pairsam
-    from runHiC.quality import outStatsCache, checkKeys, update_stats_pool
+    from runHiC.quality import outStatsCache, update_stats_pool
 
     # customize temporary dir
     tmpdir = os.path.abspath(os.path.expanduser(args.tmpdir))

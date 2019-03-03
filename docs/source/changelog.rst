@@ -1,5 +1,10 @@
 Release Notes
 =============
+Version 0.8.3 (2019-03-04)
+--------------------------
+- Parallelize statistics collecting
+- Reduce the computational overhead in the filtering step
+
 Version 0.8.2 (2019-01-16)
 --------------------------
 - Fix the bug of large dataset overflow in binning

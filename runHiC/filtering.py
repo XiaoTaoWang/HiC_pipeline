@@ -136,7 +136,7 @@ def biorep_level(pair_paths, outpre, frag_path, tmpdir):
     
     refkey = {'cis':'410_IntraChromosomalReads',
               'trans':'420_InterChromosomalReads',
-              'cis_20kb+':'412_IntraLongRangeReads(>=20Kb)'
+              'cis_20kb+':'412_IntraLongRangeReads(>=20Kb)',
               'total_nodups':'total_nodups'}
 
     substats = stats_pairs(outpath, refkey, matchpre=['dist_freq'])
