@@ -196,6 +196,7 @@ def outStatsCache(stats_pool, outpre):
 
     pattern = outpre + '*'
     allfile = glob.glob(pattern)
+    allfile.remove(lockfil)
     if not len(allfile):
         cache = outpre + '.1'
     else:
