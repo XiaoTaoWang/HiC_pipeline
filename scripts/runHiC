@@ -493,7 +493,7 @@ def mapping(args, commands):
 def filtering(args, commands):
     # Necessary Modules
     from runHiC.utilities import cleanDirectory, cleanFile, chromsizes_from_pairs
-    from runHiC.filtering import merge_pairs, biorep_level, enzyme_level, create_frag, split_pairsam
+    from runHiC.filtering import merge_pairs, biorep_level, enzyme_level, create_frag, split_pairsam, collect_stats
     from runHiC.quality import outStatsCache, update_stats_pool
 
     # customize temporary dir
@@ -568,7 +568,8 @@ def filtering(args, commands):
         
         inFiles = glob.glob(os.path.join(subPair, SRR + '*.pairsam.gz'))
         poolName = os.path.join(subFilter, SRR + '.pairsam.gz')
-        stats = merge_pairs(inFiles, poolName, tmpdir)
+        merge_pairs(inFiles, poolName, tmpdir)
+        stats = collect_stats(inFiles)
         outStatsCache(stats, poolName.replace('.pairsam.gz', '.pstats'))
         
         logging.log(21, 'Done')
@@ -655,15 +656,8 @@ def filtering(args, commands):
         outpre = os.path.join(filteredFolder, '{0}-{1}-allReps-filtered'.format(*cell))
 
         stats_pool = {}
-        save_keys = list(stats_pool.keys()) + [outkey]
-        # merge stats pool from other processes
         update_stats_pool(stats_pool, keys, stats_out_pre)
-
         stats_pool, outpath = enzyme_level(filenames, outpre, keys, outkey, stats_pool, tmpdir)
-        for k in list(stats_pool.keys()):
-            if not k in save_keys:
-                del stats_pool[k]
-        
         outStatsCache(stats_pool, stats_out_pre)
 
         pairpath = split_pairsam(outpath)

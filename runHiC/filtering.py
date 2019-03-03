@@ -20,12 +20,14 @@ def merge_pairs(pair_paths, outpath, tmpdir):
                          '--max-nmerge', '8', '--tmpdir', tmpdir] + pair_paths
 
         subprocess.check_call(' '.join(merge_command), shell=True)
-    
+
+def collect_stats(pair_paths):
+
     stats_pool = {}
     for i, p in enumerate(pair_paths):
         stats_path = p.replace('.pairsam.gz', '.pstats.1')
         with open(stats_path, 'rb') as source:
-            stats_pool[str(i)] = pickle.load(source)
+            stats_pool[str(i)] = pickle.load(source)['pseudo']
     
     merge_stats(stats_pool, list(stats_pool.keys()), 'pseudo')
     stats_pool = {'pseudo': stats_pool['pseudo']}
@@ -112,7 +114,8 @@ def biorep_level(pair_paths, outpre, frag_path, tmpdir):
 
     # a temporary file to store unfiltered all alignments
     out_total = outpre + '.total.pairsam.gz'
-    stats = merge_pairs(pair_paths, out_total, tmpdir)['pseudo']
+    merge_pairs(pair_paths, out_total, tmpdir)
+    stats = collect_stats(pair_paths)['pseudo']
 
     # Final biorep level pairsam
     outpath = outpre + '.pairsam.gz' # select.dedup.filter
@@ -145,7 +148,8 @@ def biorep_level(pair_paths, outpre, frag_path, tmpdir):
     stats['400_TotalContacts'] = stats['110_AfterFilteringReads']
     stats.update(substats)
     stats['412_IntraShortRangeReads(<20Kb)'] = stats['410_IntraChromosomalReads'] - stats['412_IntraLongRangeReads(>=20Kb)']
-
+    del stats['total_nodups']
+    
     return stats, outpath
 
 def merge_stats(stats_pool, keys, outkey, sample_size=100000):
