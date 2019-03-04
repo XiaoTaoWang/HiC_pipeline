@@ -540,7 +540,7 @@ def filtering(args, commands):
         logging.log(21, 'Current SRA/FASTQ: {0} ...'.format(SRR))
         subPair = os.path.join(Sources, SRR)
         if not os.path.exists(os.path.join(Sources, '{0}.completed'.format(SRR))):
-            logging.log(21, '{0} is still in mapping stage, skipp'.format(SRR))
+            logging.log(21, '{0} is still in mapping stage, skip'.format(SRR))
             continue
         
         subFilter = os.path.join(filteredFolder, SRR)
