@@ -7,6 +7,7 @@ from runHiC.utilities import sleep
 import numpy as np
 from copy import deepcopy
 import time
+from collections import defaultdict
 
 def merge_pairs(pair_paths, outpath, tmpdir):
 
@@ -40,7 +41,7 @@ def stats_pairs(inpath, refkey, matchpre=[]):
     stat_command = ['pairtools', 'stats', inpath]
     pipe = subprocess.Popen(stat_command, stdout=subprocess.PIPE)
     inStream = pipe.stdout
-    stats = {}
+    stats = defaultdict(int)
     for line in inStream:
         parse = line.decode().rstrip().split()
         key, value = parse[0], parse[1]
@@ -57,7 +58,6 @@ def stats_pairs(inpath, refkey, matchpre=[]):
 def stats_samfrag(samfrag_pairs, sample_size=100000):
 
     from pairtools import _fileio, _pairsam_format, _headerops
-    from collections import defaultdict
 
     instream = _fileio.auto_open(samfrag_pairs, mode='r')
     _, body_stream = _headerops.get_header(instream)
@@ -157,6 +157,8 @@ def merge_stats(stats_pool, keys, outkey, sample_size=100000):
     stats_pool[outkey] = deepcopy(stats_pool[keys[0]])
     for i in stats_pool[outkey].keys():
         for k in keys[1:]:
+            if not i in stats_pool[k]:
+                continue
             if not i in ['libsize']:
                 stats_pool[outkey][i] += stats_pool[k][i]
             else:
