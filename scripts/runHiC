@@ -660,6 +660,7 @@ def filtering(args, commands):
         stats_pool, outpath = enzyme_level(filenames, outpre, keys, outkey, stats_pool, tmpdir)
         outStatsCache(stats_pool, stats_out_pre)
 
+        ########### should consider situation when no replicates exist
         pairpath = split_pairsam(outpath)
         args.filtered.append(pairpath)
 
