@@ -12,9 +12,9 @@ import matplotlib.pyplot as plt
 # Matplotlib Settings
 matplotlib.rcParams['xtick.direction'] = 'out'
 matplotlib.rcParams['ytick.direction'] = 'out'
-matplotlib.rcParams['axes.labelsize'] = 13
-matplotlib.rcParams['xtick.labelsize'] = 13
-matplotlib.rcParams['ytick.labelsize'] = 13
+matplotlib.rcParams['axes.labelsize'] = 15
+matplotlib.rcParams['xtick.labelsize'] = 15
+matplotlib.rcParams['ytick.labelsize'] = 15
 matplotlib.rcParams['xtick.major.size'] = 8
 matplotlib.rcParams['ytick.major.size'] = 8
 matplotlib.rcParams['xtick.minor.size'] = 5
@@ -127,7 +127,7 @@ def typePlot(stats, outfile, dpi = 300):
     xticks = list(range(1, 8))
     xticklabels = ['10bp', '100bp', '1K', '10K', '100K', '1M', '10M']
 
-    fig = plt.figure(figsize = (15, 9))
+    fig = plt.figure(figsize = (10, 7))
     ax = fig.add_subplot(111)
     lines = []
     labels = ['Left Type', 'Right Type', 'Inner Type', 'Outer Type']
@@ -139,11 +139,11 @@ def typePlot(stats, outfile, dpi = 300):
     
     ax.set_xticks(xticks)
     ax.set_xticklabels(xticklabels)
-    ax.set_xlabel('Genomic Separation')
-    ax.set_ylabel('Type Ratio')
+    ax.set_xlabel('Genomic Separation', fontsize=18)
+    ax.set_ylabel('Type Ratio', fontsize=18)
     
     ax.set_ylim((0, 1))
-    ax.set_title('Read Pair Type Statistics')
+    ax.set_title('Read Pair Type Statistics', fontsize=20)
     ax.xaxis.set_ticks_position('bottom')
     ax.yaxis.set_ticks_position('left')
         
@@ -151,7 +151,7 @@ def typePlot(stats, outfile, dpi = 300):
             handletextpad = 1, borderpad = 1, markerscale = 1, numpoints = 1,
             ncol = 2, loc = 'upper right')
         
-    plt.savefig(outfile, dpi = dpi)
+    plt.savefig(outfile, dpi = dpi, bbox_inches='tight')
     plt.close()
     
 def plot_libsize(stats, outplot, dpi = 300):
@@ -161,14 +161,52 @@ def plot_libsize(stats, outplot, dpi = 300):
     low = np.percentile(libsize, 0.2)
     high = np.percentile(libsize, 99.8)
     libsize = libsize[(libsize<=high) & (libsize>=low)]
-    fig = plt.figure(figsize = (15, 9))
+    fig = plt.figure(figsize = (10, 7))
     ax = fig.add_subplot(111)
     ax.hist(libsize, bins = 15, color = colorPool[-1])
-    ax.set_title('Estimated Library Size Distribution (bp)')
+    ax.set_title('Estimated Library Size Distribution (bp)', fontsize=20)
     ax.xaxis.set_ticks_position('bottom')
     ax.yaxis.set_ticks_position('left')
-    plt.savefig(outplot, dpi = dpi)
+    plt.savefig(outplot, dpi = dpi, bbox_inches='tight')
     plt.close()
+
+def plot_piechart(stats, outplot, dpi = 300):
+
+    total = stats['000_SequencedReads']
+    double = stats['010_DoubleSideMappedReads']
+    unmapped = total - double
+    pcr = stats['130_DuplicateRemoved']
+    samefrag = stats['120_SameFragmentReads']
+    intra = stats['410_IntraChromosomalReads']
+    inter = stats['420_InterChromosomalReads']
+
+    fig = plt.figure(figsize=(4,4))
+    ax = fig.add_subplot(111)
+    counts = [unmapped, pcr, samefrag, intra, inter][::-1]
+    colors = ['#6391cf', '#cc4f57', '#a1ca54', '#8f6bb5', '#66bfd1'][::-1]
+    labels = ['Unmapped/Single mapped', 'PCR duplicates', 'Self-ligation/Dangling reads',
+              'Intra contacts', 'Inter contacts'][::-1]
+    ratios = [c/sum(counts) for c in counts]
+
+    patches, texts, autotexts = ax.pie(counts, colors = colors, autopct='%1.0f%%',
+                                   startangle=90, labeldistance=1.03, pctdistance=0.6)
+    for w in patches:
+        w.set_linewidth(1.5)
+        w.set_edgecolor('w')
+    
+    for i, t in enumerate(autotexts):
+        if ratios[i] > 0.05:
+            t.set_fontsize(14)
+        else:
+            t.set_text('')
+    
+    plt.axis('equal')
+    plt.tight_layout()
+    ax.legend(patches[::-1], labels[::-1], frameon=False, bbox_to_anchor=(1,0.2,0.08,0.6), ncol=1, fontsize=13, loc=3)
+
+    plt.savefig(outplot, bbox_inches='tight', dpi = dpi)
+    plt.close()
+
 
 def plot_dangling_details(stats, outplot, dpi = 300):
 

@@ -740,7 +740,7 @@ def binning(args, commands):
 
 def quality(args, commands):
 
-    from runHiC.quality import loadStats, printStats, plot_libsize, typePlot
+    from runHiC.quality import loadStats, printStats, plot_libsize, typePlot, plot_piechart
     
     locator = os.path.abspath(os.path.expanduser(args.Locator))
     cache_pre = os.path.join(locator, args.stats_cache)
@@ -761,6 +761,10 @@ def quality(args, commands):
         stats = stats_pool[rep]
         printStats(stats, outStats)
         logging.log(21, 'Done')
+        logging.log(21, 'Figure for basic statistics')
+        outFig = os.path.join(locator, '{0}-{1}-{2}-stats.png'.format(*rep))
+        plot_piechart(stats, outFig, dpi = 300)
+        logging.log(21, 'Done')
         logging.log(21, 'Figure for read-pair types ...')
         outFig = os.path.join(locator, '{0}-{1}-{2}-PairType.png'.format(*rep))
         typePlot(stats, outFig, dpi = 300)
@@ -777,6 +781,10 @@ def quality(args, commands):
         outStats = os.path.join(locator, '{0}-{1}-allReps.stats'.format(*cell))
         stats = stats_pool[cell + ('allReps',)]
         printStats(stats, outStats)
+        logging.log(21, 'Done')
+        logging.log(21, 'Figure for basic statistics')
+        outFig = os.path.join(locator, '{0}-{1}-allReps-stats.png'.format(*cell))
+        plot_piechart(stats, outFig, dpi = 300)
         logging.log(21, 'Done')
         logging.log(21, 'Figure for read-pair types ...')
         outFig = os.path.join(locator, '{0}-{1}-allReps-PairType.png'.format(*cell))
