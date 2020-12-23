@@ -88,7 +88,7 @@ def getargs():
                        molecules with three alignments.''')
     iterM.add_argument('--max-inter-align-gap', type = int, default = 20,
                        help = '''A key parameter used by pairtools to rescue single ligations from walks.''')
-    iterM.add_argument('--walks-policy', default = 'mask', choices = ['mask', '5any', '5unique', '3any', '3unique'],
+    iterM.add_argument('--walks-policy', default = 'all', choices = ['mask', '5any', '5unique', '3any', '3unique', 'all'],
                        help = '''The policy used by pairtools to report unrescuable walks.''')
     iterM.add_argument('--include-readid', action = 'store_true',
                        help = '''If specified, add read IDs in final .pairsam files.''')
@@ -493,7 +493,7 @@ def mapping(args, commands):
 def filtering(args, commands):
     # Necessary Modules
     from runHiC.utilities import cleanDirectory, cleanFile, chromsizes_from_pairs
-    from runHiC.filtering import merge_pairs, biorep_level, enzyme_level, create_frag, split_pairsam, collect_stats
+    from runHiC.filtering import merge_pairs, biorep_level, enzyme_level, create_frag, split_pairsam, collect_stats, dedup
     from runHiC.quality import outStatsCache, update_stats_pool
 
     # customize temporary dir
@@ -504,7 +504,6 @@ def filtering(args, commands):
     ## Validity of arguments
     Sources = os.path.abspath(os.path.expanduser(args.pairFolder))
     mFile = args.metadata
-    genomepath = os.path.abspath(os.path.expanduser(args.genomepath))
     
     # Output Folder
     filteredFolder = os.path.split(Sources)[-1].replace('pairs-', 'filtered-')
@@ -567,9 +566,11 @@ def filtering(args, commands):
         atexit.register(cleanFile, lockFile)
         
         inFiles = glob.glob(os.path.join(subPair, SRR + '*.pairsam.gz'))
+        intermediate = os.path.join(subFilter, SRR + '.total.pairsam.gz')
         poolName = os.path.join(subFilter, SRR + '.pairsam.gz')
-        merge_pairs(inFiles, poolName, tmpdir)
+        merge_pairs(inFiles, intermediate, tmpdir)
         stats = collect_stats(inFiles)
+        dedup(intermediate, poolName, stats) # remove PCR duplicates
         outStatsCache(stats, poolName.replace('.pairsam.gz', '.pstats'))
         
         logging.log(21, 'Done')
@@ -608,10 +609,8 @@ def filtering(args, commands):
         filenames = [os.path.join(filteredFolder, i[0], '{0}.pairsam.gz'.format(i[0])) for i in metadata
                     if ((i[1], i[3], i[2]) == rep)]
         outpre = os.path.join(filteredFolder, '{0}-{1}-{2}-filtered'.format(*rep))
-        chromsizes_file, _ = chromsizes_from_pairs(filenames[0])
         # rep: (cell line, enzyme, replicate label)
-        frag_path = create_frag(genomepath, chromsizes_file, rep[1], tmpdir)
-        stats, outpath = biorep_level(filenames, outpre, frag_path, tmpdir)
+        stats, outpath = biorep_level(filenames, outpre, tmpdir)
         stats_pool = {}
         stats_pool[rep] = stats
 

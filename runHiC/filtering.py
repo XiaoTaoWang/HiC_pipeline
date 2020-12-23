@@ -22,6 +22,39 @@ def merge_pairs(pair_paths, outpath, tmpdir):
 
         subprocess.check_call(' '.join(merge_command), shell=True)
 
+def dedup(out_total, outpath, stats):
+
+    pipeline = []
+    try:
+        dedup_command = ['pairtools', 'dedup', '--max-mismatch', '1', '--method', 'max', '-o', outpath, out_total]
+        pipeline.append(
+            subprocess.Popen(dedup_command,
+                stdout=None,
+                bufsize=-1)
+        )
+        pipeline[-1].wait()
+    finally:
+        sleep()
+        for process in pipeline:
+            if process.poll() is None:
+                process.terminate()
+    
+    os.remove(out_total)
+
+    refkey = {'cis':'410_IntraChromosomalReads',
+              'trans':'420_InterChromosomalReads',
+              'cis_20kb+':'412_IntraLongRangeReads(>=20Kb)',
+              'total_nodups':'total_nodups'}
+    
+    substats = stats_pairs(outpath, refkey, matchpre=['dist_freq'])
+    stats['130_DuplicateRemoved'] = stats['110_AfterFilteringReads'] - substats['total_nodups']
+    stats['110_AfterFilteringReads'] = substats['total_nodups']
+    stats['400_TotalContacts'] = stats['110_AfterFilteringReads']
+    stats.update(substats)
+    stats['412_IntraShortRangeReads(<20Kb)'] = stats['410_IntraChromosomalReads'] - stats['412_IntraLongRangeReads(>=20Kb)']
+    del stats['total_nodups']
+
+
 def collect_stats(pair_paths):
 
     stats_pool = {}
@@ -110,45 +143,12 @@ def create_frag(genomepath, chromsizes_file, enzyme, tmpdir):
 
         return outbed
 
-def biorep_level(pair_paths, outpre, frag_path, tmpdir):
+def biorep_level(pair_paths, outpre, tmpdir):
 
-    # a temporary file to store unfiltered all alignments
-    out_total = outpre + '.total.pairsam.gz'
-    merge_pairs(pair_paths, out_total, tmpdir)
+     # Final biorep level pairsam
+    outpath = outpre + '.pairsam.gz'
+    merge_pairs(pair_paths, outpath, tmpdir)
     stats = collect_stats(pair_paths)['pseudo']
-
-    # Final biorep level pairsam
-    outpath = outpre + '.pairsam.gz' # select.dedup.filter
-
-    pipeline = []
-    try:
-        dedup_command = ['pairtools', 'dedup', '--max-mismatch', '1', '--method', 'max', '-o', outpath, out_total]
-        pipeline.append(
-            subprocess.Popen(dedup_command,
-                stdout=None,
-                bufsize=-1)
-        )
-        pipeline[-1].wait()
-    finally:
-        sleep()
-        for process in pipeline:
-            if process.poll() is None:
-                process.terminate()
-    
-    os.remove(out_total)
-    
-    refkey = {'cis':'410_IntraChromosomalReads',
-              'trans':'420_InterChromosomalReads',
-              'cis_20kb+':'412_IntraLongRangeReads(>=20Kb)',
-              'total_nodups':'total_nodups'}
-
-    substats = stats_pairs(outpath, refkey, matchpre=['dist_freq'])
-    stats['130_DuplicateRemoved'] = stats['110_AfterFilteringReads'] - substats['total_nodups']
-    stats['110_AfterFilteringReads'] = substats['total_nodups']
-    stats['400_TotalContacts'] = stats['110_AfterFilteringReads']
-    stats.update(substats)
-    stats['412_IntraShortRangeReads(<20Kb)'] = stats['410_IntraChromosomalReads'] - stats['412_IntraLongRangeReads(>=20Kb)']
-    del stats['total_nodups']
     
     return stats, outpath
 

@@ -227,7 +227,7 @@ def outStatsCache(stats_pool, outpre):
 
     lockfil = outpre + '.lock'
     while os.path.exists(lockfil):
-        time.sleep(0.5)
+        time.sleep(3)
     
     lock = open(lockfil, 'wb') # aquire the file lock
     lock.close()

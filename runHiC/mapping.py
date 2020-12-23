@@ -208,7 +208,7 @@ def map_core(fastq_1, fastq_2, ref, outdir, aligner='minimap2', outformat='SAM',
     if aligner=='minimap2':
         map_command = ['minimap2', '-ax', 'sr', '-t', str(nthread), ref, fastq_1, fastq_2]
     else:
-        map_command = ['bwa', 'mem', '-SP', '-t', str(nthread), ref, fastq_1, fastq_2]
+        map_command = ['bwa', 'mem', '-SP5M', '-t', str(nthread), ref, fastq_1, fastq_2]
     
     if outformat=='.sam':
         bam_command = []
@@ -293,7 +293,7 @@ def parse_bam(bam, outfile, genomepath, chromsizes, assembly, min_mapq, max_mole
     outpath_1 = outfile.replace('.pairsam.gz', '.select.pairsam.gz')
     pipeline = []
     try:
-        select_command = ['pairtools', 'select', '(pair_type=="UU") or (pair_type=="UR") or (pair_type=="RU")',
+        select_command = ['pairtools', 'select', '(pair_type=="UU") or (pair_type=="UR") or (pair_type=="RU") or (pair_type=="uu")',
                           '-o', outpath_1, out_total]
         pipeline.append(
             subprocess.Popen(select_command,
@@ -352,10 +352,3 @@ def parse_bam(bam, outfile, genomepath, chromsizes, assembly, min_mapq, max_mole
     stats_pool = {'pseudo': stats}
     stats_pre = outfile.replace('.pairsam.gz', '.pstats') # pickled stats
     outStatsCache(stats_pool, stats_pre)
-
-
-
-
-        
-
-
