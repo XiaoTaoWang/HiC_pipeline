@@ -629,49 +629,53 @@ def filtering(args, commands):
     logging.log(21, 'Merge biological replicates ...')
     bioList = set((i[1], i[3], i[2]) for i in metadata)
     for cell in cellLines:
-        logging.log(21, 'Current work ID: {0}-{1}'.format(*cell))
-        checkComplete = [os.path.exists(os.path.join(filteredFolder, '{0}-{1}-{2}.completed'.format(*i))) for i in bioList
-                         if ((i[0], i[1]) == cell)]
-        if not all(checkComplete):
-            logging.log(21, 'Filtering on some reps hasn\'t been completed, skip')
-            continue
-        Indicator = os.path.join(filteredFolder, '{0}-{1}-allReps.completed'.format(*cell))
-        lockFile = os.path.join(filteredFolder, '{0}-{1}.lock'.format(*cell))
-        if os.path.exists(Indicator):
-            logging.log(21, 'Completed work, skip')
-            continue
-        if os.path.exists(lockFile):
-            logging.log(21, 'Conflicted work, skip')
-            continue
-        lock = open(lockFile, 'w')
-        lock.close()
-
-        atexit.register(cleanFile, lockFile)
-
         filenames = [os.path.join(filteredFolder, '{0}-{1}-{2}-filtered.pairsam.gz'.format(*i)) for i in bioList
                      if ((i[0], i[1]) == cell)]
-        keys = [i for i in bioList if ((i[0], i[1]) == cell)] # for stats
-        outkey = cell + ('allReps',) # for stats
-        outpre = os.path.join(filteredFolder, '{0}-{1}-allReps-filtered'.format(*cell))
+        if len(filenames) > 1:
+            logging.log(21, 'Current work ID: {0}-{1}'.format(*cell))
+            checkComplete = [os.path.exists(os.path.join(filteredFolder, '{0}-{1}-{2}.completed'.format(*i))) for i in bioList
+                            if ((i[0], i[1]) == cell)]
+            if not all(checkComplete):
+                logging.log(21, 'Filtering on some reps hasn\'t been completed, skip')
+                continue
+            Indicator = os.path.join(filteredFolder, '{0}-{1}-allReps.completed'.format(*cell))
+            lockFile = os.path.join(filteredFolder, '{0}-{1}.lock'.format(*cell))
+            if os.path.exists(Indicator):
+                logging.log(21, 'Completed work, skip')
+                continue
+            if os.path.exists(lockFile):
+                logging.log(21, 'Conflicted work, skip')
+                continue
+            lock = open(lockFile, 'w')
+            lock.close()
 
-        stats_pool = {}
-        update_stats_pool(stats_pool, keys, stats_out_pre)
-        stats_pool, outpath = enzyme_level(filenames, outpre, keys, outkey, stats_pool, tmpdir)
-        outStatsCache(stats_pool, stats_out_pre)
+            atexit.register(cleanFile, lockFile)
 
-        ########### should consider situation when no replicates exist
-        pairpath = split_pairsam(outpath)
-        args.filtered.append(pairpath)
+            keys = [i for i in bioList if ((i[0], i[1]) == cell)] # for stats
+            outkey = cell + ('allReps',) # for stats
+            outpre = os.path.join(filteredFolder, '{0}-{1}-allReps-filtered'.format(*cell))
 
-        for f in filenames:
-            cleanFile(f)
-        cleanFile(outpath)
-        
-        completed = open(Indicator, 'wb')
-        completed.close()
+            stats_pool = {}
+            update_stats_pool(stats_pool, keys, stats_out_pre)
+            stats_pool, outpath = enzyme_level(filenames, outpre, keys, outkey, stats_pool, tmpdir)
+            outStatsCache(stats_pool, stats_out_pre)
 
-        os.remove(lockFile)
-        logging.log(21, 'Done')
+            ########### should consider situation when no replicates exist
+            pairpath = split_pairsam(outpath)
+            args.filtered.append(pairpath)
+
+            for f in filenames:
+                cleanFile(f)
+            cleanFile(outpath)
+            
+            completed = open(Indicator, 'wb')
+            completed.close()
+
+            os.remove(lockFile)
+            logging.log(21, 'Done')
+        else:
+            for f in filenames:
+                cleanFile(f)
     
 
 def binning(args, commands):
