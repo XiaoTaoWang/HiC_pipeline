@@ -413,8 +413,8 @@ def mapping(args, commands):
                 os.symlink(Fastq_2, os.path.join(chunkFolder, os.path.split(Fastq_2)[1]))
             else:
                 logging.log(21, 'Split raw FASTQs into chunks ...')
-                splitSingleFastq(Fastq_1, chunkFolder, splitBy = args.chunkSize)
-                splitSingleFastq(Fastq_2, chunkFolder, splitBy = args.chunkSize)
+                splitSingleFastq(Fastq_1, i, 1, chunkFolder, splitBy = args.chunkSize)
+                splitSingleFastq(Fastq_2, i, 2, chunkFolder, splitBy = args.chunkSize)
                 logging.log(21, 'Done')
         
         completed = open(Indicator, 'wb')

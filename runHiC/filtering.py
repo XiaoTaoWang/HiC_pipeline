@@ -126,7 +126,7 @@ def stats_samfrag(samfrag_pairs, sample_size=100000):
 def create_frag(genomepath, chromsizes_file, enzyme, tmpdir):
 
     _, fastaName = os.path.split(genomepath)
-    genomeName = fastaName.split('.')[0]
+    genomeName = fastaName.split('.fa')[0]
     prefix = '.'.join([genomeName, 'frags', enzyme])
     outbed = os.path.join(tmpdir, '.'.join([prefix, 'bed']))
     lockfil = os.path.join(tmpdir, '.'.join([prefix, 'lock']))

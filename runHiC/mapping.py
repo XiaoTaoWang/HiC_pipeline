@@ -119,14 +119,12 @@ def splitSRA(filename, folder, splitBy = 4000000):
     return counters
 
 
-def splitSingleFastq(filename, folder, splitBy = 4000000):
+def splitSingleFastq(filename, pre, pair_index, folder, splitBy=4000000):
 
     inFile = os.path.abspath(filename)
+    outFile = pre + '_chunk{0}_{1}.fastq.gz'
     
-    parse = os.path.split(inFile)[1].split('.')[0].split('_')
-    outFile = '_'.join(parse[:-1]) + '_chunk{0}_{1}.fastq.gz'
-    
-    if inFile.endswith('.fastq.gz'):
+    if inFile.endswith('.gz'):
         pread = subprocess.Popen(['gunzip', inFile, '-c'],
                                   stdout = subprocess.PIPE, bufsize = -1)
     else:
@@ -139,7 +137,7 @@ def splitSingleFastq(filename, folder, splitBy = 4000000):
     counters = []
     for counter in range(1000000):
 
-        outProc1 = gzipWriter(os.path.join(folder, outFile).format(counter, parse[-1]))
+        outProc1 = gzipWriter(os.path.join(folder, outFile).format(counter, pair_index))
         outStream1 = outProc1.stdin
 
         for j in range(splitBy):
