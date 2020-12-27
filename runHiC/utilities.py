@@ -22,6 +22,46 @@ def cleanDirectory(dirName):
     for i in os.listdir(dirName):
         os.remove(os.path.join(dirName, i))
 
+def find_digit_parts(chrname):
+
+    collect = []
+    for s in chrname[::-1]:
+        if s.isdigit():
+            collect.append(s)
+        else:
+            break
+    
+    if len(collect):
+        digit_parts = int(''.join(collect[::-1]))
+        return digit_parts
+    else:
+        return
+
+def sort_chromlabels(chrnames):
+
+    num_table = []
+    nonnum_names = []
+    for n in chrnames:
+        tmp = find_digit_parts(n)
+        if tmp is None:
+            nonnum_names.append(n)
+        else:
+            num_table.append((tmp, n))
+
+    num_table.sort()
+    sorted_names = [s[1] for s in num_table]
+
+    for s in ['M', 'Y', 'X']:
+        for idx, n in enumerate(nonnum_names):
+            if n.endswith(s):
+                nonnum_names.pop(idx)
+                nonnum_names.insert(0, n)
+                break
+    sorted_names = sorted_names + nonnum_names
+
+    return sorted_names
+
+
 def chromsizes_from_fasta(genomeFolder, genomeName):
 
     from Bio import SeqIO
@@ -34,7 +74,7 @@ def chromsizes_from_fasta(genomeFolder, genomeName):
     
     outfile = os.path.join(genomeFolder, '.'.join([genomeName, 'chrom', 'sizes']))
     with open(outfile, 'w') as out:
-        for c in sorted(chromsizes):
+        for c in sort_chromlabels(chromsizes):
             line = [c, str(chromsizes[c])]
             out.write('\t'.join(line)+'\n')
     
