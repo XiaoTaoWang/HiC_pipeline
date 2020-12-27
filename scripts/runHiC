@@ -356,11 +356,11 @@ def mapping(args, commands):
         lockFile = os.path.join(fastqDir, '{0}.lock'.format(i))
         
         if os.path.exists(Indicator):
-            logging.log(21, '{0}: Completed process, skip'.format(i))
+            logging.log(21, 'Completed process, skip')
             continue
         
         if os.path.exists(lockFile):
-            logging.log(21, '{0}: Conflict process, skip'.format(i))
+            logging.log(21, 'Conflict process, skip')
             continue
         
         if not os.path.exists(chunkFolder):
@@ -434,7 +434,7 @@ def mapping(args, commands):
         globalIndicator = os.path.join(pairFolder, '{0}.completed'.format(i))
 
         if os.path.exists(globalIndicator):
-            logging.log(21, '{0}: Completed work, skip'.format(i))
+            logging.log(21, 'Completed work, skip')
             continue
 
         ReadFiles = [os.path.join(chunkFolder, f) for f in os.listdir(chunkFolder)]
@@ -545,11 +545,10 @@ def filtering(args, commands):
         lockFile = os.path.join(subFilter, '{0}.lock'.format(SRR))
         
         if os.path.exists(Indicator):
-            logging.log(21, '{0}: Completed work, skip'.format(SRR))
+            logging.log(21, 'Completed work, skip')
             continue
         
         if os.path.exists(lockFile):
-            logging.log(21, '{0}: Someone is working on it, skip'.format(SRR))
             continue
         
         if not os.path.exists(subFilter):
@@ -565,7 +564,7 @@ def filtering(args, commands):
         inFiles = glob.glob(os.path.join(subPair, SRR + '*.pairsam.gz'))
         intermediate = os.path.join(subFilter, SRR + '.total.pairsam.gz')
         poolName = os.path.join(subFilter, SRR + '.pairsam.gz')
-        logging.log(21, '{0}: merge pairs from {1} chunks ...'.format(SRR, len(inFiles)))
+        logging.log(21, '{0}: merging pairs from {1} chunks ...'.format(SRR, len(inFiles)))
         merge_pairs(inFiles, intermediate, tmpdir)
         stats = collect_stats(inFiles)
         logging.log(21, '{0}: removing PCR duplicates ...'.format(SRR))
