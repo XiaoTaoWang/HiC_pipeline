@@ -356,11 +356,11 @@ def mapping(args, commands):
         lockFile = os.path.join(fastqDir, '{0}.lock'.format(i))
         
         if os.path.exists(Indicator):
-            logging.log(21, 'Completed process, skip')
+            logging.log(21, '{0}: Completed process, skip'.format(i))
             continue
         
         if os.path.exists(lockFile):
-            logging.log(21, 'Conflict process, skip')
+            logging.log(21, '{0}: Conflict process, skip'.format(i))
             continue
         
         if not os.path.exists(chunkFolder):
@@ -397,22 +397,22 @@ def mapping(args, commands):
         ## Make chunks according to --chunksize
         if readformat == 'sra':
             if not args.chunkSize:
-                logging.log(21, 'Dump SRA ...')
+                logging.log(21, '{0}: Dump SRA ...'.format(i))
                 uncompressSRA(sourceFile, chunkFolder)
-                logging.log(21, 'Done')
+                logging.log(21, '{0}: Done'.format(i))
             else:
-                logging.log(21, 'Split raw SRA into chunks ...')
+                logging.log(21, '{0}: Split raw SRA into chunks ...'.format(i))
                 splitSRA(sourceFile, chunkFolder, splitBy = args.chunkSize)
-                logging.log(21, 'Done')
+                logging.log(21, '{0}: Done'.format(i))
         else:
             if not args.chunkSize:
                 os.symlink(Fastq_1, os.path.join(chunkFolder, os.path.split(Fastq_1)[1]))
                 os.symlink(Fastq_2, os.path.join(chunkFolder, os.path.split(Fastq_2)[1]))
             else:
-                logging.log(21, 'Split raw FASTQs into chunks ...')
+                logging.log(21, '{0}: Split raw FASTQs into chunks ...'.format(i))
                 splitSingleFastq(Fastq_1, i, 1, chunkFolder, splitBy = args.chunkSize)
                 splitSingleFastq(Fastq_2, i, 2, chunkFolder, splitBy = args.chunkSize)
-                logging.log(21, 'Done')
+                logging.log(21, '{0}: Done'.format(i))
         
         completed = open(Indicator, 'wb')
         completed.close()
@@ -434,7 +434,7 @@ def mapping(args, commands):
         globalIndicator = os.path.join(pairFolder, '{0}.completed'.format(i))
 
         if os.path.exists(globalIndicator):
-            logging.log(21, 'Completed work, skip')
+            logging.log(21, '{0}: Completed work, skip'.format(i))
             continue
 
         ReadFiles = [os.path.join(chunkFolder, f) for f in os.listdir(chunkFolder)]
@@ -450,18 +450,18 @@ def mapping(args, commands):
         childchecks = []
         for count, (r1, r2, out) in enumerate(Assignments):
             if len(Read_1)>1:
-                logging.log(21, 'Chunk {0} ...'.format(count))
+                logging.log(21, '{0}: Chunk {1} ...'.format(i, count))
             Indicator = os.path.join(subPair, os.path.split(out)[1].replace('.pairsam.gz', '.completed'))
             lockFile = os.path.join(subPair, os.path.split(out)[1].replace('.pairsam.gz', '.lock'))
 
             childchecks.append(Indicator)
 
             if os.path.exists(Indicator):
-                logging.log(21, 'Completed work, skip')
+                logging.log(21, 'Chunk {0} of {1}: Completed work, skip'.format(count, i))
                 continue
         
             if os.path.exists(lockFile):
-                logging.log(21, 'Someone is working on it, skip')
+                logging.log(21, 'Chunk {0} of {1}: Someone is working on it, skip'.format(count, i))
                 continue
             
             # Mapping lock
@@ -479,7 +479,7 @@ def mapping(args, commands):
             completed = open(Indicator, 'wb')
             completed.close()
 
-            logging.log(21, 'Done')
+            logging.log(21, 'Chunk {0} of {1}: Done'.format(count, i))
 
             os.remove(lockFile)
         
@@ -545,11 +545,11 @@ def filtering(args, commands):
         lockFile = os.path.join(subFilter, '{0}.lock'.format(SRR))
         
         if os.path.exists(Indicator):
-            logging.log(21, 'Completed work, skip')
+            logging.log(21, '{0}: Completed work, skip'.format(SRR))
             continue
         
         if os.path.exists(lockFile):
-            logging.log(21, 'Someone is working on it, skip')
+            logging.log(21, '{0}: Someone is working on it, skip'.format(SRR))
             continue
         
         if not os.path.exists(subFilter):
@@ -565,12 +565,14 @@ def filtering(args, commands):
         inFiles = glob.glob(os.path.join(subPair, SRR + '*.pairsam.gz'))
         intermediate = os.path.join(subFilter, SRR + '.total.pairsam.gz')
         poolName = os.path.join(subFilter, SRR + '.pairsam.gz')
+        logging.log(21, '{0}: merge pairs from {1} chunks ...'.format(SRR, len(inFiles)))
         merge_pairs(inFiles, intermediate, tmpdir)
         stats = collect_stats(inFiles)
+        logging.log(21, '{0}: removing PCR duplicates ...'.format(SRR))
         dedup(intermediate, poolName, stats) # remove PCR duplicates
         outStatsCache(stats, poolName.replace('.pairsam.gz', '.pstats'))
         
-        logging.log(21, 'Done')
+        logging.log(21, '{0}: Done'.format(SRR))
         
         completed = open(Indicator, 'wb')
         completed.close()
@@ -621,7 +623,7 @@ def filtering(args, commands):
                
         os.remove(lockFile)
         
-        logging.log(21, 'Done')
+        logging.log(21, '{0}-{1}-{2}: Done'.format(*rep))
     
     logging.log(21, 'Merge biological replicates ...')
     bioList = set((i[1], i[3], i[2]) for i in metadata)
@@ -669,7 +671,7 @@ def filtering(args, commands):
             completed.close()
 
             os.remove(lockFile)
-            logging.log(21, 'Done')
+            logging.log(21, '{0}-{1}: Done'.format(*cell))
         else:
             for f in filenames:
                 cleanFile(f)
