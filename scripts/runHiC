@@ -141,9 +141,7 @@ def getargs():
                           help = '''Path to the filtered *.pairs.gz files generated during the filtering stage.
                           Wild cards are allowed. If the path points to a folder, the binning procedure
                           will be performed on each .pairs.gz file under that folder.''')
-    binReads.add_argument('-R', '--resolution', type = int, default = 100000,
-                          help = 'Resolution of the contact matrix. Unit: bp')
-    binReads.add_argument('-D', '--ignore-diags', type = int, default = 1,
+    binReads.add_argument('-D', '--ignore-diags', type = int, default = 2,
                           help = '''Number of diagonals of the contact matrix to ignore during ICE correcting. 0
                           ignores nothing, 1 ignores the main diagonal, and 2 ignores diagonals (-1, 0, 1).''')
     binReads.add_argument('--min-nnz', type = int, default = 10,
@@ -263,7 +261,6 @@ def run(args, commands):
                             '# Temporary Dir = {0}'.format(args.tmpdir)])
         if commands[0] == 'binning':
             arglist.extend(['# Filtered Pairs = {0}'.format(args.filtered),
-                            '# Resolution = {0}'.format(args.resolution),
                             '# Number of Diagonals to ignore = {0}'.format(args.ignore_diags),
                             '# Minimum Marginal Nonzeros = {0}'.format(args.min_nnz),
                             '# Minimum Marginal Counts = {0}'.format(args.min_count),
@@ -680,7 +677,7 @@ def filtering(args, commands):
 
 def binning(args, commands):
     # Necessary Modules
-    from runHiC.binning import binning_from_pairs
+    from runHiC.binning import mcool_from_pairs
     from runHiC.utilities import cleanFile
     
     Sources = [os.path.abspath(os.path.expanduser(i)) for i in args.filtered]
@@ -701,10 +698,6 @@ def binning(args, commands):
         hFolder = os.path.split(sFolder)[-1].replace('filtered-', 'coolers-')
         if not os.path.exists(hFolder):
             os.makedirs(hFolder)
-        
-        # Appropriate Units
-        unit, denominator = ('K', 1000) if (args.resolution / 1000 < 1000) else ('M', 1000000)
-        nLabel = str(args.resolution // denominator) + unit
             
         for f in queue:
             logging.log(21, 'Current pairs file: {0}'.format(f))
@@ -713,8 +706,8 @@ def binning(args, commands):
                 logging.log(21, 'Filtering not completed, skip')
                 continue
             
-            Indicator = os.path.join(hFolder, os.path.basename(f).replace('.pairs.gz', '-{0}.completed'.format(nLabel)))
-            lockFile = os.path.join(hFolder, os.path.basename(f).replace('.pairs.gz', '-{0}.lock'.format(nLabel)))
+            Indicator = os.path.join(hFolder, os.path.basename(f).replace('.pairs.gz', '.completed'))
+            lockFile = os.path.join(hFolder, os.path.basename(f).replace('.pairs.gz', '.lock'))
             
             if os.path.exists(Indicator):
                 logging.log(21, 'Completed work, skip')
@@ -729,13 +722,14 @@ def binning(args, commands):
             
             atexit.register(cleanFile, lockFile)
             
-            logging.log(21, 'Contact Matrices will be saved in .cool format under {0}'.format(hFolder))
+            logging.log(21, 'Contact Matrices will be saved in .mcool format under {0}'.format(hFolder))
             
-            hFile = os.path.join(hFolder, os.path.basename(f).replace('.pairs.gz', '-{0}.cool'.format(nLabel)))
-            binning_from_pairs(f, args.resolution, hFile, ignore_diags=args.ignore_diags, nproc=args.nproc,
-                               mad_max=args.mad_max, min_count=args.min_count, min_nnz=args.min_nnz,
-                               max_split=args.max_split)
-            
+            intermediate = os.path.join(hFolder, os.path.basename(f).replace('.pairs.gz', '.1kb.cool'))
+            hFile = os.path.join(hFolder, os.path.basename(f).replace('.pairs.gz', '.mcool'))
+            mcool_from_pairs(f, intermediate, hFile, ignore_diags=args.ignore_diags, nproc=args.nproc,
+                            mad_max=args.mad_max, min_count=args.min_count, min_nnz=args.min_nnz,
+                            max_split=args.max_split)
+        
             completed = open(Indicator, 'wb')
             completed.close()
                     
@@ -808,8 +802,8 @@ def pileup(args, commands):
     args.genomepath = os.path.join(args.dataFolder, args.genomeName, '.'.join([args.genomeName, 'fa']))
     args.stats_cache = 'allinone.cache'
     filtering(args, commands)
-    args.ignore_diags = 1
-    args.nproc = 4
+    args.ignore_diags = 2
+    args.nproc = 6
     args.mad_max = 5
     args.min_nnz = 10
     args.min_count = 0

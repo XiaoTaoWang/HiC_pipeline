@@ -8,23 +8,23 @@ or softwares are required:
 
 Python requirements:
 
-- Python 3.5+
-- numpy
-- matplotlib
-- biopython
-- pairtools
-- cooler
+- Python 3.7+
+- numpy 1.19+
+- matplotlib 2.0+
+- biopython 1.78+
+- pairtools 0.3.0+
+- cooler 0.8.6
 
 Other requirements:
 
-- sra-tools
-- bwa
-- minimap2
-- samtools
+- sra-tools 2.10.8+
+- bwa 0.7.17+
+- minimap2 2.17+
+- samtools 1.10+
 
 Optional:
 
-- pigz
+- pigz 2.3.4+
 
 Install Requirements through Conda
 ----------------------------------
@@ -50,9 +50,10 @@ that the order is important to guarantee the correct priority)::
     $ conda config --add channels bioconda
     $ conda config --add channels conda-forge
 
-Then just type and execute this one-line command to satisfy the requirements::
+Then just type and execute the commands below to satisfy the requirements::
 
-    conda install numpy matplotlib biopython pairtools cooler sra-tools bwa minimap2 samtools pigz
+    conda create -n runHiC numpy matplotlib biopython pairtools cooler=0.8.6 sra-tools bwa minimap2 samtools pigz
+    conda activate runHiC
 
 Install runHiC
 --------------
