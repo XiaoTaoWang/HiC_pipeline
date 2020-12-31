@@ -162,7 +162,7 @@ contact-level statistics for quality assessment of your Hi-C data.
 
 Here's the command you should type in the terminal::
 
-    $ runHiC filtering --pairFolder pairs-hg38/ --genomepath ../data/hg38/hg38.fa
+    $ runHiC filtering --pairFolder pairs-hg38/ --logFile runHiC-filtering.log --nproc 10
 
 That will create a new sub-folder named *filtered-hg38*. Please find the final valid
 contact pairs in *.pairs.gz files. If you specified ``--include-sam`` when you ran
@@ -176,7 +176,7 @@ At this stage, an .mcool file will be produced under the *coolers-hg38* sub-fold
 is the official Hi-C data format for the `4DN consortium <https://data.4dnucleome.org/resources/data-analysis/hi_c-processing-pipeline>`_
 and can be visualized using `HiGlass <https://docs.higlass.io/>`_.
 
-    $ runHiC binning -f filtered-hg38/
+    $ runHiC binning -f filtered-hg38/ --logFile runHiC-binning.log --nproc 10
 
 Pileup
 ======

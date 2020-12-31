@@ -9,7 +9,7 @@ from copy import deepcopy
 import time
 from collections import defaultdict
 
-def merge_pairs(pair_paths, outpath, tmpdir):
+def merge_pairs(pair_paths, outpath, tmpdir, nproc_in, nproc_out):
 
     if len(pair_paths)==1:
         # Just make a soft link to original .pairsam
@@ -17,16 +17,19 @@ def merge_pairs(pair_paths, outpath, tmpdir):
     else:
         # runHiC doesn't provide interface for changing detailed parameters of
         # pairtools merge for simplicity
-        merge_command = ['pairtools', 'merge', '-o', outpath, '--nproc', '8', '--memory', '2G',
-                         '--max-nmerge', '8', '--tmpdir', tmpdir] + pair_paths
+        merge_command = ['pairtools', 'merge', '-o', outpath, '--nproc', str(nproc_out), '--memory', '2G',
+                         '--nproc-in', str(nproc_in), '--nproc-out', str(nproc_out),
+                         '--max-nmerge', '10', '--tmpdir', tmpdir] + pair_paths
 
         subprocess.check_call(' '.join(merge_command), shell=True)
 
-def dedup(out_total, outpath, stats):
+def dedup(out_total, outpath, stats, nproc_in, nproc_out):
 
     pipeline = []
     try:
-        dedup_command = ['pairtools', 'dedup', '--max-mismatch', '1', '--method', 'max', '-o', outpath, out_total]
+        dedup_command = ['pairtools', 'dedup', '--max-mismatch', '1', '--method', 'max',
+                         '--nproc-in', str(nproc_in), '--nproc-out', str(nproc_out),
+                         '-o', outpath, out_total]
         pipeline.append(
             subprocess.Popen(dedup_command,
                 stdout=None,
@@ -46,7 +49,7 @@ def dedup(out_total, outpath, stats):
               'cis_20kb+':'412_IntraLongRangeReads(>=20Kb)',
               'total_nodups':'total_nodups'}
     
-    substats = stats_pairs(outpath, refkey, matchpre=['dist_freq'])
+    substats = stats_pairs(outpath, refkey, matchpre=['dist_freq'], nproc_in=nproc_in, nproc_out=nproc_out)
     stats['130_DuplicateRemoved'] = stats['110_AfterFilteringReads'] - substats['total_nodups']
     stats['110_AfterFilteringReads'] = substats['total_nodups']
     stats['400_TotalContacts'] = stats['110_AfterFilteringReads']
@@ -69,9 +72,9 @@ def collect_stats(pair_paths):
     return stats_pool
 
 
-def stats_pairs(inpath, refkey, matchpre=[]):
+def stats_pairs(inpath, refkey, matchpre=[], nproc_in=3, nproc_out=8):
     
-    stat_command = ['pairtools', 'stats', inpath]
+    stat_command = ['pairtools', 'stats', '--nproc-in', str(nproc_in), '--nproc-out', str(nproc_out), inpath]
     pipe = subprocess.Popen(stat_command, stdout=subprocess.PIPE)
     inStream = pipe.stdout
     stats = defaultdict(int)
@@ -143,11 +146,11 @@ def create_frag(genomepath, chromsizes_file, enzyme, tmpdir):
 
         return outbed
 
-def biorep_level(pair_paths, outpre, tmpdir):
+def biorep_level(pair_paths, outpre, tmpdir, nproc_in, nproc_out):
 
      # Final biorep level pairsam
     outpath = outpre + '.pairsam.gz'
-    merge_pairs(pair_paths, outpath, tmpdir)
+    merge_pairs(pair_paths, outpath, tmpdir, nproc_in, nproc_out)
     stats = collect_stats(pair_paths)['pseudo']
     
     return stats, outpath
@@ -167,12 +170,12 @@ def merge_stats(stats_pool, keys, outkey, sample_size=100000):
     np.random.shuffle(stats_pool[outkey]['libsize'])
     stats_pool[outkey]['libsize'] = stats_pool[outkey]['libsize'][:sample_size] # limit sample size
     
-def enzyme_level(pair_paths, outpre, keys, outkey, stats_pool, tmpdir):
+def enzyme_level(pair_paths, outpre, keys, outkey, stats_pool, tmpdir, nproc_in, nproc_out):
 
     ## pair_paths --> outpre
     ## keys --> outkey
     outall = outpre + '.pairsam.gz'
-    merge_pairs(pair_paths, outall, tmpdir)
+    merge_pairs(pair_paths, outall, tmpdir, nproc_in, nproc_out)
     merge_stats(stats_pool, keys, outkey)
 
     return stats_pool, outall

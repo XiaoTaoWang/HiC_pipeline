@@ -21,7 +21,7 @@ def mcool_from_pairs(pairpath, outcool, outmcool, ignore_diags=2, nproc=1, mad_m
 
     log.log(21, '{0}: Generating a multi-resolution cooler file by coarsening the 1kb contact matrix ...'.format(pairpath))
     command = ['cooler', 'zoomify', '-p', str(nproc), '-r 1000,2000,5000,10000,25000,50000,100000,250000,500000,1000000,2500000,5000000',
-               '--balance', '--balance-args "--mad-max" {0} "--min-nnz" {1} "--min-count" {2} "--ignore-diags" {3}'.format(mad_max, min_nnz, min_count, ignore_diags),
+               '--balance', '--balance-args "--mad-max {0} --min-nnz {1} --min-count {2} --ignore-diags {3}"'.format(mad_max, min_nnz, min_count, ignore_diags),
                '-o', outmcool, outcool]
     subprocess.check_call(' '.join(command), shell=True)
     log.log(21, '{0}: Done'.format(pairpath))

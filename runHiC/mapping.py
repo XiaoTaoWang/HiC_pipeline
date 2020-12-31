@@ -237,14 +237,15 @@ def map_core(fastq_1, fastq_2, ref, outdir, aligner='minimap2', outformat='SAM',
     return outpath
 
 def parse_bam(bam, outfile, genomepath, chromsizes, assembly, min_mapq, max_molecule_size, max_inter_align_gap,
-              walks_policy, include_readid, include_sam, drop_seq, tmpdir, enzyme):
+              walks_policy, include_readid, include_sam, drop_seq, tmpdir, enzyme, nproc_in, nproc_out):
     
     frag_path = create_frag(genomepath, chromsizes, enzyme, tmpdir)
     out_total = outfile.replace('.pairsam.gz', '.total.pairsam.gz')
     
     basic_command = ['pairtools', 'parse', '-c', chromsizes, '--assembly', assembly,
                      '--min-mapq', str(min_mapq), '--max-molecule-size', str(max_molecule_size),
-                     '--max-inter-align-gap', str(max_inter_align_gap), '--walks-policy', walks_policy]
+                     '--max-inter-align-gap', str(max_inter_align_gap), '--walks-policy', walks_policy,
+                     '--nproc-in', str(nproc_in), '--nproc-out', str(nproc_out)]
     if not include_readid:
         basic_command.append('--drop-readid')
     
@@ -263,7 +264,8 @@ def parse_bam(bam, outfile, genomepath, chromsizes, assembly, min_mapq, max_mole
                 bufsize=-1)
         )
 
-        sort_command = ['pairtools', 'sort', '-o', out_total, '--nproc', '8', '--memory', '2G', '--tmpdir', tmpdir]
+        sort_command = ['pairtools', 'sort', '-o', out_total, '--nproc', str(nproc_out), '--memory', '2G', '--tmpdir', tmpdir,
+                        '--nproc-in', str(nproc_in), '--nproc-out', str(nproc_out)]
         pipeline.append(
             subprocess.Popen(sort_command,
                 stdin=pipeline[-1].stdout,
@@ -285,14 +287,15 @@ def parse_bam(bam, outfile, genomepath, chromsizes, assembly, min_mapq, max_mole
               'total_single_sided_mapped':'020_SingleSideMappedReads',
               'total_unmapped':'030_UnmappedReads'
               }
-    stats = stats_pairs(out_total, refkey)
+    stats = stats_pairs(out_total, refkey, nproc_in=nproc_in, nproc_out=nproc_out)
     stats['100_NormalPairs'] = stats['010_DoubleSideMappedReads']
 
     outpath_1 = outfile.replace('.pairsam.gz', '.select.pairsam.gz')
     pipeline = []
     try:
-        select_command = ['pairtools', 'select', '(pair_type=="UU") or (pair_type=="UR") or (pair_type=="RU") or (pair_type=="uu")',
-                          '-o', outpath_1, out_total]
+        select_command = ['pairtools', 'select', '--nproc-in', str(nproc_in), '--nproc-out', str(nproc_out), '-o', outpath_1,
+                          '(pair_type=="UU") or (pair_type=="UR") or (pair_type=="RU") or (pair_type=="uu")',
+                           out_total]
         pipeline.append(
             subprocess.Popen(select_command,
                 stdout=None,
@@ -314,7 +317,7 @@ def parse_bam(bam, outfile, genomepath, chromsizes, assembly, min_mapq, max_mole
     pipeline = []
     try:
         # assign fragment
-        restrict_command = ['pairtools', 'restrict', '-f', frag_path, outpath_1]
+        restrict_command = ['pairtools', 'restrict', '-f', frag_path, '--nproc-in', str(nproc_in), '--nproc-out', str(nproc_out), outpath_1]
         pipeline.append(
             subprocess.Popen(restrict_command,
                 stdout=subprocess.PIPE,
@@ -322,7 +325,8 @@ def parse_bam(bam, outfile, genomepath, chromsizes, assembly, min_mapq, max_mole
         )
 
         ####### COLS[-6]==COLS[-3], the index may change to follow pairtools
-        select_command = ['pairtools', 'select', '--output-rest', outfile, '-o', outpath_2,
+        select_command = ['pairtools', 'select', '--nproc-in', str(nproc_in), '--nproc-out', str(nproc_out),
+                          '--output-rest', outfile, '-o', outpath_2,
                           '(COLS[-6]==COLS[-3]) and (chrom1==chrom2)']
         pipeline.append(
             subprocess.Popen(select_command,
