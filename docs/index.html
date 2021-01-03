@@ -1,18 +1,18 @@
 
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
-  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<!DOCTYPE html>
 
-<html xmlns="http://www.w3.org/1999/xhtml">
+<html>
   <head>
-    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
-    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-    <title>runHiC &#8212; runHiC 0.8.0 documentation</title>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>runHiC &#8212; runHiC 0.8.4 documentation</title>
     <link rel="stylesheet" href="_static/alabaster.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
-    <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
-    <script type="text/javascript" src="_static/jquery.js"></script>
-    <script type="text/javascript" src="_static/underscore.js"></script>
-    <script type="text/javascript" src="_static/doctools.js"></script>
+    <script id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <script src="_static/jquery.js"></script>
+    <script src="_static/underscore.js"></script>
+    <script src="_static/doctools.js"></script>
+    <script src="_static/language_data.js"></script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
     <link rel="next" title="Install runHiC" href="install.html" />
@@ -56,17 +56,15 @@
 
 
 <div id="searchbox" style="display: none" role="search">
-  <h3>Quick search</h3>
+  <h3 id="searchlabel">Quick search</h3>
     <div class="searchformwrapper">
     <form class="search" action="search.html" method="get">
-      <input type="text" name="q" />
+      <input type="text" name="q" aria-labelledby="searchlabel" />
       <input type="submit" value="Go" />
-      <input type="hidden" name="check_keywords" value="yes" />
-      <input type="hidden" name="area" value="default" />
     </form>
     </div>
 </div>
-<script type="text/javascript">$('#searchbox').show(0);</script>
+<script>$('#searchbox').show(0);</script>
         </div>
       </div>
       <div class="documentwrapper">
@@ -82,32 +80,31 @@
 by setting the enzyme name to <em>Arima</em>.</p>
 <p>Since version 0.8.0, runHiC has changed its default data container/format from HDF5 to
 <a class="reference external" href="https://github.com/4dn-dcic/pairix/blob/master/pairs_format_specification.md">Pairs</a> and
-<a class="reference external" href="https://github.com/mirnylab/cooler">Cooler</a>, to comply with 4DN standards.
-(See <a class="reference external" href="http://xiaotaowang.github.io/HiC_pipeline/changelog.html">Release Notes</a>)</p>
+<a class="reference external" href="https://github.com/mirnylab/cooler">Cooler</a>. (See <a class="reference external" href="http://xiaotaowang.github.io/HiC_pipeline/changelog.html">Release Notes</a>)</p>
 <div class="section" id="design-concepts">
 <h2>Design Concepts<a class="headerlink" href="#design-concepts" title="Permalink to this headline">¶</a></h2>
 <p>runHiC is designed to process Hi-C data from raw sequencing reads(.sra, .fastq, .fastq.gz) to the corrected
 contact matrices. It currently contains 5 subcommand:</p>
-<table border="1" class="docutils">
+<table class="docutils align-default">
 <colgroup>
-<col width="12%" />
-<col width="88%" />
+<col style="width: 12%" />
+<col style="width: 88%" />
 </colgroup>
-<tbody valign="top">
-<tr class="row-odd"><td>mapping</td>
-<td>Map raw pair-end sequencing data to a supplied genome. Support bwa and minimap2.</td>
+<tbody>
+<tr class="row-odd"><td><p>mapping</p></td>
+<td><p>Map raw pair-end sequencing data to a supplied genome. Support bwa and minimap2.</p></td>
 </tr>
-<tr class="row-even"><td>filtering</td>
-<td>Perform read-level and fragment-level noise removing</td>
+<tr class="row-even"><td><p>filtering</p></td>
+<td><p>Perform read-level and fragment-level noise removing</p></td>
 </tr>
-<tr class="row-odd"><td>binning</td>
-<td>1.Generate contact matirx; 2. Perform ICE</td>
+<tr class="row-odd"><td><p>binning</p></td>
+<td><p>1.Generate contact matirx; 2. Perform ICE</p></td>
 </tr>
-<tr class="row-even"><td>pileup</td>
-<td>Perform entire processing from <em>mapping</em> to <em>binning</em></td>
+<tr class="row-even"><td><p>pileup</p></td>
+<td><p>Perform entire processing from <em>mapping</em> to <em>binning</em></p></td>
 </tr>
-<tr class="row-odd"><td>quality</td>
-<td>Assess the quality of your Hi-C data</td>
+<tr class="row-odd"><td><p>quality</p></td>
+<td><p>Assess the quality of your Hi-C data</p></td>
 </tr>
 </tbody>
 </table>
@@ -126,14 +123,13 @@ contact matrices. It currently contains 5 subcommand:</p>
 <li class="toctree-l2"><a class="reference internal" href="quickstart.html#data-preparation">Data Preparation</a></li>
 <li class="toctree-l2"><a class="reference internal" href="quickstart.html#mapping">Mapping</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="quickstart.html#usage">Usage</a></li>
-<li class="toctree-l3"><a class="reference internal" href="quickstart.html#write-the-meta-data-file">Write the Meta Data File</a></li>
+<li class="toctree-l3"><a class="reference internal" href="quickstart.html#create-the-meta-data-file">Create the Meta Data File</a></li>
 <li class="toctree-l3"><a class="reference internal" href="quickstart.html#runhic-command">runHiC Command</a></li>
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="quickstart.html#filtering">Filtering</a></li>
 <li class="toctree-l2"><a class="reference internal" href="quickstart.html#binning">Binning</a></li>
 <li class="toctree-l2"><a class="reference internal" href="quickstart.html#pileup">Pileup</a></li>
-<li class="toctree-l2"><a class="reference internal" href="quickstart.html#reference">Reference</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="parallel.html">Parallel Computation</a><ul>
@@ -147,6 +143,8 @@ contact matrices. It currently contains 5 subcommand:</p>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="changelog.html">Release Notes</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="changelog.html#version-0-8-4-2021-01-03">Version 0.8.4 (2021-01-03)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="changelog.html#version-0-8-3-2019-03-04">Version 0.8.3 (2019-03-04)</a></li>
 <li class="toctree-l2"><a class="reference internal" href="changelog.html#version-0-8-2-2019-01-16">Version 0.8.2 (2019-01-16)</a></li>
 <li class="toctree-l2"><a class="reference internal" href="changelog.html#version-0-8-1-2018-12-23">Version 0.8.1 (2018-12-23)</a></li>
 <li class="toctree-l2"><a class="reference internal" href="changelog.html#version-0-8-0-2018-9-16">Version 0.8.0 (2018-9-16)</a></li>
@@ -180,10 +178,10 @@ contact matrices. It currently contains 5 subcommand:</p>
     <div class="clearer"></div>
   </div>
     <div class="footer">
-      &copy;2018, XiaoTao Wang.
+      &copy;2021, XiaoTao Wang.
       
       |
-      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.8.2</a>
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 3.2.1</a>
       &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
       
       |

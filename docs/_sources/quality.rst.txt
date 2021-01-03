@@ -2,7 +2,7 @@ Experiment Quality Assessment
 *****************************
 In this tutorial, I will show you how runHiC can be used in data quality assessment.
 
-All you need to type in is a sinlge line command after *runHiC filtering* or *runHiC pileup*
+All you need to type in is a sinlge-line command after running *runHiC filtering* or *runHiC pileup*
 (refer to `quickstart <http://xiaotaowang.github.io/HiC_pipeline/quickstart.html>`_ for more details)::
 
     $ runHiC quality -m datasets.tsv -L filtered-hg38
@@ -61,7 +61,7 @@ The following table lists possible statistic names and their meanings:
 +-------------------------------+---------------------------------------------------+
 | 120_SameFragmentReads         | Number of read pairs of which both sides are      |
 |                               | mapped to the same restriction fragment. Such     |
-|                               | read pairs are filtered in our pipeline.          |
+|                               | read pairs are filtered out in our pipeline.      |
 +-------------------------------+---------------------------------------------------+
 | 122_SelfLigationReads         | Number of read pairs deriving from                |
 |                               | self-circularized ligation product. The two sides |
@@ -119,7 +119,7 @@ a failure in DNA size selection.
 
 Read-pair Type Plotting
 -----------------------
-Read-pair type ratios will be reported in line-plot manner under *filtered-hg38* too
+Read-pair type ratios will also be reported under *filtered-hg38*.
 Intra-chromosomal contacts are broken down into four types: "left pair" (both sides map
 to the reverse strand), "right pair" (both sides map to the forward strand), "inner pair"
 (two sides map to different strands and point towards each other) and "outer pair" (two

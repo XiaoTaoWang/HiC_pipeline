@@ -1,18 +1,18 @@
 
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
-  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<!DOCTYPE html>
 
-<html xmlns="http://www.w3.org/1999/xhtml">
+<html>
   <head>
-    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
-    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-    <title>Install runHiC &#8212; runHiC 0.8.0 documentation</title>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Install runHiC &#8212; runHiC 0.8.4 documentation</title>
     <link rel="stylesheet" href="_static/alabaster.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
-    <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
-    <script type="text/javascript" src="_static/jquery.js"></script>
-    <script type="text/javascript" src="_static/underscore.js"></script>
-    <script type="text/javascript" src="_static/doctools.js"></script>
+    <script id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <script src="_static/jquery.js"></script>
+    <script src="_static/underscore.js"></script>
+    <script src="_static/doctools.js"></script>
+    <script src="_static/language_data.js"></script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
     <link rel="next" title="Quick Start" href="quickstart.html" />
@@ -62,17 +62,15 @@
 
 
 <div id="searchbox" style="display: none" role="search">
-  <h3>Quick search</h3>
+  <h3 id="searchlabel">Quick search</h3>
     <div class="searchformwrapper">
     <form class="search" action="search.html" method="get">
-      <input type="text" name="q" />
+      <input type="text" name="q" aria-labelledby="searchlabel" />
       <input type="submit" value="Go" />
-      <input type="hidden" name="check_keywords" value="yes" />
-      <input type="hidden" name="area" value="default" />
     </form>
     </div>
 </div>
-<script type="text/javascript">$('#searchbox').show(0);</script>
+<script>$('#searchbox').show(0);</script>
         </div>
       </div>
       <div class="documentwrapper">
@@ -89,34 +87,34 @@
 or softwares are required:</p>
 <p>Python requirements:</p>
 <ul class="simple">
-<li>Python 3.5+</li>
-<li>numpy</li>
-<li>matplotlib</li>
-<li>biopython</li>
-<li>pairtools</li>
-<li>cooler</li>
+<li><p>Python 3.7+</p></li>
+<li><p>numpy 1.19+</p></li>
+<li><p>matplotlib 2.0+</p></li>
+<li><p>biopython 1.78+</p></li>
+<li><p>pairtools 0.3.0+</p></li>
+<li><p>cooler 0.8.6</p></li>
 </ul>
 <p>Other requirements:</p>
 <ul class="simple">
-<li>sra-tools</li>
-<li>bwa</li>
-<li>minimap2</li>
-<li>samtools</li>
+<li><p>sra-tools 2.10.8+</p></li>
+<li><p>bwa 0.7.17+</p></li>
+<li><p>minimap2 2.17+</p></li>
+<li><p>samtools 1.10+</p></li>
 </ul>
 <p>Optional:</p>
 <ul class="simple">
-<li>pigz</li>
+<li><p>pigz 2.3.4+</p></li>
 </ul>
 </div>
 <div class="section" id="install-requirements-through-conda">
 <h2>Install Requirements through Conda<a class="headerlink" href="#install-requirements-through-conda" title="Permalink to this headline">¶</a></h2>
 <p>All above requirements can be installed through the conda package manager.</p>
 <div class="admonition note">
-<p class="first admonition-title">Note</p>
-<p class="last">If you have the Anaconda Distribution installed, you already have it.</p>
+<p class="admonition-title">Note</p>
+<p>If you have the Anaconda Distribution installed, you already have it.</p>
 </div>
 <p>Choose an appropriate <a class="reference external" href="https://conda.io/miniconda.html">Miniconda installer</a> for your system,
-then in your terminal window type the following and follow the prompts on the installer screens:</p>
+then in your terminal window, type the following and follow the prompts on the installer screens:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ bash Miniconda3-latest-Linux-x86_64.sh
 </pre></div>
 </div>
@@ -126,21 +124,22 @@ then in your terminal window type the following and follow the prompts on the in
 </div>
 <p>Conda allows separation of packages into separate repositories, or channels. The main <em>defaults</em>
 channel only covers <em>numpy</em>, <em>matplotlib</em> and <em>biopython</em> listed above. And to make all the other packages
-accessible, you need to add the <em>bioconda</em> channel and <em>conda-forge</em> channel in the following way (note
+accessible, you need to add the <em>bioconda</em> channel and the <em>conda-forge</em> channel in the following way (note
 that the order is important to guarantee the correct priority):</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ conda config --add channels defaults
 $ conda config --add channels bioconda
 $ conda config --add channels conda-forge
 </pre></div>
 </div>
-<p>Then just type and execute this one-line command to satisfy the requirements:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">conda</span> <span class="n">install</span> <span class="n">numpy</span> <span class="n">matplotlib</span> <span class="n">biopython</span> <span class="n">pairtools</span> <span class="n">cooler</span> <span class="n">sra</span><span class="o">-</span><span class="n">tools</span> <span class="n">bwa</span> <span class="n">minimap2</span> <span class="n">samtools</span> <span class="n">pigz</span>
+<p>Then type and execute the commands below to satisfy the requirements:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">conda</span> <span class="n">create</span> <span class="o">-</span><span class="n">n</span> <span class="n">runHiC</span> <span class="n">numpy</span> <span class="n">matplotlib</span> <span class="n">biopython</span> <span class="n">pairtools</span> <span class="n">cooler</span><span class="o">=</span><span class="mf">0.8</span><span class="o">.</span><span class="mi">6</span> <span class="n">sra</span><span class="o">-</span><span class="n">tools</span> <span class="n">bwa</span> <span class="n">minimap2</span> <span class="n">samtools</span> <span class="n">pigz</span>
+<span class="n">conda</span> <span class="n">activate</span> <span class="n">runHiC</span>
 </pre></div>
 </div>
 </div>
 <div class="section" id="id1">
 <h2>Install runHiC<a class="headerlink" href="#id1" title="Permalink to this headline">¶</a></h2>
-<p>Finally, <em>runHiC</em> can be installed from PyPI by pip:</p>
+<p>Finally, <em>runHiC</em> can be installed from PyPI using pip:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ pip install runHiC
 </pre></div>
 </div>
@@ -156,10 +155,10 @@ $ conda config --add channels conda-forge
     <div class="clearer"></div>
   </div>
     <div class="footer">
-      &copy;2018, XiaoTao Wang.
+      &copy;2021, XiaoTao Wang.
       
       |
-      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.8.2</a>
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 3.2.1</a>
       &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
       
       |
