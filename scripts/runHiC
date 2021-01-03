@@ -96,6 +96,7 @@ def getargs():
                        help = '''If specified, add sam columns in final .pairsam files.''')
     iterM.add_argument('--drop-seq', action = 'store_true',
                        help = '''If specified, exclude SEQ and QUAL from the sam fields in final .pairsam files.''')
+    iterM.add_argument('--memory', default='8G', help = '''The amount of memory allocated for pairtools sort.''')
     iterM.add_argument('--chunkSize', type = int, help = '''On a low-memory machine, it's better
                        to split the raw read file into chunks and map them separatively. This
                        parameter specifies the size of each chunk. By default, no split is performed.''')
@@ -126,6 +127,7 @@ def getargs():
                              help = '''Path to the .fa file containing reference genome data.''')
     removeNoise.add_argument('--tmpdir', default='/tmp', help='''Temporary folder for intermediate results.''')
     removeNoise.add_argument('--nproc', type = int, default = 8, help = '''Number of allocated proccesses.''')
+    removeNoise.add_argument('--memory', default='8G', help = '''The amount of memory allocated for pairtools merge.''')
     removeNoise.add_argument('--stats-cache', default = 'allinone.cache',
                              help = 'Name the output cache file for data quality statistics.')
     removeNoise.add_argument('--logFile', default = 'runHiC.log', help = '''Logging file name.''')
@@ -244,6 +246,7 @@ def run(args, commands):
                             '# Include Read ID = {0}'.format(args.include_readid),
                             '# Include Sam = {0}'.format(args.include_sam),
                             '# Drop SEQ and QUAL = {0}'.format(args.drop_seq),
+                            '# Memory for sort = {0}'.format(args.memory),
                             '# Chunk size = {0}'.format(args.chunkSize),
                             '# Temporary Dir = {0}'.format(args.tmpdir)
                             ])
@@ -253,7 +256,8 @@ def run(args, commands):
                             '# MetaData = {0}'.format(args.metadata),
                             '# Stats Cache = {0}'.format(args.stats_cache),
                             '# Temporary Dir = {0}'.format(args.tmpdir),
-                            '# Number of processes = {0}'.format(args.nproc)])
+                            '# Number of processes = {0}'.format(args.nproc),
+                            '# Memory for merge = {0}'.format(args.memory)])
         if commands[0] == 'binning':
             arglist.extend(['# Filtered Pairs = {0}'.format(args.filtered),
                             '# Number of Diagonals to ignore = {0}'.format(args.ignore_diags),
@@ -465,10 +469,10 @@ def mapping(args, commands):
             # BAM/SAM
             bampath = map_core(r1, r2, indexpath, subbamFolder, aligner, outformat, nthread=args.threads)
             nproc_out = max(args.threads, 8)
-            nproc_in = max(nproc_out // 3, 3)
+            nproc_in = max(nproc_out // 2, 3)
             parse_bam(bampath, out, genomepath, chromsize_file, genomeName, args.min_mapq, args.max_molecule_size,
                       args.max_inter_align_gap, args.walks_policy, args.include_readid, args.include_sam,
-                      args.drop_seq, tmpdir, enzyme, nproc_in, nproc_out) # self-ligation / dangling detection, reduce computing burden in filtering
+                      args.drop_seq, tmpdir, enzyme, nproc_in, nproc_out, args.memory) # self-ligation / dangling detection, reduce computing burden in filtering
 
             completed = open(Indicator, 'wb')
             completed.close()
@@ -526,7 +530,7 @@ def filtering(args, commands):
         args.filtered.append(filtered)
     
     nproc_out = max(args.nproc, 8)
-    nproc_in = max(nproc_out // 3, 3)
+    nproc_in = max(nproc_out // 2, 3)
     logging.log(21, 'Merge chunks ...')
     for SRR in database:
         logging.log(21, 'Current SRA/FASTQ: {0} ...'.format(SRR))
@@ -562,7 +566,7 @@ def filtering(args, commands):
         intermediate = os.path.join(subFilter, SRR + '.total.pairsam.gz')
         poolName = os.path.join(subFilter, SRR + '.pairsam.gz')
         logging.log(21, '{0}: merging pairs from {1} chunks ...'.format(SRR, len(inFiles)))
-        merge_pairs(inFiles, intermediate, tmpdir, nproc_in, nproc_out)
+        merge_pairs(inFiles, intermediate, tmpdir, nproc_in, nproc_out, args.memory)
         stats = collect_stats(inFiles)['pseudo']
         logging.log(21, '{0}: removing PCR duplicates ...'.format(SRR))
         dedup(intermediate, poolName, stats, nproc_in, nproc_out) # remove PCR duplicates
@@ -605,7 +609,7 @@ def filtering(args, commands):
                     if ((i[1], i[3], i[2]) == rep)]
         outpre = os.path.join(filteredFolder, '{0}-{1}-{2}-filtered'.format(*rep))
         # rep: (cell line, enzyme, replicate label)
-        stats, outpath = biorep_level(filenames, outpre, tmpdir, nproc_in, nproc_out)
+        stats, outpath = biorep_level(filenames, outpre, tmpdir, nproc_in, nproc_out, args.memory)
         stats_pool = {}
         stats_pool[rep] = stats
 
@@ -652,7 +656,7 @@ def filtering(args, commands):
 
             stats_pool = {}
             update_stats_pool(stats_pool, keys, stats_out_pre)
-            stats_pool, outpath = enzyme_level(filenames, outpre, keys, outkey, stats_pool, tmpdir, nproc_in, nproc_out)
+            stats_pool, outpath = enzyme_level(filenames, outpre, keys, outkey, stats_pool, tmpdir, nproc_in, nproc_out, args.memory)
             outStatsCache(stats_pool, stats_out_pre)
 
             ########### should consider situation when no replicates exist

@@ -237,7 +237,7 @@ def map_core(fastq_1, fastq_2, ref, outdir, aligner='minimap2', outformat='SAM',
     return outpath
 
 def parse_bam(bam, outfile, genomepath, chromsizes, assembly, min_mapq, max_molecule_size, max_inter_align_gap,
-              walks_policy, include_readid, include_sam, drop_seq, tmpdir, enzyme, nproc_in, nproc_out):
+              walks_policy, include_readid, include_sam, drop_seq, tmpdir, enzyme, nproc_in, nproc_out, memory):
     
     frag_path = create_frag(genomepath, chromsizes, enzyme, tmpdir)
     out_total = outfile.replace('.pairsam.gz', '.total.pairsam.gz')
@@ -264,7 +264,7 @@ def parse_bam(bam, outfile, genomepath, chromsizes, assembly, min_mapq, max_mole
                 bufsize=-1)
         )
 
-        sort_command = ['pairtools', 'sort', '-o', out_total, '--nproc', str(nproc_out), '--memory', '2G', '--tmpdir', tmpdir,
+        sort_command = ['pairtools', 'sort', '-o', out_total, '--nproc', str(nproc_out), '--memory', memory, '--tmpdir', tmpdir,
                         '--nproc-in', str(nproc_in), '--nproc-out', str(nproc_out)]
         pipeline.append(
             subprocess.Popen(sort_command,
