@@ -174,7 +174,7 @@ Binning
 At this stage, an .mcool file will be produced under the *coolers-hg38* sub-folder for each
 .pairs.gz file using `cooler <https://cooler.readthedocs.io/en/latest/>`_. The mcool format
 is the official Hi-C data format for the `4DN consortium <https://data.4dnucleome.org/resources/data-analysis/hi_c-processing-pipeline>`_
-and can be visualized using `HiGlass <https://docs.higlass.io/>`_.
+and can be visualized using `HiGlass <https://docs.higlass.io/>`_::
 
     $ runHiC binning -f filtered-hg38/ --logFile runHiC-binning.log --nproc 10
 

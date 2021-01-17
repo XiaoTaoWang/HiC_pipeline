@@ -1,5 +1,9 @@
 Release Notes
 =============
+Version 0.8.4-r1 (2021-01-16)
+-----------------------------
+- added the "--high-res" option to ``runHiC pileup`` and ``runHiC binning``.
+
 Version 0.8.4 (2021-01-03)
 --------------------------
 - Changed the bwa parameters from "bwa mem -SP" to "bwa mem -SP5M"

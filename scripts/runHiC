@@ -152,6 +152,9 @@ def getargs():
     binReads.add_argument('--mad-max', type = int, default = 5,
                           help = '''Before ICE, drop bins whose log marginal sum is less than ``mad_max``
                           median absolute deviations below the median log marginal sum.''')
+    binReads.add_argument('--high-res', action = 'store_true', help='''If specified, bin pairs at 11 base-pair-delimited resolutions:
+                          2500000,1000000,500000,250000,100000,50000,25000,10000,5000,2000,1000. The default setting is binning pairs at
+                          9 resolutions: 2500000,1000000,500000,250000,100000,50000,25000,10000,5000.''')
     binReads.add_argument('--nproc', type = int, default = 8, help = '''Number of allocated proccesses.''')
     binReads.add_argument('--max-split', type = int, default = 2, help = '''Divide the pairs from each chromosome
                           into at most this many chunks.''')
@@ -184,6 +187,9 @@ def getargs():
                                       add_help = False)
     streamline.add_argument('--max-split', type = int, default = 2, help = '''Divide the pairs from each chromosome
                             into at most this many chunks.''')
+    streamline.add_argument('--high-res', action = 'store_true', help='''If specified, bin pairs at 11 base-pair-delimited resolutions:
+                            2500000,1000000,500000,250000,100000,50000,25000,10000,5000,2000,1000. The default setting is binning pairs at
+                            9 resolutions: 2500000,1000000,500000,250000,100000,50000,25000,10000,5000.''')
     streamline.set_defaults(func = pileup)
     
      ## Parse the command-line arguments
@@ -250,6 +256,8 @@ def run(args, commands):
                             '# Chunk size = {0}'.format(args.chunkSize),
                             '# Temporary Dir = {0}'.format(args.tmpdir)
                             ])
+        if (commands[0] == 'pileup'):
+            arglist.extend(['# Generate contact maps at 11 resolutions = {0}'.format(args.high_res)])
                             
         if commands[0] == 'filtering':
             arglist.extend(['# Original Pairs = {0}'.format(args.pairFolder),
@@ -264,6 +272,7 @@ def run(args, commands):
                             '# Minimum Marginal Nonzeros = {0}'.format(args.min_nnz),
                             '# Minimum Marginal Counts = {0}'.format(args.min_count),
                             '# MAD Max = {0}'.format(args.mad_max),
+                            '# Generate contact maps at 11 resolutions = {0}'.format(args.high_res),
                             '# Number of processes = {0}'.format(args.nproc)])
         
         if commands[0] == 'quality':
@@ -730,7 +739,7 @@ def binning(args, commands):
             hFile = os.path.join(hFolder, os.path.basename(f).replace('.pairs.gz', '.mcool'))
             mcool_from_pairs(f, intermediate, hFile, ignore_diags=args.ignore_diags, nproc=args.nproc,
                             mad_max=args.mad_max, min_count=args.min_count, min_nnz=args.min_nnz,
-                            max_split=args.max_split)
+                            max_split=args.max_split, high_res=args.high_res)
         
             completed = open(Indicator, 'wb')
             completed.close()
