@@ -735,7 +735,10 @@ def binning(args, commands):
             
             logging.log(21, 'Contact Matrices will be saved in .mcool format under {0}'.format(hFolder))
             
-            intermediate = os.path.join(hFolder, os.path.basename(f).replace('.pairs.gz', '.1kb.cool'))
+            if args.high_res:
+                intermediate = os.path.join(hFolder, os.path.basename(f).replace('.pairs.gz', '.1kb.cool'))
+            else:
+                intermediate = os.path.join(hFolder, os.path.basename(f).replace('.pairs.gz', '.5kb.cool'))
             hFile = os.path.join(hFolder, os.path.basename(f).replace('.pairs.gz', '.mcool'))
             mcool_from_pairs(f, intermediate, hFile, ignore_diags=args.ignore_diags, nproc=args.nproc,
                             mad_max=args.mad_max, min_count=args.min_count, min_nnz=args.min_nnz,
