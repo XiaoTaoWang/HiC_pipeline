@@ -170,7 +170,7 @@ def splitSingleFastq(filename, pre, pair_index, folder, splitBy=4000000):
 
 def buildMapIndex(aligner, genomeFolder, genomeName):
     """
-    Build bwa/minimap2 index files.
+    Build bwa/chromap/minimap2 index files.
     """
     lockFile = os.path.join(genomeFolder, '.'.join([genomeName, aligner, 'lock']))
     # Aquire lock
@@ -182,8 +182,11 @@ def buildMapIndex(aligner, genomeFolder, genomeName):
     wholeGenome = os.path.join(genomeFolder, '.'.join([genomeName, 'fa']))
 
     if aligner=='minimap2':
-        indexOut = os.path.join(genomeFolder, '.'.join([genomeName, 'mmi']))
+        indexOut = os.path.join(genomeFolder, '.'.join([genomeName, 'minimap2', 'mmi']))
         build_command = ['minimap2', '-x', 'sr', '-d', indexOut, wholeGenome]
+    elif aligner=='chromap':
+        indexOut = os.path.join(genomeFolder, '.'.join([genomeName, 'chromap', 'mmi']))
+        build_command = ['chromap', '-i', '-r', wholeGenome, '-o', indexOut]
     else:
         build_command = ['bwa', 'index', wholeGenome]
     

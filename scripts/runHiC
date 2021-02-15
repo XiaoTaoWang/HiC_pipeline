@@ -71,13 +71,14 @@ def getargs():
     iterM.add_argument('-f', '--fastqDir', help = 'Name of the folder containing sequencing data.')
     iterM.add_argument('-F', '--Format', default = 'SRA', choices = ['SRA', 'FASTQ'],
                        help = 'Format of the sequencing data.')
-    iterM.add_argument('-A', '--aligner', default = 'bwa-mem', choices = ['bwa-mem', 'minimap2'],
+    iterM.add_argument('-A', '--aligner', default = 'bwa-mem', choices = ['bwa-mem', 'chromap', 'minimap2'],
                        help = '''Name of the sequence alignment software to invoke.''')
     iterM.add_argument('-i', '--Index',
-                       help = '''Path to the bwa/minimap2 genome index. If your reference genome is hg38, and
-                       it is located within ~/data/hg38, then you need to specify --Index as "~/data/hg38/hg38.fa"
-                       and "~/data/hg38/hg38.mmi" for bwa-mem and minimap2 respectively. When not specified,
-                       the index will be built automatically according to your aligner choice.''')
+                       help = '''Path to the bwa/chromap/minimap2 genome index. For example, if your reference genome
+                       is hg38.fa, and it is located within ~/data/hg38, then you need to specify --Index as "~/data/hg38/hg38.fa",
+                       "~/data/hg38/hg38.chromap.mmi", and "~/data/hg38/hg38.minimap2.mmi" for bwa-mem, chromap, and
+                       minimap2, respectively. When not specified, the index will be built automatically according to
+                       your aligner choice.''')
     iterM.add_argument('-t', '--threads', type = int, default = 8, help = 'Number of threads used in mapping.')
     iterM.add_argument('-O', '--outformat', default = 'SAM', choices = ['SAM', 'BAM'],
                        help = '''Output alignment format.''')
@@ -307,7 +308,9 @@ def mapping(args, commands):
         indexpath = os.path.abspath(os.path.expanduser(args.Index))
     else:
         if aligner=='minimap2':
-            indexpath = os.path.join(genomeFolder, '.'.join([genomeName, 'mmi']))
+            indexpath = os.path.join(genomeFolder, '.'.join([genomeName, 'minimap2', 'mmi']))
+        elif aligner=='chromap':
+            indexpath = os.path.join(genomeFolder, '.'.join([genomeName, 'chromap', 'mmi']))
         else:
             indexpath = os.path.join(genomeFolder, '.'.join([genomeName, 'fa']))
     
@@ -323,7 +326,7 @@ def mapping(args, commands):
         indexlock = os.path.join(genomeFolder, '.'.join([genomeName, aligner, 'lock']))
         if os.path.exists(indexlock):
             raise Exception('''Another index building process is on. Leaving''')
-        if aligner=='minimap2':
+        if aligner in ['minimap2', 'chromap']:
             icheck = glob.glob(indexpath)
         else:
             icheck = glob.glob(indexpath+'.sa')
