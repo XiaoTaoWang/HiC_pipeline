@@ -80,8 +80,6 @@ def getargs():
                        minimap2, respectively. When not specified, the index will be built automatically according to
                        your aligner choice.''')
     iterM.add_argument('-t', '--threads', type = int, default = 8, help = 'Number of threads used in mapping.')
-    iterM.add_argument('-O', '--outformat', default = 'SAM', choices = ['SAM', 'BAM'],
-                       help = '''Output alignment format.''')
     iterM.add_argument('--min-mapq', type = int, default = 1,
                        help = '''The minimal MAPQ score to consider a read as uniquely mapped.''')
     iterM.add_argument('--max-molecule-size', type = int, default = 2000,
@@ -124,8 +122,6 @@ def getargs():
     removeNoise.add_argument('--pairFolder',
                              help = '''Path to the root folder(prefixed with "pairs-") of .pairsam.gz files generated
                              during the mapping stage.''')
-    removeNoise.add_argument('--genomepath',
-                             help = '''Path to the .fa file containing reference genome data.''')
     removeNoise.add_argument('--tmpdir', default='/tmp', help='''Temporary folder for intermediate results.''')
     removeNoise.add_argument('--nproc', type = int, default = 8, help = '''Number of allocated proccesses.''')
     removeNoise.add_argument('--memory', default='8G', help = '''The amount of memory allocated for pairtools merge.''')
@@ -245,7 +241,6 @@ def run(args, commands):
                             '# Alignment Software = {0}'.format(args.aligner),
                             '# Genome Index = {0}'.format(args.Index),
                             '# Mapping Threads = {0}'.format(args.threads),
-                            '# Out Alignment Format = {0}'.format(args.outformat),
                             '# Minimal MAPQ = {0}'.format(args.min_mapq),
                             '# Maximal Molecule Size = {0}'.format(args.max_molecule_size),
                             '# Max Inter Align Gap = {0}'.format(args.max_inter_align_gap),
@@ -300,7 +295,6 @@ def mapping(args, commands):
     genomeFolder = os.path.join(args.dataFolder, args.genomeName)
     fastqDir = os.path.join(args.dataFolder, args.fastqDir)
     genomeName = args.genomeName
-    outformat = args.outformat
     aligner = args.aligner
     mFile = args.metadata
     genomepath = os.path.join(genomeFolder, '.'.join([genomeName, 'fa']))
@@ -347,8 +341,8 @@ def mapping(args, commands):
     if not os.path.exists(pairFolder):
         os.makedirs(pairFolder)
     
-    logging.log(21, 'Alignment results will be outputed in {0} under {1}'.format(outformat, bamFolder))
-    logging.log(21, '{0} files will be parsed into .pairsam format under {1}'.format(outformat, pairFolder))
+    logging.log(21, 'Alignment results will be outputed under {0}'.format(bamFolder))
+    logging.log(21, 'Original alignments will be parsed into .pairs format under {0}'.format(pairFolder))
     
     # Read Metadata
     metadata = [l.rstrip().split() for l in open(mFile, 'r') if not l.isspace()]
@@ -479,7 +473,7 @@ def mapping(args, commands):
             atexit.register(cleanFile, lockFile)
 
             # BAM/SAM
-            bampath = map_core(r1, r2, indexpath, subbamFolder, aligner, outformat, nthread=args.threads)
+            bampath = map_core(r1, r2, genomepath, indexpath, subbamFolder, aligner, nthread=args.threads, min_mapq=args.min_mapq)
             nproc_out = max(args.threads, 8)
             nproc_in = max(nproc_out // 2, 3)
             parse_bam(bampath, out, genomepath, chromsize_file, genomeName, args.min_mapq, args.max_molecule_size,

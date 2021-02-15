@@ -193,51 +193,81 @@ def buildMapIndex(aligner, genomeFolder, genomeName):
     subprocess.check_call(' '.join(build_command), shell=True)
     
 
-def map_core(fastq_1, fastq_2, ref, outdir, aligner='minimap2', outformat='SAM', 
-             nthread=1):
+def map_core(fastq_1, fastq_2, ref_fa, ref_index, outdir, aligner='minimap2', min_mapq=1, nthread=1):
 
-    outformat = '.' + outformat.lower()
+    if aligner=='chromap':
+        outformat = '.pairs'
+    else:
+        outformat = '.bam'
     # output file name
     if fastq_1.endswith('_1.fastq.gz'):
         outpath = os.path.join(outdir,
-                        os.path.split(fastq_1)[1].replace('_1.fastq.gz',outformat))
+                        os.path.split(fastq_1)[1].replace('_1.fastq.gz', outformat))
     else:
         outpath = os.path.join(outdir,
-                        os.path.split(fastq_1)[1].replace('_1.fastq',outformat))
+                        os.path.split(fastq_1)[1].replace('_1.fastq', outformat))
     
-    # ref: reference genome index
-    if aligner=='minimap2':
-        map_command = ['minimap2', '-ax', 'sr', '-t', str(nthread), ref, fastq_1, fastq_2]
-    else:
-        map_command = ['bwa', 'mem', '-SP5M', '-t', str(nthread), ref, fastq_1, fastq_2]
-    
-    if outformat=='.sam':
+    if aligner=='chromap':
+        map_command = ['chromap', '-m', '-r', ref_fa, '-x', ref_index, '-t', str(nthread), '-1', fastq_1, '-2', fastq_2,
+                       '-o', outpath, '--pairs', '--split-alignment', '-e', str(8), '-f', '500,1000', '-q', str(min_mapq)]
         bam_command = []
     else:
+        if aligner=='minimap2':
+            map_command = ['minimap2', '-ax', 'sr', '-t', str(nthread), ref_index, fastq_1, fastq_2]
+        else:
+            map_command = ['bwa', 'mem', '-SP5M', '-t', str(nthread), ref_index, fastq_1, fastq_2]
+            
         bam_command = ['samtools', 'view', '-bS', '-']
     
     pipeline = []
     try:
         # Mapping
-        pipeline.append(
-                subprocess.Popen(map_command,
-                    stdout=subprocess.PIPE if bam_command else open(outpath, 'wb'),
-                    bufsize=-1))
-        
-        if bam_command:
+        if aligner=='chromap':
+            pipeline.append(subprocess.Popen(map_command,
+                        stderr=subprocess.PIPE,
+                        bufsize=-1))
+        else:
+            pipeline.append(
+                    subprocess.Popen(map_command,
+                        stdout=subprocess.PIPE,
+                        bufsize=-1))
+
             pipeline.append(
                     subprocess.Popen(bam_command,
                         stdin=pipeline[-1].stdout,
                         stdout=open(outpath, 'wb'),
                         bufsize=-1))
+
         pipeline[-1].wait()
+
     finally:
         sleep()
         for process in pipeline:
             if process.poll() is None:
                 process.terminate()
     
-    return outpath
+    #### collect mapping statistics from stderr of chromap
+    if aligner=='chromap':
+        chromap_stderr = pipeline[-1].stderr
+        stats = _collect_chromap_stats(chromap_stderr)
+    else:
+        stats = {}
+    
+    return outpath, stats
+
+def _collect_chromap_stats(chromap_stderr):
+
+    stats = {}
+    for line in chromap_stderr:
+        tmp = line.decode().rstrip()
+        if tmp.startswith('Number of reads:'):
+            stats['000_SequencedReads'] = int(tmp.split(':')[1].strip().rstrip('.')) // 2
+        if tmp.startswith('Number of output mappings (passed filters):'):
+            stats['010_DoubleSideMappedReads'] = int(tmp.split(':')[1].strip().rstrip('.'))
+            stats['100_NormalPairs'] = stats['010_DoubleSideMappedReads']
+    
+    return stats
+
 
 def parse_bam(bam, outfile, genomepath, chromsizes, assembly, min_mapq, max_molecule_size, max_inter_align_gap,
               walks_policy, include_readid, include_sam, drop_seq, tmpdir, enzyme, nproc_in, nproc_out, memory):
