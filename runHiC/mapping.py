@@ -361,6 +361,7 @@ def parse_align(align_path, align_stats, outfile, genomepath, chromsizes, assemb
         
         os.remove(out_total)
 
+    #### step 3
     outpath_2 = outfile.replace('.pairsam.gz', '.select.samefrag.pairsam.gz')
     pipeline = []
     try:
