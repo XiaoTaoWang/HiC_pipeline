@@ -257,7 +257,9 @@ def map_core(fastq_1, fastq_2, ref_fa, ref_index, outdir, aligner='minimap2', mi
 
 def _collect_chromap_stats(chromap_stderr):
 
-    stats = {}
+    from collections import defaultdict
+
+    stats = defaultdict(int)
     for line in chromap_stderr:
         tmp = line.decode().rstrip()
         if tmp.startswith('Number of reads:'):
@@ -268,26 +270,31 @@ def _collect_chromap_stats(chromap_stderr):
     
     return stats
 
-
-def parse_bam(bam, outfile, genomepath, chromsizes, assembly, min_mapq, max_molecule_size, max_inter_align_gap,
-              walks_policy, include_readid, include_sam, drop_seq, tmpdir, enzyme, nproc_in, nproc_out, memory):
+def parse_align(align_path, align_stats, outfile, genomepath, chromsizes, assembly, min_mapq, max_molecule_size,
+              max_inter_align_gap, walks_policy, include_readid, include_sam, drop_seq, tmpdir, enzyme, nproc_in,
+              nproc_out, memory):
     
     frag_path = create_frag(genomepath, chromsizes, enzyme, tmpdir)
     out_total = outfile.replace('.pairsam.gz', '.total.pairsam.gz')
     
-    basic_command = ['pairtools', 'parse', '-c', chromsizes, '--assembly', assembly,
-                     '--min-mapq', str(min_mapq), '--max-molecule-size', str(max_molecule_size),
-                     '--max-inter-align-gap', str(max_inter_align_gap), '--walks-policy', walks_policy,
-                     '--nproc-in', str(nproc_in), '--nproc-out', str(nproc_out)]
-    if not include_readid:
-        basic_command.append('--drop-readid')
-    
-    if not include_sam:
-        basic_command.append('--drop-sam')
-    
-    if drop_seq:
-        basic_command.append('--drop-seq')
-    basic_command.append(bam)
+    #### step 1
+    if align_path.endswith('.pairs'):
+        basic_command = ['pairtools', 'flip', '-c', chromsizes, '--nproc-in', str(nproc_in),
+                         '--nproc-out', str(nproc_out), align_path]
+    else:
+        basic_command = ['pairtools', 'parse', '-c', chromsizes, '--assembly', assembly,
+                        '--min-mapq', str(min_mapq), '--max-molecule-size', str(max_molecule_size),
+                        '--max-inter-align-gap', str(max_inter_align_gap), '--walks-policy', walks_policy,
+                        '--nproc-in', str(nproc_in), '--nproc-out', str(nproc_out)]
+        if not include_readid:
+            basic_command.append('--drop-readid')
+        
+        if not include_sam:
+            basic_command.append('--drop-sam')
+        
+        if drop_seq:
+            basic_command.append('--drop-seq')
+        basic_command.append(align_path)
     
     pipeline = []
     try:
@@ -314,37 +321,45 @@ def parse_bam(bam, outfile, genomepath, chromsizes, assembly, min_mapq, max_mole
             if process.poll() is None:
                 process.terminate()
     
-    # stats at the bottom level
-    refkey = {'total':'000_SequencedReads',
-              'total_mapped':'010_DoubleSideMappedReads',
-              'total_single_sided_mapped':'020_SingleSideMappedReads',
-              'total_unmapped':'030_UnmappedReads'
-              }
-    stats = stats_pairs(out_total, refkey, nproc_in=nproc_in, nproc_out=nproc_out)
-    stats['100_NormalPairs'] = stats['010_DoubleSideMappedReads']
+    # mapping stats
+    if align_path.endswith('.pairs'):
+        stats = align_stats
+    else:
+        refkey = {'total':'000_SequencedReads',
+                'total_mapped':'010_DoubleSideMappedReads',
+                'total_single_sided_mapped':'020_SingleSideMappedReads',
+                'total_unmapped':'030_UnmappedReads'
+                }
+        stats = stats_pairs(out_total, refkey, nproc_in=nproc_in, nproc_out=nproc_out)
+        stats['100_NormalPairs'] = stats['010_DoubleSideMappedReads']
 
+    #### step 2
     outpath_1 = outfile.replace('.pairsam.gz', '.select.pairsam.gz')
-    pipeline = []
-    try:
-        select_command = ['pairtools', 'select', '--nproc-in', str(nproc_in), '--nproc-out', str(nproc_out), '-o', outpath_1,
-                          '(pair_type=="UU") or (pair_type=="UR") or (pair_type=="RU") or (pair_type=="uu")',
-                           out_total]
-        pipeline.append(
-            subprocess.Popen(select_command,
-                stdout=None,
-                bufsize=-1
+    if align_path.endswith('.pairs'):
+        mv_command = ['mv', out_total, outpath_1]
+        subprocess.check_call(' '.join(mv_command), shell=True)
+    else:
+        pipeline = []
+        try:
+            select_command = ['pairtools', 'select', '--nproc-in', str(nproc_in), '--nproc-out', str(nproc_out), '-o', outpath_1,
+                            '(pair_type=="UU") or (pair_type=="UR") or (pair_type=="RU") or (pair_type=="uu")',
+                            out_total]
+            pipeline.append(
+                subprocess.Popen(select_command,
+                    stdout=None,
+                    bufsize=-1
+                )
             )
-        )
 
-        pipeline[-1].wait()
-    
-    finally:
-        sleep()
-        for process in pipeline:
-            if process.poll() is None:
-                process.terminate()
-    
-    os.remove(out_total)
+            pipeline[-1].wait()
+        
+        finally:
+            sleep()
+            for process in pipeline:
+                if process.poll() is None:
+                    process.terminate()
+        
+        os.remove(out_total)
 
     outpath_2 = outfile.replace('.pairsam.gz', '.select.samefrag.pairsam.gz')
     pipeline = []

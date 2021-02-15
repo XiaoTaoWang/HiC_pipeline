@@ -283,7 +283,7 @@ def run(args, commands):
 
 def mapping(args, commands):
     ## Import necessary modules
-    from runHiC.mapping import splitSRA, splitSingleFastq, uncompressSRA, buildMapIndex, map_core, parse_bam
+    from runHiC.mapping import splitSRA, splitSingleFastq, uncompressSRA, buildMapIndex, map_core, parse_bam, parse_chromap
     from runHiC.utilities import cleanDirectory, cleanFile, chromsizes_from_fasta
 
     # customize temporary dir
@@ -473,12 +473,15 @@ def mapping(args, commands):
             atexit.register(cleanFile, lockFile)
 
             # BAM/SAM
-            bampath = map_core(r1, r2, genomepath, indexpath, subbamFolder, aligner, nthread=args.threads, min_mapq=args.min_mapq)
+            align_path = map_core(r1, r2, genomepath, indexpath, subbamFolder, aligner, nthread=args.threads, min_mapq=args.min_mapq)
             nproc_out = max(args.threads, 8)
             nproc_in = max(nproc_out // 2, 3)
-            parse_bam(bampath, out, genomepath, chromsize_file, genomeName, args.min_mapq, args.max_molecule_size,
-                      args.max_inter_align_gap, args.walks_policy, args.include_readid, args.include_sam,
-                      args.drop_seq, tmpdir, enzyme, nproc_in, nproc_out, args.memory) # self-ligation / dangling detection, reduce computing burden in filtering
+            if aligner=='chromap':
+                parse_chromap()
+            else:
+                parse_bam(align_path, out, genomepath, chromsize_file, genomeName, args.min_mapq, args.max_molecule_size,
+                        args.max_inter_align_gap, args.walks_policy, args.include_readid, args.include_sam,
+                        args.drop_seq, tmpdir, enzyme, nproc_in, nproc_out, args.memory)
 
             completed = open(Indicator, 'wb')
             completed.close()
