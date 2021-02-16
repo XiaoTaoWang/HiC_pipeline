@@ -105,6 +105,16 @@ def chromsizes_from_pairs(pairpath):
     
     return outpath, genomeName
 
+def extract_chrom_sizes(fil):
+
+    chromsizes = []
+    with open(fil, 'r') as source:
+        for line in source:
+            tmp = line.rstrip().split()
+            chromsizes.append((tmp[0], int(tmp[1])))
+    
+    return chromsizes
+
 def digest(fasta_records, enzyme):
     """
     Divide a genome into restriction fragments. Support Arima-HiC enzyme cocktail
