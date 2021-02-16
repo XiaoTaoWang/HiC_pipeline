@@ -23,13 +23,13 @@ def merge_pairs(pair_paths, outpath, tmpdir, nproc_in, nproc_out, memory):
 
         subprocess.check_call(' '.join(merge_command), shell=True)
 
-def dedup(out_total, outpath, stats, nproc_in, nproc_out):
+def dedup(out_total, outpath, out_dedup_stats, stats, nproc_in, nproc_out):
 
     pipeline = []
     try:
         dedup_command = ['pairtools', 'dedup', '--max-mismatch', '1', '--method', 'max',
                          '--nproc-in', str(nproc_in), '--nproc-out', str(nproc_out),
-                         '-o', outpath, out_total]
+                         '-o', outpath, '--output-stats', out_dedup_stats, out_total]
         pipeline.append(
             subprocess.Popen(dedup_command,
                 stdout=None,
@@ -49,7 +49,7 @@ def dedup(out_total, outpath, stats, nproc_in, nproc_out):
               'cis_20kb+':'412_IntraLongRangeReads(>=20Kb)',
               'total_nodups':'total_nodups'}
     
-    substats = stats_pairs(outpath, refkey, matchpre=['dist_freq'], nproc_in=nproc_in, nproc_out=nproc_out)
+    substats = stats_pairs(out_dedup_stats, refkey, matchpre=['dist_freq'], nproc_in=nproc_in, nproc_out=nproc_out)
     stats['130_DuplicateRemoved'] = stats['110_AfterFilteringReads'] - substats['total_nodups']
     stats['110_AfterFilteringReads'] = substats['total_nodups']
     stats['400_TotalContacts'] = stats['110_AfterFilteringReads']
@@ -74,20 +74,15 @@ def collect_stats(pair_paths):
 
 def stats_pairs(inpath, refkey, matchpre=[], nproc_in=3, nproc_out=8):
     
-    stat_command = ['pairtools', 'stats', '--nproc-in', str(nproc_in), '--nproc-out', str(nproc_out), inpath]
-    pipe = subprocess.Popen(stat_command, stdout=subprocess.PIPE)
-    inStream = pipe.stdout
     stats = defaultdict(int)
-    for line in inStream:
-        parse = line.decode().rstrip().split()
+    for line in open(inpath, 'r'):
+        parse = line.rstrip().split()
         key, value = parse[0], parse[1]
         if key in refkey:
             stats[refkey[key]] = int(value)
         for pre in matchpre:
             if key.startswith(pre):
                 stats[key] = int(value)
-    
-    pipe.communicate()
     
     return stats
 

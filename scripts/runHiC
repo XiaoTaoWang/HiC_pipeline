@@ -575,7 +575,8 @@ def filtering(args, commands):
         merge_pairs(inFiles, intermediate, tmpdir, nproc_in, nproc_out, args.memory)
         stats = collect_stats(inFiles)['pseudo']
         logging.log(21, '{0}: removing PCR duplicates ...'.format(SRR))
-        dedup(intermediate, poolName, stats, nproc_in, nproc_out) # remove PCR duplicates
+        out_dedup_stats = os.path.join(subFilter, SRR + '.dedup.stats')
+        dedup(intermediate, poolName, out_dedup_stats, stats, nproc_in, nproc_out) # remove PCR duplicates
         outStatsCache({'pseudo': stats}, poolName.replace('.pairsam.gz', '.pstats'))
         
         logging.log(21, '{0}: Done'.format(SRR))
