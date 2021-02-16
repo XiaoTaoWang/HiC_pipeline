@@ -2,11 +2,13 @@
 
 # Author: XiaoTao Wang
 
-import os, subprocess, atexit
-from runHiC.utilities import cleanFile, sleep
+import os, subprocess, sys, io
+from runHiC.utilities import cleanFile, sleep, extract_chrom_sizes
 from runHiC.filtering import create_frag, stats_pairs, stats_samfrag
 from runHiC.quality import outStatsCache
+from pairtools import _fileio, _headerops
 
+##### functions handling with sequencing reads
 def commandExists(command):
     "Check if the bash command exists"
     command = command.split()[0]
@@ -168,6 +170,7 @@ def splitSingleFastq(filename, pre, pair_index, folder, splitBy=4000000):
         
     return counters
 
+##### functions that invoke different read aligners
 def buildMapIndex(aligner, genomeFolder, genomeName):
     """
     Build bwa/chromap/minimap2 index files.
@@ -176,9 +179,7 @@ def buildMapIndex(aligner, genomeFolder, genomeName):
     # Aquire lock
     lock = open(lockFile, 'wb')
     lock.close()
-
-    atexit.register(cleanFile, lockFile)
-
+    
     wholeGenome = os.path.join(genomeFolder, '.'.join([genomeName, 'fa']))
 
     if aligner=='minimap2':
@@ -191,8 +192,9 @@ def buildMapIndex(aligner, genomeFolder, genomeName):
         build_command = ['bwa', 'index', wholeGenome]
     
     subprocess.check_call(' '.join(build_command), shell=True)
-    
 
+    cleanFile(lockFile)
+    
 def map_core(fastq_1, fastq_2, ref_fa, ref_index, outdir, aligner='minimap2', min_mapq=1, nthread=1):
 
     if aligner=='chromap':
@@ -270,6 +272,67 @@ def _collect_chromap_stats(chromap_stderr):
     
     return stats
 
+
+##### functions used for parsing/sorting/filtering original alignments
+def has_correct_order(loci1, loci2, chrom_index):
+    
+    check = (chrom_index[loci1[0]], loci1[1]) <= (chrom_index[loci2[0]], loci2[1])
+
+    return check
+
+def _pairs_write(outstream, line, chrom_index):
+
+    parse = line.rstrip().split()
+    if not len(parse):
+        return
+    
+    readID, c1, p1, c2, p2, strand1, strand2, pair_type = parse[:8]
+    p1, p2 = int(p1), int(p2)
+    loci1 = (c1, p1)
+    loci2 = (c2, p2)
+    if not has_correct_order(loci1, loci2, chrom_index):
+        loci1, loci2 = loci2, loci1
+    
+    cols = [readID, loci1[0], str(loci1[1]), loci2[0], str(loci2[1]), strand1, strand2, pair_type]
+    outstream.write('\t'.join(cols) + '\n')
+
+
+def flip_sort_chromap(align_path, out_total, chrom_path, assembly, nproc_in, nproc_out, memory, tmpdir):
+    """
+    Customized function to flip/sort original pairs outputed by chromap.
+    """
+    instream = _fileio.auto_open(align_path, mode='r', nproc=nproc_in, command=None)
+    outstream = _fileio.auto_open(out_total, mode='w', nproc=nproc_out, command=None)
+    chromsizes = extract_chrom_sizes(chrom_path)
+    chrom_index = dict(_headerops.get_chrom_order(chrom_path))
+
+    # writer header, chromosome sizes must be in correct order
+    header = _headerops.make_standard_pairsheader(
+        assembly=assembly, chromsizes=chromsizes,
+        columns=['readID', 'chrom1', 'pos1', 'chrom2', 'pos2', 'strand1', 'strand2', 'pair_type'],
+        shape='upper triangle'
+    )
+    outstream.writelines((l+'\n' for l in header))
+    outstream.flush()
+
+    _, body_stream = _headerops.get_header(instream)
+    # sort command
+    command = r'''/bin/bash -c 'export LC_COLLATE=C; export LANG=C; sort -k 2,2 -k 4,4 -k 3,3n -k 5,5n --stable {0} {1} -S {2} {3}'''.format(
+        '--parallel={0}'.format(nproc_out), '--temporary-directory={0}'.format(tmpdir), memory,'--compress-program=lz4c'
+    )
+    command += "'"
+
+    with subprocess.Popen(command, stdin=subprocess.PIPE, bufsize=-1, shell=True, stdout=outstream) as process:
+        stdin_wrapper = io.TextIOWrapper(process.stdin, 'utf-8')
+        for line in body_stream:
+            _pairs_write(stdin_wrapper, line, chrom_index)
+        
+        stdin_wrapper.flush()
+        process.communicate()
+    
+    instream.close()
+    outstream.close()
+
 def parse_align(align_path, align_stats, outfile, genomepath, chromsizes, assembly, min_mapq, max_molecule_size,
               max_inter_align_gap, walks_policy, include_readid, include_sam, drop_seq, tmpdir, enzyme, nproc_in,
               nproc_out, memory):
@@ -279,8 +342,7 @@ def parse_align(align_path, align_stats, outfile, genomepath, chromsizes, assemb
     
     #### step 1
     if align_path.endswith('.pairs'):
-        basic_command = ['pairtools', 'flip', '-c', chromsizes, '--nproc-in', str(nproc_in),
-                         '--nproc-out', str(nproc_out), align_path]
+        flip_sort_chromap(align_path, out_total, chromsizes, assembly, nproc_in, nproc_out, memory, tmpdir)
     else:
         basic_command = ['pairtools', 'parse', '-c', chromsizes, '--assembly', assembly,
                         '--min-mapq', str(min_mapq), '--max-molecule-size', str(max_molecule_size),
@@ -296,30 +358,30 @@ def parse_align(align_path, align_stats, outfile, genomepath, chromsizes, assemb
             basic_command.append('--drop-seq')
         basic_command.append(align_path)
     
-    pipeline = []
-    try:
-        pipeline.append(
-            subprocess.Popen(basic_command,
-                stdout=subprocess.PIPE,
-                bufsize=-1)
-        )
+        pipeline = []
+        try:
+            pipeline.append(
+                subprocess.Popen(basic_command,
+                    stdout=subprocess.PIPE,
+                    bufsize=-1)
+            )
 
-        sort_command = ['pairtools', 'sort', '-o', out_total, '--nproc', str(nproc_out), '--memory', memory, '--tmpdir', tmpdir,
-                        '--nproc-in', str(nproc_in), '--nproc-out', str(nproc_out)]
-        pipeline.append(
-            subprocess.Popen(sort_command,
-                stdin=pipeline[-1].stdout,
-                stdout=None,
-                bufsize=-1)
-        )
+            sort_command = ['pairtools', 'sort', '-o', out_total, '--nproc', str(nproc_out), '--memory', memory, '--tmpdir', tmpdir,
+                            '--nproc-in', str(nproc_in), '--nproc-out', str(nproc_out)]
+            pipeline.append(
+                subprocess.Popen(sort_command,
+                    stdin=pipeline[-1].stdout,
+                    stdout=None,
+                    bufsize=-1)
+            )
 
-        pipeline[-1].wait()
+            pipeline[-1].wait()
 
-    finally:
-        sleep()
-        for process in pipeline:
-            if process.poll() is None:
-                process.terminate()
+        finally:
+            sleep()
+            for process in pipeline:
+                if process.poll() is None:
+                    process.terminate()
     
     # mapping stats
     if align_path.endswith('.pairs'):
