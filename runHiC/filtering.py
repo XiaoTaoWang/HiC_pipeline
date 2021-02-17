@@ -57,8 +57,6 @@ def dedup(out_total, outpath, out_dedup_stats, stats, nproc_in, nproc_out):
     stats['412_IntraShortRangeReads(<20Kb)'] = stats['410_IntraChromosomalReads'] - stats['412_IntraLongRangeReads(>=20Kb)']
     del stats['total_nodups']
 
-    os.remove(out_dedup_stats)
-
 
 def collect_stats(pair_paths):
 
