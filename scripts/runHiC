@@ -282,7 +282,7 @@ def run(args, commands):
 def mapping(args, commands):
     ## Import necessary modules
     from runHiC.mapping import splitSRA, splitSingleFastq, uncompressSRA, buildMapIndex, map_core, parse_align
-    from runHiC.utilities import cleanDirectory, cleanFile, chromsizes_from_fasta
+    from runHiC.utilities import cleanDirectory, cleanFile, chromsizes_from_fasta, reorder_chromosomes_in_fasta
 
     # customize temporary dir
     tmpdir = os.path.abspath(os.path.expanduser(args.tmpdir))
@@ -302,7 +302,7 @@ def mapping(args, commands):
         if aligner=='minimap2':
             indexpath = os.path.join(genomeFolder, '.'.join([genomeName, 'minimap2', 'mmi']))
         elif aligner=='chromap':
-            indexpath = os.path.join(genomeFolder, '.'.join([genomeName, 'chromap', 'mmi']))
+            indexpath = os.path.join(genomeFolder, '.'.join([genomeName, 'chromap-runhic', 'mmi']))
         else:
             indexpath = os.path.join(genomeFolder, '.'.join([genomeName, 'fa']))
     
@@ -326,6 +326,8 @@ def mapping(args, commands):
             logging.log(21, 'Set --Index to {0}'.format(indexpath))
         else:
             logging.log(21, '''Index files can not be found. Start to generate them ...''')
+            if aligner=='chromap':
+                reorder_chromosomes_in_fasta(genomepath, chromsize_file, tmpdir)
             buildMapIndex(aligner, genomeFolder, genomeName)
             logging.log(21, 'Done')
     
