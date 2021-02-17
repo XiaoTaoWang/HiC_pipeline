@@ -339,7 +339,6 @@ def parse_align(align_path, align_stats, outfile, genomepath, chromsizes, assemb
     
     frag_path = create_frag(genomepath, chromsizes, enzyme, tmpdir)
     out_total = outfile.replace('.pairsam.gz', '.total.pairsam.gz')
-    total_stats = outfile.replace('.pairsam.gz', '.total.stats')
     
     #### step 1
     if align_path.endswith('.pairs'):
@@ -348,7 +347,7 @@ def parse_align(align_path, align_stats, outfile, genomepath, chromsizes, assemb
         basic_command = ['pairtools', 'parse', '-c', chromsizes, '--assembly', assembly,
                         '--min-mapq', str(min_mapq), '--max-molecule-size', str(max_molecule_size),
                         '--max-inter-align-gap', str(max_inter_align_gap), '--walks-policy', walks_policy,
-                        '--nproc-in', str(nproc_in), '--nproc-out', str(nproc_out), '--output-stats', total_stats]
+                        '--nproc-in', str(nproc_in), '--nproc-out', str(nproc_out)]
         if not include_readid:
             basic_command.append('--drop-readid')
         
@@ -393,9 +392,8 @@ def parse_align(align_path, align_stats, outfile, genomepath, chromsizes, assemb
                 'total_single_sided_mapped':'020_SingleSideMappedReads',
                 'total_unmapped':'030_UnmappedReads'
                 }
-        stats = stats_pairs(total_stats, refkey, nproc_in=nproc_in, nproc_out=nproc_out)
+        stats = stats_pairs(out_total, refkey, nproc_in=nproc_in, nproc_out=nproc_out)
         stats['100_NormalPairs'] = stats['010_DoubleSideMappedReads']
-        os.remove(total_stats)
 
     #### step 2
     outpath_1 = outfile.replace('.pairsam.gz', '.select.pairsam.gz')
