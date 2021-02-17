@@ -46,31 +46,29 @@ def getargs():
                                       dest = 'subcommand')
     ## Iterative Mapping
     iterM = subparser.add_parser('mapping',
-                                 help = '''Map raw pair-end sequencing data to a supplied
+                                 help = '''Map raw pair-end sequencing reads to a supplied
                                  genome. It works well with .sra, .fastq, and .fastq.gz formats.
-                                 And you can specify either bwa-mem (<=100bp) or minimap2 (>100bp)
-                                 as the underlying aligner. After mapping has been done, it will
-                                 utilize pairtools to parse SAM/BAM files, detect ligation
-                                 junctions, and output .pairsam format files which comply with
-                                 4DN standards.''',
+                                 pairtools is used to parse original alignments, detect ligation
+                                 junctions, and output a valid 4DN pairs file (.pairsam).
+                                 ''',
                                  formatter_class = argparse.ArgumentDefaultsHelpFormatter)
     iterM.add_argument('-m', '--metadata', default = 'datasets.tsv',
                        help = '''Metadata file describing each SRA/FASTQ file. You should place
                        it under current working directory. Four columns are required: prefix
-                       of SRA/FASTQ file name, cell line name, biological replicate label, and
+                       of SRA/FASTQ file name, cell line/sample name, biological replicate label, and
                        restriction enzyme name.''')
     iterM.add_argument('-p', '--dataFolder',
-                       help = '''Path to the root data folder. Both sequencing and reference genome
-                       data should be placed under this folder.''')
+                       help = '''Path to the root data folder. Both sequencing reads and reference genome
+                       should be placed under this folder.''')
     iterM.add_argument('-g', '--genomeName',
-                       help = '''Name of the folder containing reference genome data.''')
+                       help = '''Name of the folder containing the reference genome fasta file.''')
     iterM.add_argument('-C', '--chromsizes-file',
-                       help = '''Path to the file containing chromosome size information. Both absoulte and
-                       relative path are supported. If not specified, we will try to generate one according
-                       to your fasta genome data.''')
-    iterM.add_argument('-f', '--fastqDir', help = 'Name of the folder containing sequencing data.')
+                       help = '''Path to the file containing the chromosome size information. The order of the chromosomes
+                       in this file determines the chromosome order in the outputed .pairs and .mcool files. If not specified,
+                       we will try to generate one according to the reference genome.''')
+    iterM.add_argument('-f', '--fastqDir', help = 'Name of the folder containing sequencing reads.')
     iterM.add_argument('-F', '--Format', default = 'SRA', choices = ['SRA', 'FASTQ'],
-                       help = 'Format of the sequencing data.')
+                       help = 'Format of the sequencing reads.')
     iterM.add_argument('-A', '--aligner', default = 'bwa-mem', choices = ['bwa-mem', 'chromap', 'minimap2'],
                        help = '''Name of the sequence alignment software to invoke.''')
     iterM.add_argument('-i', '--Index',
@@ -79,7 +77,7 @@ def getargs():
                        "~/data/hg38/hg38.chromap.mmi", and "~/data/hg38/hg38.minimap2.mmi" for bwa-mem, chromap, and
                        minimap2, respectively. When not specified, the index will be built automatically according to
                        your aligner choice.''')
-    iterM.add_argument('-t', '--threads', type = int, default = 8, help = 'Number of threads used in mapping.')
+    iterM.add_argument('-t', '--threads', type = int, default = 8, help = 'Number of threads.')
     iterM.add_argument('--min-mapq', type = int, default = 1,
                        help = '''The minimal MAPQ score to consider a read as uniquely mapped.''')
     iterM.add_argument('--max-molecule-size', type = int, default = 2000,
@@ -90,11 +88,11 @@ def getargs():
     iterM.add_argument('--walks-policy', default = 'all', choices = ['mask', '5any', '5unique', '3any', '3unique', 'all'],
                        help = '''The policy used by pairtools to report unrescuable walks.''')
     iterM.add_argument('--include-readid', action = 'store_true',
-                       help = '''If specified, add read IDs in final .pairsam files.''')
+                       help = '''If specified, add read IDs to the outputed .pairsam files.''')
     iterM.add_argument('--include-sam', action = 'store_true',
-                       help = '''If specified, add sam columns in final .pairsam files.''')
+                       help = '''If specified, add sam columns to the outputed .pairsam files.''')
     iterM.add_argument('--drop-seq', action = 'store_true',
-                       help = '''If specified, exclude SEQ and QUAL from the sam fields in final .pairsam files.''')
+                       help = '''If specified, exclude SEQ and QUAL from the sam fields in the outputed .pairsam files.''')
     iterM.add_argument('--memory', default='8G', help = '''The amount of memory allocated for pairtools sort.''')
     iterM.add_argument('--chunkSize', type = int, help = '''On a low-memory machine, it's better
                        to split the raw read file into chunks and map them separatively. This

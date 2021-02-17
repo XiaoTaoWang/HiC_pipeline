@@ -61,7 +61,6 @@ def sort_chromlabels(chrnames):
 
     return sorted_names
 
-
 def chromsizes_from_fasta(genomeFolder, genomeName):
 
     from Bio import SeqIO

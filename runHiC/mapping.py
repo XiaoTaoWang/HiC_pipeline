@@ -342,7 +342,7 @@ def parse_align(align_path, align_stats, outfile, genomepath, chromsizes, assemb
     
     #### step 1
     if align_path.endswith('.pairs'):
-        flip_sort_chromap(align_path, out_total, chromsizes, assembly, nproc_in, nproc_out, memory, tmpdir)
+        #flip_sort_chromap(align_path, out_total, chromsizes, assembly, nproc_in, nproc_out, memory, tmpdir)
     else:
         basic_command = ['pairtools', 'parse', '-c', chromsizes, '--assembly', assembly,
                         '--min-mapq', str(min_mapq), '--max-molecule-size', str(max_molecule_size),
