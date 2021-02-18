@@ -250,6 +250,7 @@ def run(args, commands):
                             '# Include Read ID = {0}'.format(args.include_readid),
                             '# Include Sam = {0}'.format(args.include_sam),
                             '# Drop SEQ and QUAL = {0}'.format(args.drop_seq),
+                            '# Add Restriction Fragment = {0}'.format(args.add_frag),
                             '# Memory for sort = {0}'.format(args.memory),
                             '# Chunk size = {0}'.format(args.chunkSize),
                             '# Temporary Dir = {0}'.format(args.tmpdir)

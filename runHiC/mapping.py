@@ -300,7 +300,7 @@ def parse_chromap(align_path, out_total, chrom_path, assembly, nproc_in, nproc_o
 
 def parse_align(align_path, align_stats, outfile, genomepath, chromsizes, assembly, min_mapq, max_molecule_size,
               max_inter_align_gap, walks_policy, include_readid, include_sam, drop_seq, tmpdir, enzyme, nproc_in,
-              nproc_out, memory):
+              nproc_out, memory, add_frag):
     
     frag_path = create_frag(genomepath, chromsizes, enzyme, tmpdir)
     out_total = outfile.replace('.pairsam.gz', '.total.pairsam.gz')
@@ -389,43 +389,46 @@ def parse_align(align_path, align_stats, outfile, genomepath, chromsizes, assemb
         os.remove(out_total)
 
     #### step 3
-    outpath_2 = outfile.replace('.pairsam.gz', '.select.samefrag.pairsam.gz')
-    pipeline = []
-    try:
-        # assign fragment
-        restrict_command = ['pairtools', 'restrict', '-f', frag_path, '--nproc-in', str(nproc_in), '--nproc-out', str(nproc_out), outpath_1]
-        pipeline.append(
-            subprocess.Popen(restrict_command,
-                stdout=subprocess.PIPE,
-                bufsize=-1)
-        )
+    if add_frag:
+        outpath_2 = outfile.replace('.pairsam.gz', '.select.samefrag.pairsam.gz')
+        pipeline = []
+        try:
+            # assign fragment
+            restrict_command = ['pairtools', 'restrict', '-f', frag_path, '--nproc-in', str(nproc_in), '--nproc-out', str(nproc_out), outpath_1]
+            pipeline.append(
+                subprocess.Popen(restrict_command,
+                    stdout=subprocess.PIPE,
+                    bufsize=-1)
+            )
 
-        ####### COLS[-6]==COLS[-3], the index may change to follow pairtools
-        select_command = ['pairtools', 'select', '--nproc-in', str(nproc_in), '--nproc-out', str(nproc_out),
-                          '--output-rest', outfile, '-o', outpath_2,
-                          '(COLS[-6]==COLS[-3]) and (chrom1==chrom2)']
-        pipeline.append(
-            subprocess.Popen(select_command,
-                stdin=pipeline[-1].stdout,
-                stdout=None,
-                bufsize=-1)
-        )
+            ####### COLS[-6]==COLS[-3], the index may change to follow pairtools
+            select_command = ['pairtools', 'select', '--nproc-in', str(nproc_in), '--nproc-out', str(nproc_out),
+                            '--output-rest', outfile, '-o', outpath_2,
+                            '(COLS[-6]==COLS[-3]) and (chrom1==chrom2)']
+            pipeline.append(
+                subprocess.Popen(select_command,
+                    stdin=pipeline[-1].stdout,
+                    stdout=None,
+                    bufsize=-1)
+            )
 
-        pipeline[-1].wait()
-    finally:
-        sleep()
-        for process in pipeline:
-            if process.poll() is None:
-                process.terminate()
-    
-    os.remove(outpath_1)
+            pipeline[-1].wait()
+        finally:
+            sleep()
+            for process in pipeline:
+                if process.poll() is None:
+                    process.terminate()
+        
+        os.remove(outpath_1)
 
-    substats, libsize = stats_samfrag(outpath_2)
-    stats['110_AfterFilteringReads'] = stats['100_NormalPairs'] - substats['120_SameFragmentReads']
-    stats['400_TotalContacts'] = stats['110_AfterFilteringReads']
-    stats.update(substats)
-
-    stats['libsize'] = libsize
+        substats, libsize = stats_samfrag(outpath_2)
+        stats['110_AfterFilteringReads'] = stats['100_NormalPairs'] - substats['120_SameFragmentReads']
+        stats['400_TotalContacts'] = stats['110_AfterFilteringReads']
+        stats.update(substats)
+        stats['libsize'] = libsize
+    else:
+        stats['110_AfterFilteringReads'] = stats['100_NormalPairs']
+        stats['400_TotalContacts'] = stats['110_AfterFilteringReads']
 
     stats_pool = {'pseudo': stats}
     stats_pre = outfile.replace('.pairsam.gz', '.pstats') # pickled stats
