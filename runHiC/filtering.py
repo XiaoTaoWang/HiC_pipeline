@@ -167,8 +167,9 @@ def merge_stats(stats_pool, keys, outkey, sample_size=100000):
             else:
                 stats_pool[outkey][i] = np.r_[stats_pool[outkey][i], stats_pool[k][i]]
     
-    np.random.shuffle(stats_pool[outkey]['libsize'])
-    stats_pool[outkey]['libsize'] = stats_pool[outkey]['libsize'][:sample_size] # limit sample size
+    if 'libsize' in stats_pool[outkey]:
+        np.random.shuffle(stats_pool[outkey]['libsize'])
+        stats_pool[outkey]['libsize'] = stats_pool[outkey]['libsize'][:sample_size] # limit sample size
     
 def enzyme_level(pair_paths, outpre, keys, outkey, stats_pool, tmpdir, nproc_in, nproc_out, memory):
 

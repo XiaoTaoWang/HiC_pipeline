@@ -507,7 +507,6 @@ def filtering(args, commands):
     if not os.path.exists(tmpdir):
         os.makedirs(tmpdir)
 
-    ## Validity of arguments
     Sources = os.path.abspath(os.path.expanduser(args.pairFolder))
     mFile = args.metadata
     

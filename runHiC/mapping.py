@@ -427,6 +427,8 @@ def parse_align(align_path, align_stats, outfile, genomepath, chromsizes, assemb
         stats.update(substats)
         stats['libsize'] = libsize
     else:
+        mv_command = ['mv', outpath_1, outfile]
+        subprocess.check_call(' '.join(mv_command), shell=True)
         stats['110_AfterFilteringReads'] = stats['100_NormalPairs']
         stats['400_TotalContacts'] = stats['110_AfterFilteringReads']
 
