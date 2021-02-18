@@ -2,7 +2,7 @@
 
 # Author: XiaoTao Wang
 
-import os, subprocess, sys, io
+import os, subprocess
 from runHiC.utilities import cleanFile, sleep, extract_chrom_sizes
 from runHiC.filtering import create_frag, stats_pairs, stats_samfrag
 from runHiC.quality import outStatsCache
@@ -274,37 +274,13 @@ def _collect_chromap_stats(chromap_stderr):
 
 
 ##### functions used for parsing/sorting/filtering original alignments
-def has_correct_order(loci1, loci2, chrom_index):
-    
-    check = (chrom_index[loci1[0]], loci1[1]) <= (chrom_index[loci2[0]], loci2[1])
-
-    return check
-
-def _pairs_write(outstream, line, chrom_index):
-
-    parse = line.rstrip().split()
-    if not len(parse):
-        return
-    
-    readID, c1, p1, c2, p2, strand1, strand2, pair_type = parse[:8]
-    p1, p2 = int(p1), int(p2)
-    loci1 = (c1, p1)
-    loci2 = (c2, p2)
-    if not has_correct_order(loci1, loci2, chrom_index):
-        loci1, loci2 = loci2, loci1
-    
-    cols = [readID, loci1[0], str(loci1[1]), loci2[0], str(loci2[1]), strand1, strand2, pair_type]
-    outstream.write('\t'.join(cols) + '\n')
-
-
-def flip_sort_chromap(align_path, out_total, chrom_path, assembly, nproc_in, nproc_out, memory, tmpdir):
+def parse_chromap(align_path, out_total, chrom_path, assembly, nproc_in, nproc_out):
     """
     Customized function to flip/sort original pairs outputed by chromap.
     """
     instream = _fileio.auto_open(align_path, mode='r', nproc=nproc_in, command=None)
     outstream = _fileio.auto_open(out_total, mode='w', nproc=nproc_out, command=None)
     chromsizes = extract_chrom_sizes(chrom_path)
-    chrom_index = dict(_headerops.get_chrom_order(chrom_path))
 
     # writer header, chromosome sizes must be in correct order
     header = _headerops.make_standard_pairsheader(
@@ -316,19 +292,8 @@ def flip_sort_chromap(align_path, out_total, chrom_path, assembly, nproc_in, npr
     outstream.flush()
 
     _, body_stream = _headerops.get_header(instream)
-    # sort command
-    command = r'''/bin/bash -c 'export LC_COLLATE=C; export LANG=C; sort -k 2,2 -k 4,4 -k 3,3n -k 5,5n --stable {0} {1} -S {2} {3}'''.format(
-        '--parallel={0}'.format(nproc_out), '--temporary-directory={0}'.format(tmpdir), memory,'--compress-program=lz4c'
-    )
-    command += "'"
-
-    with subprocess.Popen(command, stdin=subprocess.PIPE, bufsize=-1, shell=True, stdout=outstream) as process:
-        stdin_wrapper = io.TextIOWrapper(process.stdin, 'utf-8')
-        for line in body_stream:
-            _pairs_write(stdin_wrapper, line, chrom_index)
-        
-        stdin_wrapper.flush()
-        process.communicate()
+    for line in body_stream:
+        outstream.write(line)
     
     instream.close()
     outstream.close()
@@ -342,7 +307,7 @@ def parse_align(align_path, align_stats, outfile, genomepath, chromsizes, assemb
     
     #### step 1
     if align_path.endswith('.pairs'):
-        flip_sort_chromap(align_path, out_total, chromsizes, assembly, nproc_in, nproc_out, memory, tmpdir)
+        parse_chromap(align_path, out_total, chromsizes, assembly, nproc_in, nproc_out)
     else:
         basic_command = ['pairtools', 'parse', '-c', chromsizes, '--assembly', assembly,
                         '--min-mapq', str(min_mapq), '--max-molecule-size', str(max_molecule_size),

@@ -93,6 +93,10 @@ def getargs():
                        help = '''If specified, add sam columns to the outputed .pairsam files.''')
     iterM.add_argument('--drop-seq', action = 'store_true',
                        help = '''If specified, exclude SEQ and QUAL from the sam fields in the outputed .pairsam files.''')
+    iterM.add_argument('--add-frag', action = 'store_true',
+                       help = '''If specified, add the restriction fragment information to each pair.
+                       This information will be used to filter out reads that were mapped to the same fragment, including
+                       self-ligation reads and dangling reads.''')
     iterM.add_argument('--memory', default='8G', help = '''The amount of memory allocated for pairtools sort.''')
     iterM.add_argument('--chunkSize', type = int, help = '''On a low-memory machine, it's better
                        to split the raw read file into chunks and map them separatively. This
