@@ -56,13 +56,14 @@ def printStats(stats, saveTo):
     
     Total = stats['000_SequencedReads']
     DUreads = stats['010_DoubleSideMappedReads']
-    selfLig = stats['122_SelfLigationReads']
-    dangling = stats['124_DanglingReads']
     Uratio = float(DUreads) / Total
-    Fratio = float(selfLig) / Total
-    Dratio = float(dangling) / Total
     usage = float(contacts) / Total
     longRatio = float(longrange) / contacts
+    if '120_SameFragmentReads' in stats:
+        selfLig = stats['122_SelfLigationReads']
+        dangling = stats['124_DanglingReads']
+        Fratio = float(selfLig) / Total
+        Dratio = float(dangling) / Total
 
     # Tree-like print
     with open(saveTo, 'w') as myfile:
@@ -77,8 +78,9 @@ def printStats(stats, saveTo):
             myfile.write('\n')
         myfile.write('\nCritical Indicators:\n')
         myfile.write('Double Unique Mapped Ratio = {0} / {1} = {2:.4f}\n'.format(DUreads, Total, Uratio))
-        myfile.write('Self-Ligation Ratio = {0} / {1} = {2:.4f}\n'.format(selfLig, Total, Fratio))
-        myfile.write('Dangling-Reads Ratio = {0} / {1} = {2:.4f}\n'.format(dangling, Total, Dratio))
+        if '120_SameFragmentReads' in stats:
+            myfile.write('Self-Ligation Ratio = {0} / {1} = {2:.4f}\n'.format(selfLig, Total, Fratio))
+            myfile.write('Dangling-Reads Ratio = {0} / {1} = {2:.4f}\n'.format(dangling, Total, Dratio))
         myfile.write('Long-Range Ratio = {0} / {1} = {2:.4f}\n'.format(longrange, contacts, longRatio))
         myfile.write('Data Usage = {0} / {1} = {2:.4f}\n'.format(contacts, Total, usage))
 
@@ -176,18 +178,23 @@ def plot_piechart(stats, outplot, dpi = 300):
     double = stats['010_DoubleSideMappedReads']
     unmapped = total - double
     pcr = stats['130_DuplicateRemoved']
-    samefrag = stats['120_SameFragmentReads']
     intra = stats['410_IntraChromosomalReads']
     inter = stats['420_InterChromosomalReads']
+    if '120_SameFragmentReads' in stats:
+        samefrag = stats['120_SameFragmentReads']
+        counts = [unmapped, pcr, samefrag, intra, inter][::-1]
+        colors = ['#6391cf', '#cc4f57', '#a1ca54', '#8f6bb5', '#66bfd1'][::-1]
+        labels = ['Unmapped/Single mapped', 'PCR duplicates', 'Self-ligation/Dangling reads',
+                  'Intra contacts', 'Inter contacts'][::-1]
+        ratios = [c/sum(counts) for c in counts]
+    else:
+        counts = [unmapped, pcr, intra, inter][::-1]
+        colors = ['#6391cf', '#cc4f57', '#8f6bb5', '#66bfd1'][::-1]
+        labels = ['Unmapped/Single mapped', 'PCR duplicates', 'Intra contacts', 'Inter contacts'][::-1]
+        ratios = [c/sum(counts) for c in counts]
 
     fig = plt.figure(figsize=(4,4))
     ax = fig.add_subplot(111)
-    counts = [unmapped, pcr, samefrag, intra, inter][::-1]
-    colors = ['#6391cf', '#cc4f57', '#a1ca54', '#8f6bb5', '#66bfd1'][::-1]
-    labels = ['Unmapped/Single mapped', 'PCR duplicates', 'Self-ligation/Dangling reads',
-              'Intra contacts', 'Inter contacts'][::-1]
-    ratios = [c/sum(counts) for c in counts]
-
     patches, texts, autotexts = ax.pie(counts, colors = colors, autopct='%1.0f%%',
                                    startangle=90, labeldistance=1.03, pctdistance=0.6)
     for w in patches:

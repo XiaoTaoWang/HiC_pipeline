@@ -781,10 +781,11 @@ def quality(args, commands):
         outFig = os.path.join(locator, '{0}-{1}-{2}-PairType.png'.format(*rep))
         typePlot(stats, outFig, dpi = 300)
         logging.log(21, 'Done')
-        logging.log(21, 'Estimate library size with dangling reads ...')
-        outFig = os.path.join(locator, '{0}-{1}-{2}-librarySize.png'.format(*rep))
-        plot_libsize(stats, outFig, dpi = 300)
-        logging.log(21, 'Done')
+        if '120_SameFragmentReads' in stats:
+            logging.log(21, 'Estimate library size with dangling reads ...')
+            outFig = os.path.join(locator, '{0}-{1}-{2}-librarySize.png'.format(*rep))
+            plot_libsize(stats, outFig, dpi = 300)
+            logging.log(21, 'Done')
     
     logging.log(21, 'Cell-line-level assessment ...')
     for cell in cellLines:
@@ -802,10 +803,11 @@ def quality(args, commands):
         outFig = os.path.join(locator, '{0}-{1}-allReps-PairType.png'.format(*cell))
         typePlot(stats, outFig, dpi = 300)
         logging.log(21, 'Done')
-        logging.log(21, 'Estimate library size with dangling reads ...')
-        outFig = os.path.join(locator, '{0}-{1}-allReps-librarySize.png'.format(*cell))
-        plot_libsize(stats, outFig, dpi = 300)
-        logging.log(21, 'Done')
+        if '120_SameFragmentReads' in stats:
+            logging.log(21, 'Estimate library size with dangling reads ...')
+            outFig = os.path.join(locator, '{0}-{1}-allReps-librarySize.png'.format(*cell))
+            plot_libsize(stats, outFig, dpi = 300)
+            logging.log(21, 'Done')
 
           
 def pileup(args, commands):
