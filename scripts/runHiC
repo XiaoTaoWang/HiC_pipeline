@@ -483,7 +483,7 @@ def mapping(args, commands):
             nproc_in = max(nproc_out // 2, 3)
             parse_align(align_path, align_stats, out, genomepath, chromsize_file, genomeName, args.min_mapq, args.max_molecule_size,
                         args.max_inter_align_gap, args.walks_policy, args.include_readid, args.include_sam,
-                        args.drop_seq, tmpdir, enzyme, nproc_in, nproc_out, args.memory)
+                        args.drop_seq, tmpdir, enzyme, nproc_in, nproc_out, args.memory, args.add_frag)
 
             completed = open(Indicator, 'wb')
             completed.close()

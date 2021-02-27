@@ -186,7 +186,7 @@ def buildMapIndex(aligner, genomeFolder, genomeName):
         indexOut = os.path.join(genomeFolder, '.'.join([genomeName, 'minimap2', 'mmi']))
         build_command = ['minimap2', '-x', 'sr', '-d', indexOut, wholeGenome]
     elif aligner=='chromap':
-        indexOut = os.path.join(genomeFolder, '.'.join([genomeName, 'chromap', 'mmi']))
+        indexOut = os.path.join(genomeFolder, '.'.join([genomeName, 'chromap-runhic', 'mmi']))
         build_command = ['chromap', '-i', '-r', wholeGenome, '-o', indexOut]
     else:
         build_command = ['bwa', 'index', wholeGenome]
