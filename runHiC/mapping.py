@@ -302,7 +302,6 @@ def parse_align(align_path, align_stats, outfile, genomepath, chromsizes, assemb
               max_inter_align_gap, walks_policy, include_readid, include_sam, drop_seq, tmpdir, enzyme, nproc_in,
               nproc_out, memory, add_frag):
     
-    frag_path = create_frag(genomepath, chromsizes, enzyme, tmpdir)
     out_total = outfile.replace('.pairsam.gz', '.total.pairsam.gz')
     
     #### step 1
@@ -390,6 +389,7 @@ def parse_align(align_path, align_stats, outfile, genomepath, chromsizes, assemb
 
     #### step 3
     if add_frag:
+        frag_path = create_frag(genomepath, chromsizes, enzyme, tmpdir)
         outpath_2 = outfile.replace('.pairsam.gz', '.select.samefrag.pairsam.gz')
         pipeline = []
         try:
