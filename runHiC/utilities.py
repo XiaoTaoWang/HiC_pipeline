@@ -123,6 +123,9 @@ def reorder_chromosomes_in_fasta(genomepath, chrom_fil, tmpdir):
                 if not outstream is None:
                     outstream.write(line)
     
+    if not outstream is None:
+        outstream.close()
+    
     # out chromosome order
     chroms = []
     for c in chrom_order:
