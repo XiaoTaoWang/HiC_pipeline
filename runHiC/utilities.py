@@ -2,7 +2,7 @@
 
 # Author: XiaoTao Wang
 
-import os, time, gc, subprocess
+import os, time, gc, subprocess, tempfile
 import numpy as np
 import pandas as pd
 from cooler.util import load_fasta, read_chromsizes
@@ -103,6 +103,35 @@ def chromsizes_from_pairs(pairpath):
     instream.close()
     
     return outpath, genomeName
+
+def chrname_sort_flip_order(genomepath, chrom_fil, tmpdir):
+
+    pre_defined = [line.rstrip().split()[0] for line in open(chrom_fil, 'r')]
+    ref_chroms = set()
+    with open(genomepath, 'r') as source:
+        for line in source:
+            if line.startswith('>'):
+                chrom_name = line.rstrip().lstrip('>')
+                ref_chroms.add(chrom_name)
+    
+    tl = time.strftime('%Y%m%d%H%M%S', time.localtime(time.time()))
+    kw = {'suffix':tl, 'dir':tmpdir}
+    fd, flip_order_fil = tempfile.mkstemp(**kw)
+    os.close(fd)
+    flip_order = []
+    with open(flip_order_fil, 'w') as out:
+        for c in pre_defined:
+            if c in ref_chroms:
+                out.write(c+'\n')
+                flip_order.append(c)
+    
+    fd, sort_order_fil = tempfile.mkstemp(**kw)
+    os.close(fd)
+    with open(sort_order_fil, 'w') as out:
+        for c in sorted(flip_order):
+            out.write(c+'\n')
+    
+    return flip_order_fil, sort_order_fil
 
 def reorder_chromosomes_in_fasta(genomepath, chrom_fil, tmpdir):
 

@@ -101,7 +101,7 @@ def getargs():
     iterM.add_argument('--chunkSize', type = int, help = '''On a low-memory machine, it's better
                        to split the raw read file into chunks and map them separatively. This
                        parameter specifies the size of each chunk. By default, no split is performed.''')
-    iterM.add_argument('--tmpdir', default='/tmp', help='''Temporary folder for intermediate results.''')
+    iterM.add_argument('--tmpdir', default='.runHiC', help='''Temporary folder for intermediate results.''')
     iterM.add_argument('--logFile', default = 'runHiC.log', help = '''Logging file name.''')
     iterM.set_defaults(func = mapping)
     
@@ -124,7 +124,7 @@ def getargs():
     removeNoise.add_argument('--pairFolder',
                              help = '''Path to the root folder(prefixed with "pairs-") of .pairsam.gz files generated
                              during the mapping stage.''')
-    removeNoise.add_argument('--tmpdir', default='/tmp', help='''Temporary folder for intermediate results.''')
+    removeNoise.add_argument('--tmpdir', default='.runHiC', help='''Temporary folder for intermediate results.''')
     removeNoise.add_argument('--nproc', type = int, default = 8, help = '''Number of allocated proccesses.''')
     removeNoise.add_argument('--memory', default='8G', help = '''The amount of memory allocated for pairtools merge.''')
     removeNoise.add_argument('--stats-cache', default = 'allinone.cache',
@@ -331,8 +331,6 @@ def mapping(args, commands):
             logging.log(21, 'Set --Index to {0}'.format(indexpath))
         else:
             logging.log(21, '''Index files can not be found. Start to generate them ...''')
-            if aligner=='chromap':
-                reorder_chromosomes_in_fasta(genomepath, chromsize_file, tmpdir)
             buildMapIndex(aligner, genomeFolder, genomeName)
             logging.log(21, 'Done')
     
@@ -498,7 +496,7 @@ def mapping(args, commands):
 
 def filtering(args, commands):
     # Necessary Modules
-    from runHiC.utilities import cleanDirectory, cleanFile, chromsizes_from_pairs
+    from runHiC.utilities import cleanDirectory, cleanFile
     from runHiC.filtering import merge_pairs, biorep_level, enzyme_level, create_frag, split_pairsam, collect_stats, dedup
     from runHiC.quality import outStatsCache, update_stats_pool
 
