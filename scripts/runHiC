@@ -69,7 +69,7 @@ def getargs():
     iterM.add_argument('-f', '--fastqDir', help = 'Name of the folder containing sequencing reads.')
     iterM.add_argument('-F', '--Format', default = 'SRA', choices = ['SRA', 'FASTQ'],
                        help = 'Format of the sequencing reads.')
-    iterM.add_argument('-A', '--aligner', default = 'bwa-mem', choices = ['bwa-mem', 'chromap', 'minimap2'],
+    iterM.add_argument('-A', '--aligner', default = 'chromap', choices = ['bwa-mem', 'chromap', 'minimap2'],
                        help = '''Name of the sequence alignment software to invoke.''')
     iterM.add_argument('-i', '--Index',
                        help = '''Path to the bwa/chromap/minimap2 genome index. For example, if your reference genome
@@ -287,7 +287,7 @@ def run(args, commands):
 def mapping(args, commands):
     ## Import necessary modules
     from runHiC.mapping import splitSRA, splitSingleFastq, uncompressSRA, buildMapIndex, map_core, parse_align
-    from runHiC.utilities import cleanDirectory, cleanFile, chromsizes_from_fasta, reorder_chromosomes_in_fasta
+    from runHiC.utilities import cleanDirectory, cleanFile, chromsizes_from_fasta, chrname_sort_flip_order
 
     # customize temporary dir
     tmpdir = os.path.abspath(os.path.expanduser(args.tmpdir))
@@ -317,6 +317,9 @@ def mapping(args, commands):
         logging.log(21, 'Done')
     else:
         chromsize_file = os.path.abspath(os.path.expanduser(args.chromsizes_file))
+    
+    # interrnally generate chromosome order files for chromap
+    flip_order_fil, sort_order_fil = chrname_sort_flip_order(genomepath, chromsize_file, tmpdir)
     
     if args.Index is None:
         logging.log(21, 'You didn\'t specify the Genome Index Path. Try to find it under {0}'.format(genomeFolder))
@@ -476,7 +479,8 @@ def mapping(args, commands):
             atexit.register(cleanFile, lockFile)
 
             # BAM/SAM
-            align_path, align_stats = map_core(r1, r2, genomepath, indexpath, subbamFolder, aligner, nthread=args.threads, min_mapq=args.min_mapq)
+            align_path, align_stats = map_core(r1, r2, genomepath, indexpath, subbamFolder, aligner, nthread=args.threads, min_mapq=args.min_mapq,
+                                               flip_order_fil=flip_order_fil, sort_order_fil=sort_order_fil)
             nproc_out = max(args.threads, 8)
             nproc_in = max(nproc_out // 2, 3)
             parse_align(align_path, align_stats, out, genomepath, chromsize_file, genomeName, args.min_mapq, args.max_molecule_size,

@@ -195,7 +195,8 @@ def buildMapIndex(aligner, genomeFolder, genomeName):
 
     cleanFile(lockFile)
     
-def map_core(fastq_1, fastq_2, ref_fa, ref_index, outdir, aligner='minimap2', min_mapq=1, nthread=1):
+def map_core(fastq_1, fastq_2, ref_fa, ref_index, outdir, aligner='chromap', min_mapq=1, nthread=1,
+    flip_order_fil=None, sort_order_fil=None):
 
     if aligner=='chromap':
         outformat = '.pairs'
@@ -211,7 +212,8 @@ def map_core(fastq_1, fastq_2, ref_fa, ref_index, outdir, aligner='minimap2', mi
     
     if aligner=='chromap':
         map_command = ['chromap', '-m', '-r', ref_fa, '-x', ref_index, '-t', str(nthread), '-1', fastq_1, '-2', fastq_2,
-                       '-o', outpath, '--pairs', '--split-alignment', '-e', str(8), '-f', '500,1000', '-q', str(min_mapq)]
+                       '-o', outpath, '--pairs', '--split-alignment', '-e', str(8), '-f', '500,1000', '-q', str(min_mapq),
+                       '--chr-order', sort_order_fil, '--pairs-natural-chr-order', flip_order_fil]
         bam_command = []
     else:
         if aligner=='minimap2':
