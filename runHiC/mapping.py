@@ -195,7 +195,7 @@ def buildMapIndex(aligner, genomeFolder, genomeName):
 
     cleanFile(lockFile)
     
-def map_core(fastq_1, fastq_2, ref_fa, ref_index, outdir, aligner='chromap', min_mapq=1, nthread=1,
+def map_core(fastq_1, fastq_2, ref_fa, ref_index, outdir, tmpdir, aligner='chromap', min_mapq=1, nthread=1,
     flip_order_fil=None, sort_order_fil=None):
 
     if aligner=='chromap':
@@ -212,7 +212,7 @@ def map_core(fastq_1, fastq_2, ref_fa, ref_index, outdir, aligner='chromap', min
     
     if aligner=='chromap':
         map_command = ['chromap', '-m', '-r', ref_fa, '-x', ref_index, '-t', str(nthread), '-1', fastq_1, '-2', fastq_2,
-                       '-o', outpath, '--pairs', '--split-alignment', '-e', str(8), '-f', '500,1000', '-q', str(min_mapq),
+                       '-o', outpath, '--pairs', '--split-alignment', '-e', str(4), '-f', '500,1000', '-q', str(min_mapq),
                        '--chr-order', sort_order_fil, '--pairs-natural-chr-order', flip_order_fil]
         bam_command = []
     else:
@@ -253,24 +253,27 @@ def map_core(fastq_1, fastq_2, ref_fa, ref_index, outdir, aligner='chromap', min
     #### collect mapping statistics from stderr of chromap
     if aligner=='chromap':
         chromap_stderr = pipeline[-1].stderr
-        stats = _collect_chromap_stats(chromap_stderr)
+        outlog = os.path.join(tmpdir, os.path.split(outpath)[1].replace(outformat, '.chromap.log'))
+        stats = _collect_chromap_stats(chromap_stderr, outlog)
     else:
         stats = {}
     
     return outpath, stats
 
-def _collect_chromap_stats(chromap_stderr):
+def _collect_chromap_stats(chromap_stderr, outlog):
 
     from collections import defaultdict
 
     stats = defaultdict(int)
-    for line in chromap_stderr:
-        tmp = line.decode().rstrip()
-        if tmp.startswith('Number of reads:'):
-            stats['000_SequencedReads'] = int(tmp.split(':')[1].strip().rstrip('.')) // 2
-        if tmp.startswith('Number of output mappings (passed filters):'):
-            stats['010_DoubleSideMappedReads'] = int(tmp.split(':')[1].strip().rstrip('.'))
-            stats['100_NormalPairs'] = stats['010_DoubleSideMappedReads']
+    with open(outlog, 'w') as out:
+        for line in chromap_stderr:
+            tmp = line.decode().rstrip()
+            if tmp.startswith('Number of reads:'):
+                stats['000_SequencedReads'] = int(tmp.split(':')[1].strip().rstrip('.')) // 2
+            if tmp.startswith('Number of output mappings (passed filters):'):
+                stats['010_DoubleSideMappedReads'] = int(tmp.split(':')[1].strip().rstrip('.'))
+                stats['100_NormalPairs'] = stats['010_DoubleSideMappedReads']
+            out.write(tmp+'\n')
     
     return stats
 

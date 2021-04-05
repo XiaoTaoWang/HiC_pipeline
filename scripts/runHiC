@@ -479,7 +479,7 @@ def mapping(args, commands):
             atexit.register(cleanFile, lockFile)
 
             # BAM/SAM
-            align_path, align_stats = map_core(r1, r2, genomepath, indexpath, subbamFolder, aligner, nthread=args.threads, min_mapq=args.min_mapq,
+            align_path, align_stats = map_core(r1, r2, genomepath, indexpath, subbamFolder, tmpdir, aligner, nthread=args.threads, min_mapq=args.min_mapq,
                                                flip_order_fil=flip_order_fil, sort_order_fil=sort_order_fil)
             nproc_out = max(args.threads, 8)
             nproc_in = max(nproc_out // 2, 3)
