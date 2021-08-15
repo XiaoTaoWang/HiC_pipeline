@@ -4,15 +4,15 @@
 <html>
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+
     <title>Experiment Quality Assessment &#8212; runHiC 0.8.4 documentation</title>
-    <link rel="stylesheet" href="_static/alabaster.css" type="text/css" />
-    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
-    <script id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css" />
+    <link rel="stylesheet" type="text/css" href="_static/alabaster.css" />
+    <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
     <script src="_static/jquery.js"></script>
     <script src="_static/underscore.js"></script>
     <script src="_static/doctools.js"></script>
-    <script src="_static/language_data.js"></script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
     <link rel="next" title="Release Notes" href="changelog.html" />
@@ -65,7 +65,7 @@
   <h3 id="searchlabel">Quick search</h3>
     <div class="searchformwrapper">
     <form class="search" action="search.html" method="get">
-      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
       <input type="submit" value="Go" />
     </form>
     </div>
@@ -79,7 +79,7 @@
 
           <div class="body" role="main">
             
-  <div class="section" id="experiment-quality-assessment">
+  <section id="experiment-quality-assessment">
 <h1>Experiment Quality Assessment<a class="headerlink" href="#experiment-quality-assessment" title="Permalink to this headline">¶</a></h1>
 <p>In this tutorial, I will show you how runHiC can be used in data quality assessment.</p>
 <p>All you need to type in is a sinlge-line command after running <em>runHiC filtering</em> or <em>runHiC pileup</em>
@@ -87,7 +87,7 @@
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ runHiC quality -m datasets.tsv -L filtered-hg38
 </pre></div>
 </div>
-<div class="section" id="statistic-table">
+<section id="statistic-table">
 <h2>Statistic Table<a class="headerlink" href="#statistic-table" title="Permalink to this headline">¶</a></h2>
 <p>Statistic tables on sequencing reads can be found in <em>.stats files under *filtered-hg38</em></p>
 <p>Here’s a snapshot:</p>
@@ -208,16 +208,16 @@ sample contamination or incomplete genome assembly.</p></li>
 <li><p>Dangling-Reads Ratio.</p></li>
 <li><p>Long-Range Ratio. Low value (&lt;0.15) of this metric indicates the failed experiment.</p></li>
 </ol>
-</div>
-<div class="section" id="library-size-estimation">
+</section>
+<section id="library-size-estimation">
 <h2>Library-size Estimation<a class="headerlink" href="#library-size-estimation" title="Permalink to this headline">¶</a></h2>
 <p>Dangling reads can be applied to estimate your library size in nature. Here’s an example
 of size distribution of dangling read molecules for typical 300~500bp library:</p>
 <img alt="_images/GM06990-HindIII-allReps-librarySize.png" class="align-center" src="_images/GM06990-HindIII-allReps-librarySize.png" />
 <p>The inconsistency between this distribution and the experimental library size suggests
 a failure in DNA size selection.</p>
-</div>
-<div class="section" id="read-pair-type-plotting">
+</section>
+<section id="read-pair-type-plotting">
 <h2>Read-pair Type Plotting<a class="headerlink" href="#read-pair-type-plotting" title="Permalink to this headline">¶</a></h2>
 <p>Read-pair type ratios will also be reported under <em>filtered-hg38</em>.
 Intra-chromosomal contacts are broken down into four types: “left pair” (both sides map
@@ -232,8 +232,8 @@ below:</p>
 <p>We can see a distinct turning point around 40Kb. While there may be several unknown mechanisms
 making biases below this point, we should only consider contacts whose genomic distances
 are greater than 40Kb in the following analysis.</p>
-</div>
-</div>
+</section>
+</section>
 
 
           </div>
@@ -246,7 +246,7 @@ are greater than 40Kb in the following analysis.</p>
       &copy;2021, XiaoTao Wang.
       
       |
-      Powered by <a href="http://sphinx-doc.org/">Sphinx 3.2.1</a>
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 4.1.2</a>
       &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
       
       |

@@ -4,15 +4,15 @@
 <html>
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+
     <title>Quick Start &#8212; runHiC 0.8.4 documentation</title>
-    <link rel="stylesheet" href="_static/alabaster.css" type="text/css" />
-    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
-    <script id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css" />
+    <link rel="stylesheet" type="text/css" href="_static/alabaster.css" />
+    <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
     <script src="_static/jquery.js"></script>
     <script src="_static/underscore.js"></script>
     <script src="_static/doctools.js"></script>
-    <script src="_static/language_data.js"></script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
     <link rel="next" title="Parallel Computation" href="parallel.html" />
@@ -72,7 +72,7 @@
   <h3 id="searchlabel">Quick search</h3>
     <div class="searchformwrapper">
     <form class="search" action="search.html" method="get">
-      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
       <input type="submit" value="Go" />
     </form>
     </div>
@@ -86,15 +86,15 @@
 
           <div class="body" role="main">
             
-  <div class="section" id="quick-start">
+  <section id="quick-start">
 <h1>Quick Start<a class="headerlink" href="#quick-start" title="Permalink to this headline">¶</a></h1>
 <p>This tutorial covers the basic use of 4 subcommands (<em>mapping</em>, <em>filtering</em>,
 <em>binning</em>, and <em>pileup</em>) provided by runHiC. We will first download an example
-Hi-C data set and corresponding reference genome data. Then we will process the
+Hi-C dataset and corresponding reference genome data. Then we will process the
 Hi-C data step by step from raw sequencing reads (.sra, .fastq, and .fastq.gz)
 to the ICE-corrected contact matrices. Lastly, we will demonstrate how to streamline
 the processing pipeline by using the <em>pileup</em> subcommand.</p>
-<div class="section" id="data-preparation">
+<section id="data-preparation">
 <h2>Data Preparation<a class="headerlink" href="#data-preparation" title="Permalink to this headline">¶</a></h2>
 <p>First of all, let’s make a temporary blank folder somewhere on your system, and change your
 working directory to it:</p>
@@ -110,7 +110,7 @@ drwxr-xr-x  2 xtwang  staff    64B Sep 16 11:25 workspace
 <p>During this tutorial, all input data including Hi-C raw sequencing data and
 the reference genome data will be placed under the <em>data</em> sub-folder, and
 <em>runHiC</em> will be run under the <em>workspace</em> sub-folder.</p>
-<p>Download the example Hi-C data set using the <em>prefetch</em> command of the SRA toolkit:</p>
+<p>Download the example Hi-C dataset using the <em>prefetch</em> command of the SRA toolkit:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ cd data
 $ mkdir HiC-SRA
 $ cd HiC-SRA
@@ -163,17 +163,17 @@ $ cat *.fa &gt; hg38.fa
 $ cd ../..
 </pre></div>
 </div>
-</div>
-<div class="section" id="mapping">
+</section>
+<section id="mapping">
 <h2>Mapping<a class="headerlink" href="#mapping" title="Permalink to this headline">¶</a></h2>
 <p>The first processing stage of <em>runHiC</em> is conducted by the <em>mapping</em> subcommand,
 which maps raw sequencing reads to the reference genome and parses the resulted
 SAM/BAM alignments into <a class="reference external" href="https://github.com/4dn-dcic/pairix/blob/master/pairs_format_specification.md">.pairs</a>.</p>
-<div class="section" id="usage">
+<section id="usage">
 <h3>Usage<a class="headerlink" href="#usage" title="Permalink to this headline">¶</a></h3>
 <p><code class="docutils literal notranslate"><span class="pre">runHiC</span> <span class="pre">mapping</span> <span class="pre">[options]</span></code></p>
-</div>
-<div class="section" id="create-the-meta-data-file">
+</section>
+<section id="create-the-meta-data-file">
 <h3>Create the Meta Data File<a class="headerlink" href="#create-the-meta-data-file" title="Permalink to this headline">¶</a></h3>
 <p>Another thing you need to do is to prepare a meta data file describing your Hi-C
 data under the <em>workspace</em> sub-folder:</p>
@@ -190,16 +190,16 @@ $ vim datasets.tsv
 case of the FASTQ read format, it should be the leading part of the file name
 apart from the “_1.fastq” or “_2.fastq” substring), cell line name, biological
 replicate label, and the restriction enzyme name.</p>
-</div>
-<div class="section" id="runhic-command">
+</section>
+<section id="runhic-command">
 <h3>runHiC Command<a class="headerlink" href="#runhic-command" title="Permalink to this headline">¶</a></h3>
 <p>Now type and execute the command below:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ runHiC mapping -p ../data/ -g hg38 -f HiC-SRA -F SRA -A bwa-mem -t 10 -O BAM --include-readid --include-sam --drop-seq --chunkSize 1500000 --logFile runHiC-mapping.log
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ runHiC mapping -p ../data/ -g hg38 -f HiC-SRA -F SRA -A bwa-mem -t 10 --include-readid --drop-seq --chunkSize 1500000 --logFile runHiC-mapping.log
 </pre></div>
 </div>
 <p>For FASTQ and the compressed FASTQ format, replace “HiC-SRA” with “HiC-FASTQ”
 or “HiC-gzip”, and reset “-F” argument accordingly:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ runHiC mapping -p ../data/ -g hg38 -f HiC-gzip -F FASTQ -A bwa-mem -t 10 -O BAM --include-readid --include-sam --drop-seq --chunkSize 1500000 --logFile runHiC-mapping.log
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ runHiC mapping -p ../data/ -g hg38 -f HiC-gzip -F FASTQ -A bwa-mem -t 10 --include-readid --drop-seq --chunkSize 1500000 --logFile runHiC-mapping.log
 </pre></div>
 </div>
 <p>Two sub-folders named <em>alignments-hg38</em> and <em>pairs-hg38</em> will be created under current
@@ -210,11 +210,8 @@ alignment results will be reported in BAM format and placed under <em>alignments
 <li><p>BAM files will be parsed into <a class="reference external" href="https://github.com/4dn-dcic/pairix/blob/master/pairs_format_specification.md">.pairs</a>
 using <a class="reference external" href="https://github.com/mirnylab/pairtools">pairtools</a> under <em>pairs-hg38</em>.</p></li>
 </ol>
-<p><em>runHiC</em> now supports two read aligners, <em>bwa</em> and <em>minimap2</em>. You can switch it by the <code class="docutils literal notranslate"><span class="pre">-A/--aligner</span></code>
-argument. Generally, <em>bwa</em> performs better on short reads (&lt;=100bp), and <em>minimap2</em> runs
-faster and is similiarly accurate as <em>bwa</em> on longer reads (&gt;100bp).</p>
-<p>For alignment format, you can choose between SAM(TXT) and BAM(Binary) with the <code class="docutils literal notranslate"><span class="pre">-O/--outformat</span></code>
-argument.</p>
+<p><em>runHiC</em> supports three read aligners, <em>bwa-mem</em>, <em>chromap</em>, and <em>minimap2</em>. You can switch it by
+the <code class="docutils literal notranslate"><span class="pre">-A/--aligner</span></code> argument.</p>
 <p>During the alignment parsing, <em>runHiC</em> detects ligation junctions, marks various situations
 (Unmapped, Multimapped, Multiple ligations-Walks, and valid Single ligations), and sort
 pairs for further analysis. In this example, .pairsam.gz files under <em>pairs-hg38</em> are
@@ -224,20 +221,16 @@ if you add <code class="docutils literal notranslate"><span class="pre">--includ
 if you specify <code class="docutils literal notranslate"><span class="pre">--include-sam</span></code>, two extra columns “sam1” and “sam2” will be added to store
 the original alignments; if you add <code class="docutils literal notranslate"><span class="pre">--drop-seq</span></code>, SEQ and QUAL will be removed from the sam
 fields to save the disk space.</p>
-<p><em>runHiC</em> uses a rotating file for logging. According to our settings, when the size of
-“runHiC.log” gets about 100K, it is closed and renamed to “runHiC.log.1”. At the same
-time, a new file “runHiC.log” is silently opened for output. In a word, the system saves
-old log files by appending the extensions “.1”, “.2” etc., and the current log is always
-written to “runHiC.log”.</p>
-</div>
-</div>
-<div class="section" id="filtering">
+</section>
+</section>
+<section id="filtering">
 <h2>Filtering<a class="headerlink" href="#filtering" title="Permalink to this headline">¶</a></h2>
 <p>The <em>filtering</em> subcommand of <em>runHiC</em> is designed to perform basic filtering procedures on
 the aligned read pairs:</p>
 <ol class="arabic simple">
 <li><p>Remove redundant PCR artifacts.</p></li>
-<li><p>Remove the read pair that maps to the same restriction fragment.</p></li>
+<li><p>Remove the read pair that maps to the same restriction fragment (since version 0.8.5, runHiC
+only performs this filtering if you specified <code class="docutils literal notranslate"><span class="pre">--add-frag</span></code> when you ran <code class="docutils literal notranslate"><span class="pre">runHiC</span> <span class="pre">mapping</span></code>).</p></li>
 </ol>
 <p>During the filtering process, <em>runHiC</em> also records read-level, fragment-level and the
 contact-level statistics for quality assessment of your Hi-C data.
@@ -250,8 +243,8 @@ contact-level statistics for quality assessment of your Hi-C data.
 contact pairs in <a href="#id2"><span class="problematic" id="id3">*</span></a>.pairs.gz files. If you specified <code class="docutils literal notranslate"><span class="pre">--include-sam</span></code> when you ran
 <code class="docutils literal notranslate"><span class="pre">runHiC</span> <span class="pre">mapping</span></code>, it will also output a .bam file accompanying each .pairs.gz file
 to store alignments that passed all filtering criteria.</p>
-</div>
-<div class="section" id="binning">
+</section>
+<section id="binning">
 <h2>Binning<a class="headerlink" href="#binning" title="Permalink to this headline">¶</a></h2>
 <p>At this stage, an .mcool file will be produced under the <em>coolers-hg38</em> sub-folder for each
 .pairs.gz file using <a class="reference external" href="https://cooler.readthedocs.io/en/latest/">cooler</a>. The mcool format
@@ -260,16 +253,16 @@ and can be visualized using <a class="reference external" href="https://docs.hig
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ runHiC binning -f filtered-hg38/ --logFile runHiC-binning.log --nproc 10
 </pre></div>
 </div>
-</div>
-<div class="section" id="pileup">
+</section>
+<section id="pileup">
 <h2>Pileup<a class="headerlink" href="#pileup" title="Permalink to this headline">¶</a></h2>
 <p><em>runHiC</em> also provides a handy subcommand called “pileup” by which you can perform all
 processing steps above using the single-line command below:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ runHiC pileup -p ../data/ -g hg38 -f HiC-SRA -F SRA -A bwa-mem -t 10 -O BAM --include-readid --include-sam --drop-seq --chunkSize 1500000 --logFile runHiC.log
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ runHiC pileup -p ../data/ -g hg38 -f HiC-SRA -F SRA -A bwa-mem -t 10 --include-readid --drop-seq --chunkSize 1500000 --logFile runHiC.log
 </pre></div>
 </div>
-</div>
-</div>
+</section>
+</section>
 
 
           </div>
@@ -282,7 +275,7 @@ processing steps above using the single-line command below:</p>
       &copy;2021, XiaoTao Wang.
       
       |
-      Powered by <a href="http://sphinx-doc.org/">Sphinx 3.2.1</a>
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 4.1.2</a>
       &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
       
       |

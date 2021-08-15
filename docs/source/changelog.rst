@@ -1,14 +1,14 @@
 Release Notes
 =============
 Version 0.8.5 (08/15/2021)
---------------------------
+---------------------------
 - changed the default read aligner to from bwa-mem to chromap
 - made the fragment-level filtering optional
 - removed the "-O/--outformat" argument
 
 
 Version 0.8.4-r1 (01/16/2021)
------------------------------
+------------------------------
 - added the "--high-res" option to ``runHiC pileup`` and ``runHiC binning``.
 
 Version 0.8.4 (01/03/2021)
@@ -37,14 +37,14 @@ Version 0.8.1 (12/23/2018)
 - Supported Arima Hi-C
 
 Version 0.8.0 (09/16/2018)
--------------------------
+--------------------------
 - Migrated to Python 3 (will not support Python 2 anymore)
 - Changed the data container from HDF5 to Pairs and Cooler
 - Added two aligner options: bwa-mem (short reads) / minimap2 (long reads)
 - Added options to output filtered SAM/BAM for further analysis
 
 Version 0.7.0 (10/29/2017)
---------------------------
+---------------------------
 - Parallelized the execution on both laptops and PBS-based clusters.
 - Included the latest *mirnylib* and *hiclib* source code.
 - Tuned the class/function interfaces in sync with the lastest *hiclib*.
@@ -54,7 +54,7 @@ Version 0.7.0 (10/29/2017)
 - Added the detailed documentations.
 
 Version 0.6.6-r2 (05/04/2016)
----------------------------
+-----------------------------
 - Fixed a bug related to "--bowtieIndex".
 - Included LICENSE.
 
@@ -63,33 +63,33 @@ Version 0.6.6-r1 (11/10/2015)
 - Only check for update when you are online.
 
 Version 0.6.6 (11/06/2015)
--------------------------
+--------------------------
 - Removed redundant command-line arguments.
 - Added detailed descriptions for the quality assessment module in Recipes.rst.
 - Added snippets for automatic update checking.
 
 Version 0.6.5 (09/29/2015)
--------------------------
+--------------------------
 - More sophisticated quality assessment module.
 - Changed the filtering settings for *pileup*.
 - Redirected the exception information into the log file.
 
 Version 0.6.4 (09/21/2015)
--------------------------
+--------------------------
 - Fixed a bug related to the metadata loading.
 
 Version 0.6.3 (09/16/2015)
--------------------------
+--------------------------
 - Customized the mirnylib Genome class by overriding the *_extractChrmLabel* method.
 
 Version 0.6.2 (08/21/2015)
--------------------------
+--------------------------
 - Added the *visualize* subcommand.
 
 Version 0.6.1 (07/21/2015)
--------------------------
+--------------------------
 - Improved the logging system.
 
 Version 0.6.0 (06/16/2015)
--------------------------
+--------------------------
 - Fixed a bug for bam file parsing in the case of FASTQ read format.
