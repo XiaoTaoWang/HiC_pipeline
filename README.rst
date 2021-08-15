@@ -2,6 +2,8 @@ runHiC
 ******
 .. image:: https://zenodo.org/badge/doi/10.5281/zenodo.55324.svg
    :target: http://dx.doi.org/10.5281/zenodo.55324
+.. image:: https://static.pepy.tech/personalized-badge/runhic?period=total&units=international_system&left_color=black&right_color=orange&left_text=Downloads
+   :target: https://pepy.tech/project/runhic
 
 runHiC is an easy-to-use command-line tool for Hi-C data processing.
 
