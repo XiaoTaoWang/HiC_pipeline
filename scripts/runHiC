@@ -69,7 +69,7 @@ def getargs():
     iterM.add_argument('-f', '--fastqDir', help = 'Name of the folder containing sequencing reads.')
     iterM.add_argument('-F', '--Format', default = 'SRA', choices = ['SRA', 'FASTQ'],
                        help = 'Format of the sequencing reads.')
-    iterM.add_argument('-A', '--aligner', default = 'chromap', choices = ['bwa-mem', 'chromap', 'minimap2'],
+    iterM.add_argument('-A', '--aligner', default = 'bwa-mem', choices = ['bwa-mem', 'chromap', 'minimap2'],
                        help = '''Name of the sequence alignment software to invoke.''')
     iterM.add_argument('-i', '--Index',
                        help = '''Path to the bwa/chromap/minimap2 genome index. For example, if your reference genome
@@ -216,9 +216,8 @@ def run(args, commands):
         logger = logging.getLogger()
         # Logger Level
         logger.setLevel(21)
-        filehandler = logging.handlers.RotatingFileHandler(args.logFile,
-                                                           maxBytes = 10000000,
-                                                           backupCount = 5)
+        filehandler = logging.FileHandler(args.logFile)
+        
         # Set level for Handlers
         filehandler.setLevel(21)
         # Customizing Formatter

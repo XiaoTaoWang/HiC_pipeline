@@ -21,15 +21,15 @@ into it::
 Then change to the sub-folder. On the 1st node, run command below (you may need to
 write a submit script for SLURM/Torque PBS/any other resource manager)::
 
-    $ runHiC pileup -p ../../data/ -g hg38 -f HiC-SRA -F SRA -A bwa-mem -t 20 -O BAM --include-readid --include-sam --drop-seq --chunkSize 1500000 --logFile runHiC-1.log
+    $ runHiC pileup -p ../../data/ -g hg38 -f HiC-SRA -F SRA -A bwa-mem -t 20 --include-readid --drop-seq --chunkSize 1500000 --logFile runHiC-1.log
 
 Then swith to a 2nd node, and submit the command for the 2nd time::
 
-    $ runHiC pileup -p ../../data/ -g hg38 -f HiC-SRA -F SRA -A bwa-mem -t 20 -O BAM --include-readid --include-sam --drop-seq --chunkSize 1500000 --logFile runHiC-2.log
+    $ runHiC pileup -p ../../data/ -g hg38 -f HiC-SRA -F SRA -A bwa-mem -t 20 --include-readid --drop-seq --chunkSize 1500000 --logFile runHiC-2.log
 
 Then swith to a 3rd node::
 
-    $ runHiC pileup -p ../../data/ -g hg38 -f HiC-SRA -F SRA -A bwa-mem -t 20 -O BAM --include-readid --include-sam --drop-seq --chunkSize 1500000 --logFile runHiC-3.log
+    $ runHiC pileup -p ../../data/ -g hg38 -f HiC-SRA -F SRA -A bwa-mem -t 20 --include-readid --drop-seq --chunkSize 1500000 --logFile runHiC-3.log
 
 That's it! You can flexibly allocate the number of threads for each node and the number of
 processes to launch to utilize the cluster at the most extent.

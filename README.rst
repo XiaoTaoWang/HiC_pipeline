@@ -5,6 +5,9 @@ runHiC
 
 runHiC is an easy-to-use command-line tool for Hi-C data processing.
 
+Since versio 0.8.5, runHiC has changed the default aligner to `chromap <https://github.com/haowenz/chromap>`_,
+which is comparable to `bwa-mem <https://github.com/lh3/bwa>`_ in alignment accuracy, but runs over 10 times faster.
+
 Since version 0.8.1, runHiC can be used directly on `Arima HiC <https://arimagenomics.com>`_ data
 by setting the enzyme name to *Arima*.
 

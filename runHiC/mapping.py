@@ -211,9 +211,8 @@ def map_core(fastq_1, fastq_2, ref_fa, ref_index, outdir, tmpdir, aligner='chrom
                         os.path.split(fastq_1)[1].replace('_1.fastq', outformat))
     
     if aligner=='chromap':
-        map_command = ['chromap', '-r', ref_fa, '-x', ref_index, '-t', str(nthread), '-1', fastq_1, '-2', fastq_2,
-                       '-o', outpath, '--pairs', '--split-alignment', '-e', str(4), '-f', '500,1000', '-q', str(min_mapq),
-                       '--chr-order', sort_order_fil, '--pairs-natural-chr-order', flip_order_fil]
+        map_command = ['chromap', '--preset', 'hic', '-x', ref_index, '-r', ref_fa, '-t', str(nthread), '-1', fastq_1, '-2', fastq_2,
+                       '-o', outpath, '-q', str(min_mapq), '--chr-order', sort_order_fil, '--pairs-natural-chr-order', flip_order_fil]
         bam_command = []
     else:
         if aligner=='minimap2':

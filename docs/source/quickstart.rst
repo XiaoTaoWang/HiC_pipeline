@@ -29,8 +29,8 @@ Download the example Hi-C data set using the *prefetch* command of the SRA toolk
     $ cd data
     $ mkdir HiC-SRA
     $ cd HiC-SRA
-    $ prefetch SRR027956 
-    $ prefetch SRR027958
+    $ prefetch -O . SRR027956 
+    $ prefetch -O . SRR027958
     $ ls -lh
 
     total 1.4G
@@ -110,12 +110,12 @@ runHiC Command
 ---------------
 Now type and execute the command below::
 
-    $ runHiC mapping -p ../data/ -g hg38 -f HiC-SRA -F SRA -A bwa-mem -t 10 -O BAM --include-readid --include-sam --drop-seq --chunkSize 1500000 --logFile runHiC-mapping.log
+    $ runHiC mapping -p ../data/ -g hg38 -f HiC-SRA -F SRA -A bwa-mem -t 10 --include-readid --drop-seq --chunkSize 1500000 --logFile runHiC-mapping.log
 
 For FASTQ and the compressed FASTQ format, replace "HiC-SRA" with "HiC-FASTQ"
 or "HiC-gzip", and reset "-F" argument accordingly::
 
-    $ runHiC mapping -p ../data/ -g hg38 -f HiC-gzip -F FASTQ -A bwa-mem -t 10 -O BAM --include-readid --include-sam --drop-seq --chunkSize 1500000 --logFile runHiC-mapping.log
+    $ runHiC mapping -p ../data/ -g hg38 -f HiC-gzip -F FASTQ -A bwa-mem -t 10 --include-readid --drop-seq --chunkSize 1500000 --logFile runHiC-mapping.log
 
 Two sub-folders named *alignments-hg38* and *pairs-hg38* will be created under current
 working directory (*workspace*):
@@ -125,12 +125,8 @@ working directory (*workspace*):
 2. BAM files will be parsed into `.pairs <https://github.com/4dn-dcic/pairix/blob/master/pairs_format_specification.md>`_
    using `pairtools <https://github.com/mirnylab/pairtools>`_ under *pairs-hg38*.
 
-*runHiC* now supports two read aligners, *bwa* and *minimap2*. You can switch it by the ``-A/--aligner``
-argument. Generally, *bwa* performs better on short reads (<=100bp), and *minimap2* runs
-faster and is similiarly accurate as *bwa* on longer reads (>100bp).
-
-For alignment format, you can choose between SAM(TXT) and BAM(Binary) with the ``-O/--outformat``
-argument.
+*runHiC* supports three read aligners, *bwa-mem*, *chromap*, and *minimap2*. You can switch it by
+the ``-A/--aligner`` argument.
 
 During the alignment parsing, *runHiC* detects ligation junctions, marks various situations
 (Unmapped, Multimapped, Multiple ligations-Walks, and valid Single ligations), and sort
@@ -142,19 +138,14 @@ if you specify ``--include-sam``, two extra columns "sam1" and "sam2" will be ad
 the original alignments; if you add ``--drop-seq``, SEQ and QUAL will be removed from the sam
 fields to save the disk space.
 
-*runHiC* uses a rotating file for logging. According to our settings, when the size of
-"runHiC.log" gets about 100K, it is closed and renamed to "runHiC.log.1". At the same
-time, a new file "runHiC.log" is silently opened for output. In a word, the system saves
-old log files by appending the extensions ".1", ".2" etc., and the current log is always
-written to "runHiC.log".
-
 Filtering
 =========
 The *filtering* subcommand of *runHiC* is designed to perform basic filtering procedures on
 the aligned read pairs:
 
 1. Remove redundant PCR artifacts.
-2. Remove the read pair that maps to the same restriction fragment.
+2. Remove the read pair that maps to the same restriction fragment (since version 0.8.5, runHiC
+   only performs this filtering if you specified ``--add-frag`` when you ran ``runHiC mapping``).
 
 During the filtering process, *runHiC* also records read-level, fragment-level and the
 contact-level statistics for quality assessment of your Hi-C data.
@@ -183,4 +174,4 @@ Pileup
 *runHiC* also provides a handy subcommand called "pileup" by which you can perform all
 processing steps above using the single-line command below::
 
-    $ runHiC pileup -p ../data/ -g hg38 -f HiC-SRA -F SRA -A bwa-mem -t 10 -O BAM --include-readid --include-sam --drop-seq --chunkSize 1500000 --logFile runHiC.log
+    $ runHiC pileup -p ../data/ -g hg38 -f HiC-SRA -F SRA -A bwa-mem -t 10 --include-readid --drop-seq --chunkSize 1500000 --logFile runHiC.log

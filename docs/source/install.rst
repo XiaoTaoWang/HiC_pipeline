@@ -52,7 +52,7 @@ that the order is important to guarantee the correct priority)::
 
 Then type and execute the commands below to satisfy the requirements::
 
-    conda create -n runHiC numpy matplotlib biopython pairtools cooler=0.8.6 sra-tools bwa minimap2 samtools pigz
+    conda create -n runHiC numpy matplotlib biopython pairtools cooler=0.8.6 sra-tools bwa minimap2 samtools pigz chromap
     conda activate runHiC
 
 Install runHiC
