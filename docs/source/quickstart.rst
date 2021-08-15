@@ -2,7 +2,7 @@ Quick Start
 ***********
 This tutorial covers the basic use of 4 subcommands (*mapping*, *filtering*,
 *binning*, and *pileup*) provided by runHiC. We will first download an example
-Hi-C data set and corresponding reference genome data. Then we will process the
+Hi-C dataset and corresponding reference genome data. Then we will process the
 Hi-C data step by step from raw sequencing reads (.sra, .fastq, and .fastq.gz)
 to the ICE-corrected contact matrices. Lastly, we will demonstrate how to streamline
 the processing pipeline by using the *pileup* subcommand.
@@ -24,13 +24,13 @@ During this tutorial, all input data including Hi-C raw sequencing data and
 the reference genome data will be placed under the *data* sub-folder, and
 *runHiC* will be run under the *workspace* sub-folder.
 
-Download the example Hi-C data set using the *prefetch* command of the SRA toolkit::
+Download the example Hi-C dataset using the *prefetch* command of the SRA toolkit::
 
     $ cd data
     $ mkdir HiC-SRA
     $ cd HiC-SRA
-    $ prefetch -O . SRR027956 
-    $ prefetch -O . SRR027958
+    $ prefetch SRR027956 
+    $ prefetch SRR027958
     $ ls -lh
 
     total 1.4G

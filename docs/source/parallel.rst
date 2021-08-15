@@ -2,8 +2,9 @@ Parallel Computation
 *********************
 *runHiC* provides two layers of parallel computing:
 
-1. You can specify the number of threads / processes when you run ``runHiC mapping`` and
-   ``runHiC binning``, by setting the ``-t/--threads`` and the``--nproc`` arguments respectively.
+1. You can specify the number of threads / processes when you run ``runHiC mapping``,
+   ``runHiC filtering``, ``runHiC binning`` and ``runHiC pileup`` subcommands, by setting
+   the ``-t/--threads`` or ``--nproc`` arguments.
 2. If your single machine has limited CPU cores / memory, but you have access to a
    HPC cluster. The most efficient way to process a high-depth sequencing data is to
    submit the same command on multiple nodes. And *runHiC* will parallel the tasks

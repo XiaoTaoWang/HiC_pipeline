@@ -2,8 +2,9 @@ Release Notes
 =============
 Version 0.8.5 (08/15/2021)
 --------------------------
-- changed the default read aligner to chromap
+- changed the default read aligner to from bwa-mem to chromap
 - made the fragment-level filtering optional
+- removed the "-O/--outformat" argument
 
 
 Version 0.8.4-r1 (01/16/2021)

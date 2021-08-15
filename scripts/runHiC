@@ -69,12 +69,12 @@ def getargs():
     iterM.add_argument('-f', '--fastqDir', help = 'Name of the folder containing sequencing reads.')
     iterM.add_argument('-F', '--Format', default = 'SRA', choices = ['SRA', 'FASTQ'],
                        help = 'Format of the sequencing reads.')
-    iterM.add_argument('-A', '--aligner', default = 'bwa-mem', choices = ['bwa-mem', 'chromap', 'minimap2'],
+    iterM.add_argument('-A', '--aligner', default = 'chromap', choices = ['bwa-mem', 'chromap', 'minimap2'],
                        help = '''Name of the sequence alignment software to invoke.''')
     iterM.add_argument('-i', '--Index',
                        help = '''Path to the bwa/chromap/minimap2 genome index. For example, if your reference genome
                        is hg38.fa, and it is located within ~/data/hg38, then you need to specify --Index as "~/data/hg38/hg38.fa",
-                       "~/data/hg38/hg38.chromap.mmi", and "~/data/hg38/hg38.minimap2.mmi" for bwa-mem, chromap, and
+                       "~/data/hg38/hg38.chromap-runhic.mmi", and "~/data/hg38/hg38.minimap2.mmi" for bwa-mem, chromap, and
                        minimap2, respectively. When not specified, the index will be built automatically according to
                        your aligner choice.''')
     iterM.add_argument('-t', '--threads', type = int, default = 8, help = 'Number of threads.')
@@ -217,7 +217,7 @@ def run(args, commands):
         # Logger Level
         logger.setLevel(21)
         filehandler = logging.FileHandler(args.logFile)
-        
+
         # Set level for Handlers
         filehandler.setLevel(21)
         # Customizing Formatter
@@ -372,14 +372,6 @@ def mapping(args, commands):
         
         if not os.path.exists(chunkFolder):
             os.makedirs(chunkFolder)
-            
-        cleanDirectory(chunkFolder)
-        
-        # Chunking/Dumping lock, not the mapping lock
-        lock = open(lockFile, 'wb')
-        lock.close()
-
-        atexit.register(cleanFile, lockFile)
         
         if readformat == 'sra':
             sourceFile = os.path.join(fastqDir, i + '.sra')
@@ -400,6 +392,14 @@ def mapping(args, commands):
             else:
                 logging.warning('No proper FASTQ pairs can be found, skip')
                 continue
+        
+        cleanDirectory(chunkFolder)
+        
+        # Chunking/Dumping lock, not the mapping lock
+        lock = open(lockFile, 'wb')
+        lock.close()
+
+        atexit.register(cleanFile, lockFile)
         
         ## Make chunks according to --chunksize
         if readformat == 'sra':

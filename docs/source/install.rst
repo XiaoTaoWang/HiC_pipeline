@@ -20,6 +20,7 @@ Other requirements:
 - sra-tools 2.10.8+
 - bwa 0.7.17+
 - minimap2 2.17+
+- chromap 0.1+
 - samtools 1.10+
 
 Optional:
