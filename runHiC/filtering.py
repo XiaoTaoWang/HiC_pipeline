@@ -21,7 +21,7 @@ def merge_pairs(pair_paths, outpath, tmpdir, nproc_in, nproc_out, memory):
         try:
             merge_command = ['pairtools', 'merge', '--nproc', str(nproc_out), '--memory', memory,
                             '--nproc-in', str(nproc_in), '--nproc-out', str(nproc_out),
-                            '--max-nmerge', '100', '--tmpdir', tmpdir] + pair_paths
+                            '--max-nmerge', '8', '--tmpdir', tmpdir] + pair_paths
 
             pipeline.append(
                 subprocess.Popen(merge_command,
@@ -39,7 +39,7 @@ def merge_pairs(pair_paths, outpath, tmpdir, nproc_in, nproc_out, memory):
                     stdout=None,
                     bufsize=-1)
             )
-
+            
             pipeline[-1].wait()
 
         finally:
