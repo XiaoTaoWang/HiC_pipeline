@@ -2,7 +2,7 @@
 
 # Author: XiaoTao Wang
 
-import os, subprocess
+import os, subprocess, io
 from runHiC.utilities import cleanFile, sleep, extract_chrom_sizes
 from runHiC.filtering import create_frag, stats_pairs, stats_samfrag
 from runHiC.quality import outStatsCache
@@ -278,7 +278,7 @@ def _collect_chromap_stats(chromap_stderr, outlog):
 
 
 ##### functions used for parsing/sorting/filtering original alignments
-def parse_chromap(align_path, out_total, chrom_path, assembly, nproc_in, nproc_out):
+def parse_chromap(align_path, out_total, chrom_path, assembly, nproc_in, nproc_out, memory, tmpdir):
     """
     Customized function to flip/sort original pairs outputed by chromap.
     """
@@ -296,8 +296,18 @@ def parse_chromap(align_path, out_total, chrom_path, assembly, nproc_in, nproc_o
     outstream.flush()
 
     _, body_stream = _headerops.get_header(instream)
-    for line in body_stream:
-        outstream.write(line)
+    # sort command
+    command = r'''/bin/bash -c 'export LC_COLLATE=C; export LANG=C; sort -k 2,2 -k 4,4 -k 3,3n -k 5,5n --stable {0} {1} -S {2} {3}'''.format(
+        '--parallel={0}'.format(nproc_out), '--temporary-directory={0}'.format(tmpdir), memory,'--compress-program=lz4c'
+    )
+    command += "'"
+    with subprocess.Popen(command, stdin=subprocess.PIPE, bufsize=-1, shell=True, stdout=outstream) as process:
+        stdin_wrapper = io.TextIOWrapper(process.stdin, 'utf-8')
+        for line in body_stream:
+            stdin_wrapper.write(line)
+        
+        stdin_wrapper.flush()
+        process.communicate()
     
     instream.close()
     outstream.close()
@@ -310,7 +320,7 @@ def parse_align(align_path, align_stats, outfile, genomepath, chromsizes, assemb
     
     #### step 1
     if align_path.endswith('.pairs'):
-        parse_chromap(align_path, out_total, chromsizes, assembly, nproc_in, nproc_out)
+        parse_chromap(align_path, out_total, chromsizes, assembly, nproc_in, nproc_out, memory, tmpdir)
     else:
         basic_command = ['pairtools', 'parse', '-c', chromsizes, '--assembly', assembly,
                         '--min-mapq', str(min_mapq), '--max-molecule-size', str(max_molecule_size),
