@@ -17,7 +17,6 @@ def merge_pairs(pair_paths, outpath, tmpdir, nproc_in, nproc_out, memory):
     else:
         # runHiC doesn't provide interface for changing detailed parameters of
         # pairtools merge for simplicity
-<<<<<<< HEAD
         pipeline = []
         try:
             merge_command = ['pairtools', 'merge', '--nproc', str(nproc_out), '--memory', memory,
@@ -48,13 +47,6 @@ def merge_pairs(pair_paths, outpath, tmpdir, nproc_in, nproc_out, memory):
             for process in pipeline:
                 if process.poll() is None:
                     process.terminate()
-=======
-        merge_command = ['pairtools', 'merge', '-o', outpath, '--nproc', str(nproc_out), '--memory', memory,
-                         '--nproc-in', str(nproc_in), '--nproc-out', str(nproc_out),
-                         '--max-nmerge', '10', '--tmpdir', tmpdir] + pair_paths
-
-        subprocess.check_call(' '.join(merge_command), shell=True)
->>>>>>> parent of ad64692... make sure the merged pairs file is sorted
 
 def dedup(out_total, outpath, stats, nproc_in, nproc_out):
 
