@@ -17,36 +17,11 @@ def merge_pairs(pair_paths, outpath, tmpdir, nproc_in, nproc_out, memory):
     else:
         # runHiC doesn't provide interface for changing detailed parameters of
         # pairtools merge for simplicity
-        pipeline = []
-        try:
-            merge_command = ['pairtools', 'merge', '--nproc', str(nproc_out), '--memory', memory,
-                            '--nproc-in', str(nproc_in), '--nproc-out', str(nproc_out),
-                            '--max-nmerge', '8', '--tmpdir', tmpdir] + pair_paths
+        merge_command = ['pairtools', 'merge', '-o', outpath, '--nproc', str(nproc_out), '--memory', memory,
+                         '--nproc-in', str(nproc_in), '--nproc-out', str(nproc_out),
+                         '--max-nmerge', '8', '--tmpdir', tmpdir] + pair_paths
+        subprocess.check_call(' '.join(merge_command), shell=True)
 
-            pipeline.append(
-                subprocess.Popen(merge_command,
-                    stdout=subprocess.PIPE,
-                    bufsize=-1)
-            )
-
-            sort_command = ['pairtools', 'sort', '-o', outpath, '--nproc', str(nproc_out),
-                            '--memory', memory, '--tmpdir', tmpdir, '--nproc-in', str(nproc_in),
-                            '--nproc-out', str(nproc_out)]
-
-            pipeline.append(
-                subprocess.Popen(sort_command,
-                    stdin=pipeline[-1].stdout,
-                    stdout=None,
-                    bufsize=-1)
-            )
-            
-            pipeline[-1].wait()
-
-        finally:
-            sleep()
-            for process in pipeline:
-                if process.poll() is None:
-                    process.terminate()
 
 def dedup(out_total, outpath, stats, nproc_in, nproc_out):
 
