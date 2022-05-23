@@ -211,8 +211,15 @@ def map_core(fastq_1, fastq_2, ref_fa, ref_index, outdir, tmpdir, aligner='chrom
                         os.path.split(fastq_1)[1].replace('_1.fastq', outformat))
     
     if aligner=='chromap':
-        map_command = ['chromap', '--preset', 'hic', '-x', ref_index, '-r', ref_fa, '-t', str(nthread), '-1', fastq_1, '-2', fastq_2,
-                       '-o', outpath, '-q', str(min_mapq), '--chr-order', sort_order_fil, '--pairs-natural-chr-order', flip_order_fil]
+        '''
+        map_command = ['chromap', '--preset', 'hic', '-x', ref_index,
+                       '-r', ref_fa, '-t', str(nthread), '-1', fastq_1, '-2', fastq_2,
+                       '-o', outpath, '-q', str(min_mapq), '--chr-order', sort_order_fil,
+                       '--pairs-natural-chr-order', flip_order_fil]
+        '''
+        map_command = ['chromap', '--preset', 'hic', '--low-mem', '-x', ref_index,
+                       '-r', ref_fa, '-t', str(nthread), '-1', fastq_1, '-2', fastq_2,
+                       '-o', outpath]
         bam_command = []
     else:
         if aligner=='minimap2':
@@ -278,6 +285,29 @@ def _collect_chromap_stats(chromap_stderr, outlog):
 
 
 ##### functions used for parsing/sorting/filtering original alignments
+def has_correct_order(loci1, loci2, chrom_index):
+
+    check = (chrom_index[loci1[0]], loci1[1]) <= (chrom_index[loci2[0]], loci2[1])
+
+    return check
+
+def _pairs_write(outstream, line, chrom_index):
+
+    parse = line.rstrip().split()
+    if not len(parse):
+        return
+    
+    readID, c1, p1, c2, p2, strand1, strand2, pair_type = parse[:8]
+    p1, p2 = int(p1), int(p2)
+    loci1 = (c1, p1)
+    loci2 = (c2, p2)
+    if not has_correct_order(loci1, loci2, chrom_index):
+        loci1, loci2 = loci2, loci1
+        strand1, strand2 = strand2, strand1
+    
+    cols = [readID, loci1[0], str(loci1[1]), loci2[0], str(loci2[1]), strand1, strand2, pair_type]
+    outstream.write('\t'.join(cols) + '\n')
+
 def parse_chromap(align_path, out_total, chrom_path, assembly, nproc_in, nproc_out, memory, tmpdir):
     """
     Customized function to flip/sort original pairs outputed by chromap.
@@ -285,6 +315,7 @@ def parse_chromap(align_path, out_total, chrom_path, assembly, nproc_in, nproc_o
     instream = _fileio.auto_open(align_path, mode='r', nproc=nproc_in, command=None)
     outstream = _fileio.auto_open(out_total, mode='w', nproc=nproc_out, command=None)
     chromsizes = extract_chrom_sizes(chrom_path)
+    chrom_index = dict(_headerops.get_chrom_order(chrom_path))
 
     # writer header, chromosome sizes must be in correct order
     header = _headerops.make_standard_pairsheader(
@@ -304,7 +335,7 @@ def parse_chromap(align_path, out_total, chrom_path, assembly, nproc_in, nproc_o
     with subprocess.Popen(command, stdin=subprocess.PIPE, bufsize=-1, shell=True, stdout=outstream) as process:
         stdin_wrapper = io.TextIOWrapper(process.stdin, 'utf-8')
         for line in body_stream:
-            stdin_wrapper.write(line)
+            _pairs_write(stdin_wrapper, line, chrom_index)
         
         stdin_wrapper.flush()
         process.communicate()
