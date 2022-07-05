@@ -7,7 +7,13 @@ runHiC
 
 runHiC is an easy-to-use command-line tool for Hi-C data processing.
 
-Since versio 0.8.5, runHiC has changed the default aligner to `chromap <https://github.com/haowenz/chromap>`_,
+Since version 0.8.6, runHiC supports the processing of all kinds of 3C-based interaction data,
+including Hi-C, Micro-C, HiChIP/PLAC-Seq, and ChIA-PET. For experiments that do not use
+restriction enzymes for DNA fragmentation, you can set the enzyme name arbitrarily for your
+record. For example, for Micro-C, you can set it to *MNase*; for ChIA-PET, you can set it to
+*sonication*
+
+Since version 0.8.5, runHiC has changed the default aligner to `chromap <https://github.com/haowenz/chromap>`_,
 which is comparable to `bwa-mem <https://github.com/lh3/bwa>`_ in alignment accuracy, but runs over 10 times faster.
 
 Since version 0.8.1, runHiC can be used directly on `Arima HiC <https://arimagenomics.com>`_ data
