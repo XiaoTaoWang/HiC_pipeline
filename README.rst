@@ -35,9 +35,9 @@ contact matrices. It currently contains 5 subcommand:
 +------------+-------------------------------------------------------------------------------------------------------------------+
 | binning    | 1.Generate contact matirx; 2. Perform ICE/matrix-balancing normalization                                          |
 +------------+-------------------------------------------------------------------------------------------------------------------+
-| pileup     | Perform entire processing from *mapping* to *binning*                                                             |
+| pileup     | Perform the entire processing steps from *mapping* to *binning*                                                   |
 +------------+-------------------------------------------------------------------------------------------------------------------+
-| quality    | Assess the quality of your Hi-C data                                                                              |
+| quality    | Evaluate the quality of your Hi-C data                                                                            |
 +------------+-------------------------------------------------------------------------------------------------------------------+
 
 Links
