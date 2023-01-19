@@ -81,7 +81,13 @@ def chromsizes_from_fasta(genomeFolder, genomeName):
 
 def chromsizes_from_pairs(pairpath):
 
-    from pairtools import _fileio, _headerops
+    import pairtools
+
+    if pairtools.__version__.startswith('0'):
+        from pairtools import _fileio, _headerops
+    else:
+        from pairtools.lib import fileio as _fileio
+        from pairtools.lib import headerops as _headerops
 
     instream = _fileio.auto_open(pairpath, mode='r')
     header, _ = _headerops.get_header(instream)

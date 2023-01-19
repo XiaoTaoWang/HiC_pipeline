@@ -1,27 +1,33 @@
 Release Notes
 =============
+Version 0.8.7 (01/19/2023)
+--------------------------
+- Made the program compatible with pairtools v1.0.2
+
+Version 0.8.6 (05/24/2022)
+--------------------------
+- Added support for other 3C-based experiments that do no use restriction enzymes for DNA fragmentation
+
 Version 0.8.5 (08/15/2021)
 ---------------------------
-- changed the default read aligner to from bwa-mem to chromap
+- changed the default read aligner to chromap
 - made the fragment-level filtering optional
 - removed the "-O/--outformat" argument
 
-
 Version 0.8.4-r1 (01/16/2021)
 ------------------------------
-- added the "--high-res" option to ``runHiC pileup`` and ``runHiC binning``.
+- Added the "--high-res" option to ``runHiC pileup`` and ``runHiC binning``.
 
 Version 0.8.4 (01/03/2021)
 --------------------------
 - Changed the bwa parameters from "bwa mem -SP" to "bwa mem -SP5M"
-- Updated the default walks policy from "mask" to "all"
-- Added the option "--memory" to change the allocated memory for ``pairtools sort`` and ``pairtools merge``.
-- Fixed a bug pertaining to the FASTQ read format. Previously, error occurred when there is "." in the prefix of FASTQ file names.
-- Added a piechart function to plot the percentage of each category for ``runHiC quality``.
-- Automatically output mcool (1000,2000,5000,10000,25000,50000,100000,250000,500000,1000000,2500000,5000000) in the final step.
-- Automatically check and remove invalid link files within the "filtered" folder
-- Avoid duplicate operations when only one replicate exists
-- Automatically sort chromosome names. Numerical labels will be sorted natually; for non-numerical labels, give priority to XYM over the rest.
+- Changed the default walks policy from "mask" to "all"
+- Fixed a bug pertaining to the FASTQ read format. In previous versions, error will occur when there is "." in the prefix of FASTQ file names.
+- Added a piechart function to ``runHiC quality``.
+- Added a function to automatically output mcool in the final step.
+- Added a function to automatically check and remove invalid link files within the "filtered" sub-folder
+- Fixed a bug to avoid duplicate operations when only one replicate exists
+- Added a function to automatically sort chromosome names. Numerical labels will be sorted natually; for non-numerical labels, give priority to XYM over the rest.
 
 Version 0.8.3 (03/04/2019)
 --------------------------
@@ -30,11 +36,11 @@ Version 0.8.3 (03/04/2019)
 
 Version 0.8.2 (01/16/2019)
 --------------------------
-- Fixed the bug of large dataset overflow in binning (by increasing the value for ``--max-split``)
+- Fixed a bug pertaining to large dataset overflow in binning (by increasing the value for ``--max-split``)
 
 Version 0.8.1 (12/23/2018)
 --------------------------
-- Supported Arima Hi-C
+- Added support for Arima Hi-C
 
 Version 0.8.0 (09/16/2018)
 --------------------------

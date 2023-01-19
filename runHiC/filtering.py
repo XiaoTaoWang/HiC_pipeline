@@ -2,12 +2,19 @@
 
 # Author: XiaoTao Wang
 
-import subprocess, os, pickle
+import subprocess, os, pickle, pairtools
 from runHiC.utilities import sleep
 import numpy as np
 from copy import deepcopy
 import time
 from collections import defaultdict
+
+if pairtools.__version__.startswith('0'):
+    from pairtools import _fileio, _pairsam_format, _headerops
+else:
+    from pairtools.lib import fileio as _fileio
+    from pairtools.lib import headerops as _headerops
+    from pairtools.lib import pairsam_format as _pairsam_format
 
 def merge_pairs(pair_paths, outpath, tmpdir, nproc_in, nproc_out, memory):
 
@@ -92,8 +99,6 @@ def stats_pairs(inpath, refkey, matchpre=[], nproc_in=3, nproc_out=8):
     return stats
 
 def stats_samfrag(samfrag_pairs, sample_size=100000):
-
-    from pairtools import _fileio, _pairsam_format, _headerops
 
     instream = _fileio.auto_open(samfrag_pairs, mode='r')
     _, body_stream = _headerops.get_header(instream)
@@ -182,8 +187,6 @@ def enzyme_level(pair_paths, outpre, keys, outkey, stats_pool, tmpdir, nproc_in,
     return stats_pool, outall
 
 def split_pairsam(pairsam_path):
-
-    from pairtools import _fileio, _headerops
     
     # check for SAM information with the header of .pairsam.gz
     instream = _fileio.auto_open(pairsam_path, mode='r')

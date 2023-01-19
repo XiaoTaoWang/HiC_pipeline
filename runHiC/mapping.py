@@ -2,11 +2,16 @@
 
 # Author: XiaoTao Wang
 
-import os, subprocess, io
+import os, subprocess, io, pairtools
 from runHiC.utilities import cleanFile, sleep, extract_chrom_sizes
 from runHiC.filtering import create_frag, stats_pairs, stats_samfrag
 from runHiC.quality import outStatsCache
-from pairtools import _fileio, _headerops
+
+if pairtools.__version__.startswith('0'):
+    from pairtools import _fileio, _headerops
+else:
+    from pairtools.lib import fileio as _fileio
+    from pairtools.lib import headerops as _headerops
 
 ##### functions handling with sequencing reads
 def commandExists(command):

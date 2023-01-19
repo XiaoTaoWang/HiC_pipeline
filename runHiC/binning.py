@@ -7,7 +7,6 @@ from runHiC.utilities import chromsizes_from_pairs
 
 log = logging.getLogger(__name__)
 
-
 def mcool_from_pairs(pairpath, outcool, outmcool, ignore_diags=2, nproc=1, mad_max=5, min_nnz=10,
                     min_count=0, max_split=2, high_res=False):
 

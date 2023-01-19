@@ -2,14 +2,16 @@ Experiment Quality Assessment
 *****************************
 In this tutorial, I will show you how runHiC can be used in data quality assessment.
 
-All you need to type in is a sinlge-line command after running *runHiC filtering* or *runHiC pileup*
-(refer to `quickstart <http://xiaotaowang.github.io/HiC_pipeline/quickstart.html>`_ for more details)::
+All you need to do is to run a sinlge-line command after *runHiC filtering* or *runHiC pileup*
+has been finished (refer to `quickstart <http://xiaotaowang.github.io/HiC_pipeline/quickstart.html>`_
+for more details)::
 
     $ runHiC quality -m datasets.tsv -L filtered-hg38
 
 Statistic Table
 ---------------
-Statistic tables on sequencing reads can be found in *.stats files under *filtered-hg38*
+Then statistic tables about your data can be found in *.stats files under the *filtered-hg38*
+sub-folder.
 
 Here's a snapshot::
 
@@ -100,16 +102,16 @@ so that, for example, "010_DoubleSideMappedReads", "020_SingleSideMappedReads" a
 
 At the bottom of the statistic table, we include some important quality indicators:
 
-1. Unique-Mapping Ratio. Low value of this metric indicates low sequencing quality,
-   sample contamination or incomplete genome assembly.
+1. Unique-Mapping Ratio. A low value of this metric indicates low sequencing quality,
+   sample contamination, or poor genome assembly.
 2. Self-Ligation Ratio.
 3. Dangling-Reads Ratio.
-4. Long-Range Ratio. Low value (<0.15) of this metric indicates the failed experiment.
+4. Long-Range Ratio. A low value (<0.15) of this metric indicates failed experiment.
 
 Library-size Estimation
 ------------------------
 Dangling reads can be applied to estimate your library size in nature. Here's an example
-of size distribution of dangling read molecules for typical 300~500bp library:
+of size distribution of dangling read molecules from a typical 300~500bp library:
 
 .. image:: ./_static/GM06990-HindIII-allReps-librarySize.png
         :align: center
@@ -132,6 +134,6 @@ below:
 .. image:: ./_static/GM06990-HindIII-allReps-PairType.png
         :align: center
 
-We can see a distinct turning point around 40Kb. While there may be several unknown mechanisms
-making biases below this point, we should only consider contacts whose genomic distances
-are greater than 40Kb in the following analysis.
+We can see a distinct turning point around 40kb. While there may be several unknown mechanisms
+making biases below this point, we should only consider contacts whose genomic distances are greater
+than 40kb in further deeper analysis.
