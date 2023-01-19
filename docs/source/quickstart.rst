@@ -163,7 +163,7 @@ Here's the command you should type in the terminal::
     $ runHiC filtering --pairFolder pairs-hg38/ --logFile runHiC-filtering.log --nproc 10
 
 That will create a new sub-folder named *filtered-hg38*. Please find the final valid
-contact pairs in *.pairs.gz files. If you specify ``--include-sam`` when you run
+contact pairs in .pairs.gz files. If you specify ``--include-sam`` when you run
 ``runHiC mapping``, it will also output a .bam file accompanying each .pairs.gz file
 to store alignments that passed all filtering criteria.
 
