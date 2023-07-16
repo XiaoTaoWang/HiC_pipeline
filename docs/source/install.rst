@@ -31,7 +31,7 @@ on your machine, and execute the commands below::
     $ conda config --add channels defaults
     $ conda config --add channels bioconda
     $ conda config --add channels conda-forge
-    $ mamba create -n runHiC matplotlib biopython pairtools cooler sra-tools bwa minimap2 samtools pigz chromap
+    $ mamba create -n runHiC "python==3.9" matplotlib biopython pairtools cooler sra-tools bwa minimap2 samtools pigz chromap
     $ mamba activate runHiC
 
 Install runHiC
