@@ -210,7 +210,12 @@ def digest(fasta_records, enzyme):
             cocktail = biorst.RestrictionBatch(['MboI', 'HinfI'])
             cut_finder = cocktail.search
         else:
-            cut_finder = getattr(biorst, enzyme).search
+            if '-' in enzyme:
+                cocktail = biorst.RestrictionBatch(enzyme.split('-'))
+                cut_finder = cocktail.search
+            else:
+                cut_finder = getattr(biorst, enzyme).search
+                
     except AttributeError:
         raise ValueError('Unknown enzyme name: {}'.format(enzyme))
 

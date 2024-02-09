@@ -29,8 +29,11 @@ def getargs():
                         chromosomes in desired order.''')
     parser.add_argument('--fasta-path', help='''Genome assembly FASTA file or folder containing
                         FASTA files (uncompressed).''')
-    parser.add_argument('--enzyme', help='''Name of restriction enzyme. Set it to "Arima" if you
-                        want to get in-silico fragments digested by Arima-HiC enzyme cocktail.''')
+    parser.add_argument('--enzyme', help='''Name of restriction enzyme. If you intend to simulate
+                        the digestion of in-silico fragments using the Arima Hi-C enzyme cocktail,
+                        set the enzyme name to "Arima". In case of using multiple restriction
+                        enzymes for digestion, you can pass a string like "enzyme1-enzyme2-enzyme3.."
+                        to this argument.''')
     
     ## Parse the command-line arguments
     commands = sys.argv[1:]
