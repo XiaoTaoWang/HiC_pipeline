@@ -22,12 +22,63 @@ def merge_pairs(pair_paths, outpath, tmpdir, nproc_in, nproc_out, memory):
         # Just make a soft link to original .pairsam
         os.symlink(pair_paths[0], outpath)
     else:
-        # runHiC doesn't provide interface for changing detailed parameters of
-        # pairtools merge for simplicity
-        merge_command = ['pairtools', 'merge', '-o', outpath, '--nproc', str(nproc_out), '--memory', memory,
-                         '--nproc-in', str(nproc_in), '--nproc-out', str(nproc_out),
-                         '--max-nmerge', '8', '--tmpdir', tmpdir] + pair_paths
-        subprocess.check_call(' '.join(merge_command), shell=True)
+        max_nmerge = 8
+
+        outstream = _fileio.auto_open(
+            outpath, mode='w', nproc=nproc_out, command=None
+        )
+
+        # do not merge headers
+        f = _fileio.auto_open(
+            pair_paths[0], mode='r', nproc=nproc_in, command=None
+        )
+        header, _ = _headerops.get_header(f)
+        f.close()
+
+        outstream.writelines((l + "\n" for l in header))
+        outstream.flush()
+
+        command = r"""
+            /bin/bash -c 'export LC_COLLATE=C; export LANG=C; sort
+            -k {0},{0} -k {1},{1} -k {2},{2}n -k {3},{3}n -k {4},{4} 
+            --merge  
+            --field-separator=$'\''{5}'\''
+            {6}
+            {7}
+            {8}
+            -S {9}
+            """.replace(
+            "\n", " "
+        ).format(
+            _pairsam_format.COL_C1 + 1,
+            _pairsam_format.COL_C2 + 1,
+            _pairsam_format.COL_P1 + 1,
+            _pairsam_format.COL_P2 + 1,
+            _pairsam_format.COL_PTYPE + 1,
+            _pairsam_format.PAIRSAM_SEP_ESCAPE,
+            " --parallel={} ".format(nproc_out) if nproc_out > 1 else " ",
+            " --batch-size={} ".format(max_nmerge) if max_nmerge else " ",
+            " --temporary-directory={} ".format(tmpdir) if tmpdir else " ",
+            memory
+        )
+
+        for path in pair_paths:
+            if path.endswith(".gz"):
+                command += (
+                    r""" <(bgzip -dc -@ {} {} | sed -n -e '\''/^[^#]/,$p'\'')""".format(
+                        nproc_in, path
+                    )
+                )
+            elif path.endswith(".lz4"):
+                command += r""" <(lz4c -dc {} | sed -n -e '\''/^[^#]/,$p'\'')""".format(
+                    path
+                )
+            else:
+                command += r""" <(sed -n -e '\''/^[^#]/,$p'\'' {})""".format(path)
+        
+        command += "'"
+        subprocess.check_call(command, shell=True, stdout=outstream)
+        outstream.close()
 
 
 def dedup(out_total, outpath, stats, nproc_in, nproc_out):
