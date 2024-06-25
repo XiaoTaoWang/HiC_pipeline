@@ -5,27 +5,10 @@
 # Author: XiaoTao Wang
 
 ## Required Modules
-import os, sys, argparse, logging, logging.handlers, glob, atexit, \
-       traceback, pickle, xmlrpc.client, time, runHiC
-from pkg_resources import parse_version as V
-
-try:
-    import numpy as np
-except ImportError:
-    pass
+import os, sys, argparse, logging, glob, atexit, traceback, runHiC
 
 ## Check for update
 currentVersion = runHiC.__version__
-try:
-    pypi = xmlrpc.client.ServerProxy('http://pypi.python.org/pypi')
-    available = pypi.package_releases('runHiC')
-    if V(currentVersion) < V(available[0]):
-        print('*'*75)
-        print('Version {0} is out of date, Version {1} is available.'.format(currentVersion, available[0]))
-        print()
-        print('*'*75)
-except:
-    pass
 
 def getargs():
     ## Construct an ArgumentParser object for command-line arguments
