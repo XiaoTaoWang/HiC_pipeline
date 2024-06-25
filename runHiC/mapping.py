@@ -178,7 +178,7 @@ def splitSingleFastq(filename, pre, pair_index, folder, splitBy=4000000):
 ##### functions that invoke different read aligners
 def buildMapIndex(aligner, genomeFolder, genomeName):
     """
-    Build bwa/chromap/minimap2 index files.
+    Build bwa-mem/bwa-mem2/chromap index files.
     """
     lockFile = os.path.join(genomeFolder, '.'.join([genomeName, aligner, 'lock']))
     # Aquire lock
@@ -187,14 +187,13 @@ def buildMapIndex(aligner, genomeFolder, genomeName):
     
     wholeGenome = os.path.join(genomeFolder, '.'.join([genomeName, 'fa']))
 
-    if aligner=='minimap2':
-        indexOut = os.path.join(genomeFolder, '.'.join([genomeName, 'minimap2', 'mmi']))
-        build_command = ['minimap2', '-x', 'sr', '-d', indexOut, wholeGenome]
-    elif aligner=='chromap':
+    if aligner=='chromap':
         indexOut = os.path.join(genomeFolder, '.'.join([genomeName, 'chromap-runhic', 'mmi']))
         build_command = ['chromap', '-i', '-r', wholeGenome, '-o', indexOut]
-    else:
+    elif aligner=='bwa-mem':
         build_command = ['bwa', 'index', wholeGenome]
+    else:
+        build_command = ['bwa-mem2', 'index', wholeGenome]
     
     subprocess.check_call(' '.join(build_command), shell=True)
 
@@ -207,6 +206,7 @@ def map_core(fastq_1, fastq_2, ref_fa, ref_index, outdir, tmpdir, aligner='chrom
         outformat = '.pairs'
     else:
         outformat = '.bam'
+
     # output file name
     if fastq_1.endswith('_1.fastq.gz'):
         outpath = os.path.join(outdir,
@@ -216,22 +216,15 @@ def map_core(fastq_1, fastq_2, ref_fa, ref_index, outdir, tmpdir, aligner='chrom
                         os.path.split(fastq_1)[1].replace('_1.fastq', outformat))
     
     if aligner=='chromap':
-        '''
-        map_command = ['chromap', '--preset', 'hic', '-x', ref_index,
-                       '-r', ref_fa, '-t', str(nthread), '-1', fastq_1, '-2', fastq_2,
-                       '-o', outpath, '-q', str(min_mapq), '--chr-order', sort_order_fil,
-                       '--pairs-natural-chr-order', flip_order_fil]
-        '''
         map_command = ['chromap', '--preset', 'hic', '--low-mem', '-x', ref_index,
                        '-r', ref_fa, '-t', str(nthread), '-1', fastq_1, '-2', fastq_2,
                        '-o', outpath]
         bam_command = []
+    elif aligner=='bwa-mem':
+        map_command = ['bwa', 'mem', '-SP', '-t', str(nthread), ref_index, fastq_1, fastq_2]    
+        bam_command = ['samtools', 'view', '-bS', '-']
     else:
-        if aligner=='minimap2':
-            map_command = ['minimap2', '-ax', 'sr', '-t', str(nthread), ref_index, fastq_1, fastq_2]
-        else:
-            map_command = ['bwa', 'mem', '-SP5M', '-t', str(nthread), ref_index, fastq_1, fastq_2]
-            
+        map_command = ['bwa-mem2', 'mem', '-SP', '-t', str(nthread), ref_index, fastq_1, fastq_2]    
         bam_command = ['samtools', 'view', '-bS', '-']
     
     pipeline = []

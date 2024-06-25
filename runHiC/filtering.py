@@ -81,7 +81,8 @@ def collect_stats(pair_paths):
 
 def stats_pairs(inpath, refkey, matchpre=[], nproc_in=3, nproc_out=8):
     
-    stat_command = ['pairtools', 'stats', '--nproc-in', str(nproc_in), '--nproc-out', str(nproc_out), inpath]
+    stat_command = ['pairtools', 'stats', '--n-dist-bins-decade 8', '--nproc-in', str(nproc_in),
+                    '--nproc-out', str(nproc_out), inpath]
     pipe = subprocess.Popen(stat_command, stdout=subprocess.PIPE)
     inStream = pipe.stdout
     stats = defaultdict(int)

@@ -125,7 +125,7 @@ def typePlot(stats, outfile, dpi = 300):
             ot.append(np.nan)
     lt = np.r_[lt]; rt = np.r_[rt]; it = np.r_[it]; ot = np.r_[ot]
 
-    x = np.arange(0, 8, 0.25)
+    x = np.arange(0.25, 8, 0.125)
     xticks = list(range(1, 8))
     xticklabels = ['10bp', '100bp', '1K', '10K', '100K', '1M', '10M']
 

@@ -69,23 +69,23 @@ def getargs():
     iterM.add_argument('-f', '--fastqDir', help = 'Name of the folder containing sequencing reads.')
     iterM.add_argument('-F', '--Format', default = 'SRA', choices = ['SRA', 'FASTQ'],
                        help = 'Format of the sequencing reads.')
-    iterM.add_argument('-A', '--aligner', default = 'chromap', choices = ['bwa-mem', 'chromap', 'minimap2'],
+    iterM.add_argument('-A', '--aligner', default = 'chromap', choices = ['bwa-mem', 'bwa-mem2', 'chromap'],
                        help = '''Name of the sequence alignment software to invoke.''')
     iterM.add_argument('-i', '--Index',
-                       help = '''Path to the bwa/chromap/minimap2 genome index. For example, if your reference genome
-                       is hg38.fa, and it is located within ~/data/hg38, then you need to specify --Index as "~/data/hg38/hg38.fa",
-                       "~/data/hg38/hg38.chromap-runhic.mmi", and "~/data/hg38/hg38.minimap2.mmi" for bwa-mem, chromap, and
-                       minimap2, respectively. When not specified, the index will be built automatically according to
-                       your aligner choice.''')
+                       help = '''Path to the bwa-mem/bwa-mem2/chromap index. For example, if the reference genome
+                       is hg38.fa, and it is located within the folder ~/data/hg38, then you need to specify
+                       this parameter as "~/data/hg38/hg38.fa", "~/data/hg38/hg38.fa", and "~/data/hg38/hg38.chromap-runhic.mmi"
+                       for bwa-mem, bwa-mem2, and chromap, respectively. If not specified, the index will be built
+                       automatically according to the aligner choice.''')
     iterM.add_argument('-t', '--threads', type = int, default = 8, help = 'Number of threads.')
     iterM.add_argument('--min-mapq', type = int, default = 1,
                        help = '''The minimal MAPQ score to consider a read as uniquely mapped.''')
-    iterM.add_argument('--max-molecule-size', type = int, default = 2000,
+    iterM.add_argument('--max-molecule-size', type = int, default = 750,
                        help = '''The maximal size of a Hi-C molecule, used to rescue single ligations from
                        molecules with three alignments.''')
     iterM.add_argument('--max-inter-align-gap', type = int, default = 20,
                        help = '''A key parameter used by pairtools to rescue single ligations from walks.''')
-    iterM.add_argument('--walks-policy', default = 'all', choices = ['mask', '5any', '5unique', '3any', '3unique', 'all'],
+    iterM.add_argument('--walks-policy', default = '5unique', choices = ['mask', '5any', '5unique', '3any', '3unique', 'all'],
                        help = '''The policy used by pairtools to report unrescuable walks.''')
     iterM.add_argument('--include-readid', action = 'store_true',
                        help = '''If specified, add read IDs to the outputed .pairsam files.''')
@@ -151,9 +151,8 @@ def getargs():
     binReads.add_argument('--mad-max', type = int, default = 5,
                           help = '''Before ICE, drop bins whose log marginal sum is less than ``mad_max``
                           median absolute deviations below the median log marginal sum.''')
-    binReads.add_argument('--high-res', action = 'store_true', help='''If specified, bin pairs at 11 base-pair-delimited resolutions:
-                          2500000,1000000,500000,250000,100000,50000,25000,10000,5000,2000,1000. The default setting is binning pairs at
-                          9 resolutions: 2500000,1000000,500000,250000,100000,50000,25000,10000,5000.''')
+    binReads.add_argument('--resolutions', default = '5000,10000,25000,50000,100000,250000,500000,1000000,2500000',
+                          help='''List of resolutions at which the contact matrices will be generated.''')
     binReads.add_argument('--nproc', type = int, default = 8, help = '''Number of allocated proccesses.''')
     binReads.add_argument('--max-split', type = int, default = 2, help = '''Divide the pairs from each chromosome
                           into at most this many chunks.''')
@@ -186,9 +185,8 @@ def getargs():
                                       add_help = False)
     streamline.add_argument('--max-split', type = int, default = 2, help = '''Divide the pairs from each chromosome
                             into at most this many chunks.''')
-    streamline.add_argument('--high-res', action = 'store_true', help='''If specified, bin pairs at 11 base-pair-delimited resolutions:
-                            2500000,1000000,500000,250000,100000,50000,25000,10000,5000,2000,1000. The default setting is binning pairs at
-                            9 resolutions: 2500000,1000000,500000,250000,100000,50000,25000,10000,5000.''')
+    streamline.add_argument('--resolutions', default = '5000,10000,25000,50000,100000,250000,500000,1000000,2500000',
+                            help='''List of resolutions at which the contact matrices will be generated.''')
     streamline.set_defaults(func = pileup)
     
      ## Parse the command-line arguments
@@ -255,7 +253,7 @@ def run(args, commands):
                             '# Temporary Dir = {0}'.format(args.tmpdir)
                             ])
         if (commands[0] == 'pileup'):
-            arglist.extend(['# Generate contact maps at 11 resolutions = {0}'.format(args.high_res)])
+            arglist.extend(['# Resolutions = {0}'.format(args.resolutions)])
                             
         if commands[0] == 'filtering':
             arglist.extend(['# Original Pairs = {0}'.format(args.pairFolder),
@@ -270,7 +268,7 @@ def run(args, commands):
                             '# Minimum Marginal Nonzeros = {0}'.format(args.min_nnz),
                             '# Minimum Marginal Counts = {0}'.format(args.min_count),
                             '# MAD Max = {0}'.format(args.mad_max),
-                            '# Generate contact maps at 11 resolutions = {0}'.format(args.high_res),
+                            '# Resolutions = {0}'.format(args.resolutions),
                             '# Number of processes = {0}'.format(args.nproc)])
         
         if commands[0] == 'quality':
@@ -303,9 +301,7 @@ def mapping(args, commands):
     if not args.Index is None:
         indexpath = os.path.abspath(os.path.expanduser(args.Index))
     else:
-        if aligner=='minimap2':
-            indexpath = os.path.join(genomeFolder, '.'.join([genomeName, 'minimap2', 'mmi']))
-        elif aligner=='chromap':
+        if aligner=='chromap':
             indexpath = os.path.join(genomeFolder, '.'.join([genomeName, 'chromap-runhic', 'mmi']))
         else:
             indexpath = os.path.join(genomeFolder, '.'.join([genomeName, 'fa']))
@@ -325,10 +321,14 @@ def mapping(args, commands):
         indexlock = os.path.join(genomeFolder, '.'.join([genomeName, aligner, 'lock']))
         if os.path.exists(indexlock):
             raise Exception('''Another index building process is on. Leaving''')
-        if aligner in ['minimap2', 'chromap']:
+        
+        if aligner in ['chromap']:
             icheck = glob.glob(indexpath)
+        elif aligner in ['bwa-mem2']:
+            icheck = glob.glob(indexpath+'.bwt.2bit.64')
         else:
-            icheck = glob.glob(indexpath+'.sa')
+            icheck = glob.glob(indexpath+'.bwt')
+
         if len(icheck):
             logging.log(21, 'Set --Index to {0}'.format(indexpath))
         else:
@@ -737,14 +737,12 @@ def binning(args, commands):
             
             logging.log(21, 'Contact Matrices will be saved in .mcool format under {0}'.format(hFolder))
             
-            if args.high_res:
-                intermediate = os.path.join(hFolder, os.path.basename(f).replace('.pairs.gz', '.1kb.cool'))
-            else:
-                intermediate = os.path.join(hFolder, os.path.basename(f).replace('.pairs.gz', '.5kb.cool'))
+            resolutions = sorted([int(r) for r in args.resolutions.split(',')])
+            intermediate = os.path.join(hFolder, os.path.basename(f).replace('.pairs.gz', '.{0}.cool'.format(resolutions[0])))
             hFile = os.path.join(hFolder, os.path.basename(f).replace('.pairs.gz', '.mcool'))
-            mcool_from_pairs(f, intermediate, hFile, ignore_diags=args.ignore_diags, nproc=args.nproc,
-                            mad_max=args.mad_max, min_count=args.min_count, min_nnz=args.min_nnz,
-                            max_split=args.max_split, high_res=args.high_res)
+            mcool_from_pairs(f, intermediate, hFile, resolutions, ignore_diags=args.ignore_diags,
+                             nproc=args.nproc, mad_max=args.mad_max, min_count=args.min_count,
+                             min_nnz=args.min_nnz, max_split=args.max_split)
         
             completed = open(Indicator, 'wb')
             completed.close()
@@ -818,7 +816,7 @@ def pileup(args, commands):
     """
     mapping(args, commands)
     args.stats_cache = 'allinone.cache'
-    args.nproc = args.threads
+    args.nproc = 8
     filtering(args, commands)
     args.ignore_diags = 2
     args.mad_max = 5
