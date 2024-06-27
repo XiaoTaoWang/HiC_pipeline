@@ -353,8 +353,9 @@ def parse_align(align_path, align_stats, outfile, genomepath, chromsizes, assemb
     else:
         basic_command = ['pairtools', 'parse', '-c', chromsizes, '--assembly', assembly,
                         '--min-mapq', str(min_mapq), '--max-molecule-size', str(max_molecule_size),
-                        '--max-inter-align-gap', str(max_inter_align_gap), '--walks-policy', walks_policy,
-                        '--nproc-in', str(nproc_in), '--nproc-out', str(nproc_out)]
+                        '--max-inter-align-gap', str(max_inter_align_gap), '--add-columns', 'mapq',
+                        '--walks-policy', walks_policy, '--nproc-in', str(nproc_in), '--nproc-out',
+                        str(nproc_out)]
         if not include_readid:
             basic_command.append('--drop-readid')
         
