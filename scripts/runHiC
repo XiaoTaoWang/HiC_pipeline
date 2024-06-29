@@ -84,6 +84,9 @@ def getargs():
     iterM.add_argument('--chunkSize', type = int, help = '''On a low-memory machine, it's better
                        to split the raw read file into chunks and map them separatively. This
                        parameter specifies the size of each chunk. By default, no split is performed.''')
+    iterM.add_argument('--remove-intermediate', action = 'store_true',
+                       help = '''If specified, intermediate alignment results will be deleted to free up the
+                       disk space.''')
     iterM.add_argument('--tmpdir', default='.runHiC', help='''Temporary folder for intermediate results.''')
     iterM.add_argument('--logFile', default = 'runHiC.log', help = '''Logging file name.''')
     iterM.set_defaults(func = mapping)
@@ -232,8 +235,9 @@ def run(args, commands):
                             '# Drop SEQ and QUAL = {0}'.format(args.drop_seq),
                             '# Add Restriction Fragment = {0}'.format(args.add_frag),
                             '# Memory for sort = {0}'.format(args.memory),
-                            '# Chunk size = {0}'.format(args.chunkSize),
-                            '# Temporary Dir = {0}'.format(args.tmpdir)
+                            '# Chunk Size = {0}'.format(args.chunkSize),
+                            '# Temporary Dir = {0}'.format(args.tmpdir),
+                            '# Remove Intermediate Alignments = {0}'.format(args.remove_intermediate)
                             ])
         if (commands[0] == 'pileup'):
             arglist.extend(['# Resolutions = {0}'.format(args.resolutions)])
@@ -475,6 +479,8 @@ def mapping(args, commands):
             logging.log(21, 'Chunk {0} of {1}: Done'.format(count, i))
 
             os.remove(lockFile)
+            if args.remove_intermediate:
+                os.remove(align_path)
         
         if all([os.path.exists(child) for child in childchecks]):
             completed = open(globalIndicator, 'wb')
