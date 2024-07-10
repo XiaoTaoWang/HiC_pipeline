@@ -27,7 +27,8 @@ def getargs():
     
     parser.add_argument('--pairs-path',
                         help='''Path to a pairsam file.''')
-    parser.add_argument('-O', '--output', help='Output file path.')
+    parser.add_argument('-O', '--output',
+                        help='Output file path.')
     parser.add_argument('--phased-SNPs',
                         help='''Path to a TXT file containing phased SNPs.''')
     parser.add_argument('--max-molecule-size', type = int, default = 750,
@@ -56,7 +57,7 @@ def phase():
     # Improve the performance if you don't want to run it
     if commands[0] not in ['-h', '-v', '--help', '--version']:
 
-        import runHiC.phase as phase_pipeline
+        from runHiC.phase import phase_pipeline
 
         phased_snp = op.abspath(op.expanduser(args.phased_SNPs))
         infil = args.pairs_path

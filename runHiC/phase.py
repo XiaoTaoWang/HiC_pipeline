@@ -14,7 +14,7 @@ def parse_phased_SNPs(infil):
     # four columns: chrom, 0-based pos, hap1, hap2
     hap1 = {}
     hap2 = {}
-    SNPs= []
+    SNPs = {}
     with open(infil, 'r') as source:
         for line in source:
             chrom, pos, b1, b2 = line.rstrip().split()
@@ -26,7 +26,7 @@ def parse_phased_SNPs(infil):
             hap2[(chrom, pos)] = b2.upper()
     
     for chrom in SNPs:
-        SNPs = sorted(SNPs[chrom])
+        SNPs[chrom] = sorted(SNPs[chrom])
     
     return SNPs, hap1, hap2
 
@@ -40,6 +40,12 @@ def locate_bisect(sorted_list, start, end):
 def parse_CIGAR(cigar_str):
 
     cigar_tuples = []
+    if not len(cigar_str):
+        return cigar_tuples
+    
+    if not cigar_str[0].isdigit():
+        return cigar_tuples
+    
     length = ''
     operation = ''
     for s in cigar_str:
