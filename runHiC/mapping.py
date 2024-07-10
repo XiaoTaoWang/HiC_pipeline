@@ -199,8 +199,7 @@ def buildMapIndex(aligner, genomeFolder, genomeName):
 
     cleanFile(lockFile)
     
-def map_core(fastq_1, fastq_2, ref_fa, ref_index, outdir, tmpdir, aligner='chromap', min_mapq=1, nthread=1,
-    flip_order_fil=None, sort_order_fil=None):
+def map_core(fastq_1, fastq_2, ref_fa, ref_index, outdir, tmpdir, aligner='chromap', nthread=1):
 
     if aligner=='chromap':
         outformat = '.pairs'
@@ -341,55 +340,111 @@ def parse_chromap(align_path, out_total, chrom_path, assembly, nproc_in, nproc_o
     instream.close()
     outstream.close()
 
-def parse_align(align_path, align_stats, outfile, genomepath, chromsizes, assembly, min_mapq, max_molecule_size,
-              max_inter_align_gap, walks_policy, include_readid, include_sam, drop_seq, tmpdir, enzyme, nproc_in,
-              nproc_out, memory, add_frag):
+def parse_align(align_path, align_stats, outfile, genomepath, phased_snp, chromsizes, assembly, min_mapq,
+                max_molecule_size, max_inter_align_gap, walks_policy, include_readid, include_sam, drop_seq,
+                tmpdir, enzyme, memory, add_frag):
     
     out_total = outfile.replace('.pairsam.gz', '.total.pairsam.gz')
     
+    nproc_in = 3
+    nproc_out = 8
+
     #### step 1
     if align_path.endswith('.pairs'):
         parse_chromap(align_path, out_total, chromsizes, assembly, nproc_in, nproc_out, memory, tmpdir)
     else:
-        basic_command = ['pairtools', 'parse', '-c', chromsizes, '--assembly', assembly,
-                        '--min-mapq', str(min_mapq), '--max-molecule-size', str(max_molecule_size),
-                        '--max-inter-align-gap', str(max_inter_align_gap), '--add-columns', 'mapq',
-                        '--walks-policy', walks_policy, '--nproc-in', str(nproc_in), '--nproc-out',
-                        str(nproc_out)]
-        if not include_readid:
-            basic_command.append('--drop-readid')
+        if phased_snp is None:
+            basic_command = ['pairtools', 'parse', '-c', chromsizes, '--assembly', assembly,
+                            '--min-mapq', str(min_mapq), '--max-molecule-size', str(max_molecule_size),
+                            '--max-inter-align-gap', str(max_inter_align_gap), '--add-columns', 'mapq',
+                            '--walks-policy', walks_policy, '--nproc-in', str(nproc_in), '--nproc-out',
+                            str(nproc_out)]
+            
+            if not include_readid:
+                basic_command.append('--drop-readid')
+            
+            if not include_sam:
+                basic_command.append('--drop-sam')
+            
+            if drop_seq:
+                basic_command.append('--drop-seq')
+            basic_command.append(align_path)
         
-        if not include_sam:
-            basic_command.append('--drop-sam')
+            pipeline = []
+            try:
+                pipeline.append(
+                    subprocess.Popen(basic_command,
+                        stdout=subprocess.PIPE,
+                        bufsize=-1)
+                )
+
+                sort_command = ['pairtools', 'sort', '-o', out_total, '--nproc', str(nproc_out), '--memory', memory, '--tmpdir', tmpdir,
+                                '--nproc-in', str(nproc_in), '--nproc-out', str(nproc_out)]
+                pipeline.append(
+                    subprocess.Popen(sort_command,
+                        stdin=pipeline[-1].stdout,
+                        stdout=None,
+                        bufsize=-1)
+                )
+
+                pipeline[-1].wait()
+
+            finally:
+                sleep()
+                for process in pipeline:
+                    if process.poll() is None:
+                        process.terminate()
+        else:
+            basic_command = ['pairtools', 'parse', '-c', chromsizes, '--assembly', assembly,
+                            '--min-mapq', str(min_mapq), '--max-molecule-size', str(max_molecule_size),
+                            '--max-inter-align-gap', str(max_inter_align_gap), '--add-columns', 'mapq',
+                            '--walks-policy', walks_policy, '--nproc-in', str(nproc_in), '--nproc-out',
+                            str(nproc_out), align_path]
         
-        if drop_seq:
-            basic_command.append('--drop-seq')
-        basic_command.append(align_path)
-    
-        pipeline = []
-        try:
-            pipeline.append(
-                subprocess.Popen(basic_command,
-                    stdout=subprocess.PIPE,
-                    bufsize=-1)
-            )
+            pipeline = []
+            try:
+                pipeline.append(
+                    subprocess.Popen(basic_command,
+                        stdout=subprocess.PIPE,
+                        bufsize=-1)
+                )
 
-            sort_command = ['pairtools', 'sort', '-o', out_total, '--nproc', str(nproc_out), '--memory', memory, '--tmpdir', tmpdir,
-                            '--nproc-in', str(nproc_in), '--nproc-out', str(nproc_out)]
-            pipeline.append(
-                subprocess.Popen(sort_command,
-                    stdin=pipeline[-1].stdout,
-                    stdout=None,
-                    bufsize=-1)
-            )
+                phase_command = [
+                    'runHiC-phase', '--phased-SNPs', phased_snp, '--nproc-in', str(nproc_in),
+                    '--nproc-out', str(nproc_out), '--max-molecule-size', str(max_molecule_size),
+                ]
 
-            pipeline[-1].wait()
+                if include_readid:
+                    phase_command.append('--include-readid')
+                
+                if include_sam:
+                    phase_command.append('--include-sam')
 
-        finally:
-            sleep()
-            for process in pipeline:
-                if process.poll() is None:
-                    process.terminate()
+                pipeline.append(
+                    subprocess.Popen(phase_command,
+                        stdin=pipeline[-1].stdout,
+                        stdout=subprocess.PIPE,
+                        bufsize=-1)
+                )
+
+                sort_command = ['pairtools', 'sort', '-o', out_total, '--nproc', str(nproc_out),
+                                '--memory', memory, '--tmpdir', tmpdir, '--nproc-in', str(nproc_in),
+                                '--nproc-out', str(nproc_out)]
+                
+                pipeline.append(
+                    subprocess.Popen(sort_command,
+                        stdin=pipeline[-1].stdout,
+                        stdout=None,
+                        bufsize=-1)
+                )
+
+                pipeline[-1].wait()
+
+            finally:
+                sleep()
+                for process in pipeline:
+                    if process.poll() is None:
+                        process.terminate()
     
     # mapping stats
     if align_path.endswith('.pairs'):

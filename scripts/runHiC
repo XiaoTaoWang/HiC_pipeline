@@ -32,14 +32,20 @@ def getargs():
                                  help = '''Map raw pair-end sequencing reads to a supplied
                                  genome. It works well with .sra, .fastq, and .fastq.gz formats.
                                  pairtools is used to parse original alignments, detect ligation
-                                 junctions, and output a valid 4DN pairs file (.pairsam).
+                                 junctions, and output a valid 4DN pairs file. If phased SNPs are
+                                 provided, two additional columns "phase1" and "phase2", will be
+                                 included in the output pairs file, which can be further used to
+                                 extract haplotype-resolved contacts.
                                  ''',
                                  formatter_class = argparse.ArgumentDefaultsHelpFormatter)
     iterM.add_argument('-m', '--metadata', default = 'datasets.tsv',
-                       help = '''Metadata file describing each SRA/FASTQ file. You should place
-                       it under current working directory. Four columns are required: prefix
-                       of SRA/FASTQ file name, cell line/sample name, biological replicate label, and
-                       restriction enzyme name.''')
+                       help = '''Metadata file describing each SRA/FASTQ file. This file should
+                       be located in the current working directory. Four columns are required: prefix
+                       of the SRA/FASTQ file name, sample name, biological replicate label, and restriction
+                       enzyme name. Optionally, a fifth column may be added to specify the path to a TXT
+                       file containing phased SNPs. This TXT file should have four tab-separated columns:
+                       chromosome name, coordinate on the chromosome (0-based), allele in haplotype 1, and
+                       allele in haplotype 2.''')
     iterM.add_argument('-p', '--dataFolder',
                        help = '''Path to the root data folder. Both sequencing reads and reference genome
                        should be placed under this folder.''')
@@ -268,6 +274,20 @@ def run(args, commands):
         # Subcommand
         args.func(args, commands)
 
+def parse_metadata(infil):
+
+    metadata = []
+    with open(infil, 'r') as source:
+        for line in source:
+            if line.isspace():
+                continue
+            parse = line.rstrip().split()
+            if len(parse) == 4:
+                parse.append(None)
+            metadata.append(parse)
+    
+    return metadata
+
 def mapping(args, commands):
     ## Import necessary modules
     from runHiC.mapping import splitSRA, splitSingleFastq, uncompressSRA, buildMapIndex, map_core, parse_align
@@ -337,11 +357,15 @@ def mapping(args, commands):
     logging.log(21, 'Original alignments will be parsed into .pairs format under {0}'.format(pairFolder))
     
     # Read Metadata
-    metadata = [l.rstrip().split() for l in open(mFile, 'r') if not l.isspace()]
-    database = dict([(i[0], i[-1]) for i in metadata])
+    metadata = parse_metadata(mFile)
+    database = {}
+    for m in metadata:
+        database[m[0]] = {'enzyme': m[3], 'phased_snp':m[4]}
+
     readformat = args.Format.lower()
     logging.log(21, 'Dump/chunk read pairs from {0} format ...'.format(readformat))
-    for i, enzyme in database.items():
+    for i in database:
+        
         logging.log(21, 'Current: {0}'.format(i))
             
         chunkFolder = os.path.join(fastqDir, i)
@@ -465,13 +489,14 @@ def mapping(args, commands):
             atexit.register(cleanFile, lockFile)
 
             # BAM/SAM
-            align_path, align_stats = map_core(r1, r2, genomepath, indexpath, subbamFolder, tmpdir, aligner, nthread=args.threads, min_mapq=args.min_mapq,
-                                               flip_order_fil=flip_order_fil, sort_order_fil=sort_order_fil)
+            enzyme = database[i]['enzyme']
+            phased_snp = database[i]['phased_snp']
+            align_path, align_stats = map_core(r1, r2, genomepath, indexpath, subbamFolder, tmpdir, aligner, nthread=args.threads)
             nproc_out = max(args.threads, 8)
             nproc_in = max(nproc_out // 2, 3)
-            parse_align(align_path, align_stats, out, genomepath, chromsize_file, genomeName, args.min_mapq, args.max_molecule_size,
-                        args.max_inter_align_gap, args.walks_policy, args.include_readid, args.include_sam,
-                        args.drop_seq, tmpdir, enzyme, nproc_in, nproc_out, args.memory, args.add_frag)
+            parse_align(align_path, align_stats, out, genomepath, phased_snp, chromsize_file, genomeName, args.min_mapq,
+                        args.max_molecule_size, args.max_inter_align_gap, args.walks_policy, args.include_readid, args.include_sam,
+                        args.drop_seq, tmpdir, enzyme, args.memory, args.add_frag)
 
             completed = open(Indicator, 'wb')
             completed.close()
@@ -510,8 +535,8 @@ def filtering(args, commands):
     
     logging.log(21, 'Filtered files will be saved under {0}'.format(filteredFolder))
     
-    metadata = [l.rstrip().split() for l in open(mFile) if not l.isspace()]
-    database = dict([(i[0], i[-1]) for i in metadata])
+    metadata = parse_metadata(mFile)
+    database = dict([(i[0], i[3]) for i in metadata])
     ## Hierarchical merging structures
     bioReps = set((i[1], i[3], i[2]) for i in metadata if not os.path.exists(os.path.join(filteredFolder, '{0}-{1}-{2}.completed'.format(i[1], i[3], i[2]))))
     cellLines = set((i[1], i[3]) for i in metadata if not os.path.exists(os.path.join(filteredFolder, '{0}-{1}-allReps.completed'.format(i[1], i[3]))))
@@ -748,7 +773,7 @@ def quality(args, commands):
     
     mFile = args.metadata
     
-    metadata = [l.rstrip().split() for l in open(mFile) if not l.isspace()]
+    metadata = parse_metadata(mFile)
         
     bioReps = set((i[1], i[3], i[2]) for i in metadata)
     cellLines = set((i[1], i[3]) for i in metadata)
