@@ -207,9 +207,11 @@ def create_frag(genomepath, chromsizes_file, enzyme, tmpdir):
 def biorep_level(pair_paths, outpre, tmpdir, nproc_in, nproc_out, memory):
 
      # Final biorep level pairsam
-    outpath = outpre + '.pairsam.gz'
-    merge_pairs(pair_paths, outpath, tmpdir, nproc_in, nproc_out, memory)
+    intermediate = outpre + '.total.pairsam.gz'
+    merge_pairs(pair_paths, intermediate, tmpdir, nproc_in, nproc_out, memory)
     stats = collect_stats(pair_paths)['pseudo']
+    outpath = outpre + '.pairsam.gz'
+    dedup(intermediate, outpath, stats, nproc_in, nproc_out) # remove PCR duplicates
     
     return stats, outpath
 

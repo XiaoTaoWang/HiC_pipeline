@@ -588,13 +588,10 @@ def filtering(args, commands):
         atexit.register(cleanFile, lockFile)
         
         inFiles = glob.glob(os.path.join(subPair, SRR + '*.pairsam.gz'))
-        intermediate = os.path.join(subFilter, SRR + '.total.pairsam.gz')
         poolName = os.path.join(subFilter, SRR + '.pairsam.gz')
         logging.log(21, '{0}: merging pairs from {1} chunks ...'.format(SRR, len(inFiles)))
-        merge_pairs(inFiles, intermediate, tmpdir, nproc_in, nproc_out, args.memory)
+        merge_pairs(inFiles, poolName, tmpdir, nproc_in, nproc_out, args.memory)
         stats = collect_stats(inFiles)['pseudo']
-        logging.log(21, '{0}: removing PCR duplicates ...'.format(SRR))
-        dedup(intermediate, poolName, stats, nproc_in, nproc_out) # remove PCR duplicates
         outStatsCache({'pseudo': stats}, poolName.replace('.pairsam.gz', '.pstats'))
         
         logging.log(21, '{0}: Done'.format(SRR))
