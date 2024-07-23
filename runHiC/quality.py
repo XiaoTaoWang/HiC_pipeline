@@ -266,7 +266,13 @@ def loadStats(cache_pre):
     for f in allfile:
         with open(f, 'rb') as source:
             tmp = pickle.load(source)
-        stats_pool.update(tmp)
+        
+        for key in tmp:
+            if not key in stats_pool:
+                stats_pool[key] = tmp[key]
+            else:
+                if len(tmp[key]) > len(stats_pool[key]):
+                    stats_pool[key] = tmp[key]
     
     return stats_pool
 
