@@ -800,9 +800,13 @@ def quality(args, commands):
     logging.log(21, 'Cell-line-level assessment ...')
     for cell in cellLines:
         logging.log(21, 'Current cell ID: {0}-{1}'.format(*cell))
+        key = cell + ('allReps',)
+        if not key in stats_pool:
+            logging.log(21, 'Stats do not exist, skip')
+        
         logging.log(21, 'Generate statistic table ...')
         outStats = os.path.join(locator, '{0}-{1}-allReps.stats'.format(*cell))
-        stats = stats_pool[cell + ('allReps',)]
+        stats = stats_pool[key]
         printStats(stats, outStats)
         logging.log(21, 'Done')
         logging.log(21, 'Figure for basic statistics')
