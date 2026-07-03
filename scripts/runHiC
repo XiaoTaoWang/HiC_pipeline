@@ -803,6 +803,7 @@ def quality(args, commands):
         key = cell + ('allReps',)
         if not key in stats_pool:
             logging.log(21, 'Stats do not exist, skip')
+            continue
         
         logging.log(21, 'Generate statistic table ...')
         outStats = os.path.join(locator, '{0}-{1}-allReps.stats'.format(*cell))
