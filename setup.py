@@ -26,7 +26,7 @@ for src in glob.glob('scripts/*'):
     open(src, 'w').write(text)
 
 setuptools.setup(
-    name = 'runHiC',
+    name = 'runhic',
     version = runHiC.__version__,
     author = runHiC.__author__,
     author_email = 'wangxiaotao686@gmail.com',
