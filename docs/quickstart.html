@@ -1,17 +1,17 @@
-
 <!DOCTYPE html>
 
-<html lang="en">
+<html lang="en" data-content_root="./">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.18.1: http://docutils.sourceforge.net/" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>Quick Start &#8212; runHiC 0.8.7 documentation</title>
-    <link rel="stylesheet" type="text/css" href="_static/pygments.css" />
-    <link rel="stylesheet" type="text/css" href="_static/alabaster.css" />
-    <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
-    <script src="_static/doctools.js"></script>
-    <script src="_static/sphinx_highlight.js"></script>
+    <title>Quick Start &#8212; runHiC 0.9.1 documentation</title>
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=5ecbeea2" />
+    <link rel="stylesheet" type="text/css" href="_static/basic.css?v=b08954a9" />
+    <link rel="stylesheet" type="text/css" href="_static/alabaster.css?v=f6a572b4" />
+    <script src="_static/documentation_options.js?v=9dc39874"></script>
+    <script src="_static/doctools.js?v=fd6eb6e6"></script>
+    <script src="_static/sphinx_highlight.js?v=6ffebe34"></script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
     <link rel="next" title="Parallel Computation" href="parallel.html" />
@@ -19,13 +19,14 @@
    
   <link rel="stylesheet" href="_static/custom.css" type="text/css" />
   
+
   
-  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+  
 
   </head><body>
   <div class="document">
     
-      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
         <div class="sphinxsidebarwrapper">
 <h1 class="logo"><a href="index.html">runHiC</a></h1>
 
@@ -67,7 +68,7 @@
 </ul>
 
 
-<div id="searchbox" style="display: none" role="search">
+<search id="searchbox" style="display: none" role="search">
   <h3 id="searchlabel">Quick search</h3>
     <div class="searchformwrapper">
     <form class="search" action="search.html" method="get">
@@ -75,7 +76,7 @@
       <input type="submit" value="Go" />
     </form>
     </div>
-</div>
+</search>
 <script>document.getElementById('searchbox').style.display = "block"</script>
         </div>
       </div>
@@ -86,7 +87,7 @@
           <div class="body" role="main">
             
   <section id="quick-start">
-<h1>Quick Start<a class="headerlink" href="#quick-start" title="Permalink to this heading">¶</a></h1>
+<h1>Quick Start<a class="headerlink" href="#quick-start" title="Link to this heading">¶</a></h1>
 <p>This tutorial covers the basic usage of 4 subcommands (<em>mapping</em>, <em>filtering</em>,
 <em>binning</em>, and <em>pileup</em>) provided by runHiC. We will first download an example
 Hi-C dataset and corresponding reference genome data. Then we will process the
@@ -94,7 +95,7 @@ Hi-C data step by step from raw sequencing reads (.sra, .fastq, and .fastq.gz)
 to the ICE-corrected contact matrices. Lastly, we will demonstrate how to streamline
 the processing pipeline by using the <em>pileup</em> subcommand.</p>
 <section id="data-preparation">
-<h2>Data Preparation<a class="headerlink" href="#data-preparation" title="Permalink to this heading">¶</a></h2>
+<h2>Data Preparation<a class="headerlink" href="#data-preparation" title="Link to this heading">¶</a></h2>
 <p>First of all, let’s make a temporary blank folder somewhere in your system, change your
 working directory to it, and make two sub-folders named <em>data</em> and <em>workspace</em> within it:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ mkdir data
@@ -150,10 +151,10 @@ $ wget ftp://hgdownload.cse.ucsc.edu/goldenPath/hg38/chromosomes/*
 in UCSC, by replacing “hg38” with the desired reference genome release name.</p>
 <p>Let’s include chromosomes that are completely assembled only. To do so, open a python
 interpreter and follow the commands below:</p>
-<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">os</span><span class="o">,</span> <span class="nn">glob</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="n">labels</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="nb">map</span><span class="p">(</span><span class="nb">str</span><span class="p">,</span><span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="mi">23</span><span class="p">)))</span> <span class="o">+</span> <span class="p">[</span><span class="s1">&#39;X&#39;</span><span class="p">,</span><span class="s1">&#39;Y&#39;</span><span class="p">,</span><span class="s1">&#39;M&#39;</span><span class="p">]</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="n">pool</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;chr</span><span class="si">{0}</span><span class="s1">.fa.gz&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">i</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">labels</span><span class="p">]</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">glob</span><span class="o">.</span><span class="n">glob</span><span class="p">(</span><span class="s1">&#39;*.fa.gz&#39;</span><span class="p">):</span>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span><span class="w"> </span><span class="nn">os</span><span class="o">,</span><span class="w"> </span><span class="nn">glob</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">labels</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="nb">map</span><span class="p">(</span><span class="nb">str</span><span class="p">,</span><span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="mi">23</span><span class="p">)))</span> <span class="o">+</span> <span class="p">[</span><span class="s1">'X'</span><span class="p">,</span><span class="s1">'Y'</span><span class="p">,</span><span class="s1">'M'</span><span class="p">]</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">pool</span> <span class="o">=</span> <span class="p">[</span><span class="s1">'chr</span><span class="si">{0}</span><span class="s1">.fa.gz'</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">i</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">labels</span><span class="p">]</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">glob</span><span class="o">.</span><span class="n">glob</span><span class="p">(</span><span class="s1">'*.fa.gz'</span><span class="p">):</span>
 <span class="gp">... </span>    <span class="k">if</span> <span class="ow">not</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">pool</span><span class="p">:</span>
 <span class="gp">... </span>        <span class="n">os</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">c</span><span class="p">)</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">exit</span><span class="p">()</span>
@@ -167,16 +168,16 @@ $ cd ../..
 </div>
 </section>
 <section id="mapping">
-<h2>Mapping<a class="headerlink" href="#mapping" title="Permalink to this heading">¶</a></h2>
+<h2>Mapping<a class="headerlink" href="#mapping" title="Link to this heading">¶</a></h2>
 <p>The first step of <em>runHiC</em> is conducted by the <em>mapping</em> subcommand,
 which maps raw sequencing reads to the reference genome and parses the resulted
 SAM/BAM alignments into <a class="reference external" href="https://github.com/4dn-dcic/pairix/blob/master/pairs_format_specification.md">.pairs</a>.</p>
 <section id="usage">
-<h3>Usage<a class="headerlink" href="#usage" title="Permalink to this heading">¶</a></h3>
+<h3>Usage<a class="headerlink" href="#usage" title="Link to this heading">¶</a></h3>
 <p><code class="docutils literal notranslate"><span class="pre">runHiC</span> <span class="pre">mapping</span> <span class="pre">[options]</span></code></p>
 </section>
 <section id="create-the-meta-data-file">
-<h3>Create the Meta Data File<a class="headerlink" href="#create-the-meta-data-file" title="Permalink to this heading">¶</a></h3>
+<h3>Create the Meta Data File<a class="headerlink" href="#create-the-meta-data-file" title="Link to this heading">¶</a></h3>
 <p>Before running <em>runHiC</em>, another thing you need to do is to create a TXT file
 named “datasets.tsv” under the <em>workspace</em> sub-folder:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ cd workspace
@@ -199,7 +200,7 @@ record. For example, for Micro-C, you can set it to <em>MNase</em>; for ChIA-PET
 can set it to <em>sonication</em>.</p>
 </section>
 <section id="runhic-command">
-<h3>runHiC Command<a class="headerlink" href="#runhic-command" title="Permalink to this heading">¶</a></h3>
+<h3>runHiC Command<a class="headerlink" href="#runhic-command" title="Link to this heading">¶</a></h3>
 <p>Now type and execute the command below:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ runHiC mapping -p ../data/ -g hg38 -f HiC-SRA -F SRA -A bwa-mem -t 10 --include-readid --drop-seq --chunkSize 1500000 --logFile runHiC-mapping.log
 </pre></div>
@@ -231,7 +232,7 @@ fields to save the disk space.</p>
 </section>
 </section>
 <section id="filtering">
-<h2>Filtering<a class="headerlink" href="#filtering" title="Permalink to this heading">¶</a></h2>
+<h2>Filtering<a class="headerlink" href="#filtering" title="Link to this heading">¶</a></h2>
 <p>The <em>filtering</em> subcommand of <em>runHiC</em> is designed to perform basic filtering procedures on
 the aligned read pairs. These filtering procedures include:</p>
 <ol class="arabic simple">
@@ -252,7 +253,7 @@ contact pairs in .pairs.gz files. If you specify <code class="docutils literal n
 to store alignments that passed all filtering criteria.</p>
 </section>
 <section id="binning">
-<h2>Binning<a class="headerlink" href="#binning" title="Permalink to this heading">¶</a></h2>
+<h2>Binning<a class="headerlink" href="#binning" title="Link to this heading">¶</a></h2>
 <p>In this step, an .mcool file will be produced under the <em>coolers-hg38</em> sub-folder for each
 .pairs.gz file using <a class="reference external" href="https://cooler.readthedocs.io/en/latest/">cooler</a>. The mcool format
 is the official Hi-C data format for the <a class="reference external" href="https://data.4dnucleome.org/resources/data-analysis/hi_c-processing-pipeline">4DN consortium</a>
@@ -262,7 +263,7 @@ and can be visualized using <a class="reference external" href="https://docs.hig
 </div>
 </section>
 <section id="pileup">
-<h2>Pileup<a class="headerlink" href="#pileup" title="Permalink to this heading">¶</a></h2>
+<h2>Pileup<a class="headerlink" href="#pileup" title="Link to this heading">¶</a></h2>
 <p><em>runHiC</em> also provides a handy subcommand called “pileup” by which you can perform all
 processing steps above using the single-line command below:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ runHiC pileup -p ../data/ -g hg38 -f HiC-SRA -F SRA -A bwa-mem -t 10 --include-readid --drop-seq --chunkSize 1500000 --logFile runHiC.log
@@ -279,11 +280,11 @@ processing steps above using the single-line command below:</p>
     <div class="clearer"></div>
   </div>
     <div class="footer">
-      &copy;2023, Xiaotao Wang.
+      &#169;2023, Xiaotao Wang.
       
       |
-      Powered by <a href="http://sphinx-doc.org/">Sphinx 6.1.3</a>
-      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      Powered by <a href="https://www.sphinx-doc.org/">Sphinx 9.1.0</a>
+      &amp; <a href="https://alabaster.readthedocs.io">Alabaster 1.0.0</a>
       
       |
       <a href="_sources/quickstart.rst.txt"
@@ -292,7 +293,7 @@ processing steps above using the single-line command below:</p>
 
     
     <a href="https://github.com/XiaoTaoWang/HiC_pipeline" class="github">
-        <img style="position: absolute; top: 0; right: 0; border: 0;" src="https://s3.amazonaws.com/github/ribbons/forkme_right_darkblue_121621.png" alt="Fork me on GitHub"  class="github"/>
+        <img src="_static/github-banner.svg" alt="Fork me on GitHub" class="github"/>
     </a>
     
 

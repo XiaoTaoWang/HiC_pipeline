@@ -245,19 +245,24 @@ def map_core(fastq_1, fastq_2, ref_fa, ref_index, outdir, tmpdir, aligner='chrom
                         stdout=open(outpath, 'wb'),
                         bufsize=-1))
 
-        pipeline[-1].wait()
+        if aligner=='chromap':
+            # communicate() drains stderr while waiting. Calling wait() here
+            # instead would deadlock as soon as chromap fills the pipe buffer
+            # (~64K on Linux): chromap blocks in write, and we block in wait().
+            _, chromap_stderr = pipeline[-1].communicate()
+        else:
+            pipeline[-1].wait()
 
     finally:
         sleep()
         for process in pipeline:
             if process.poll() is None:
                 process.terminate()
-    
+
     #### collect mapping statistics from stderr of chromap
     if aligner=='chromap':
-        chromap_stderr = pipeline[-1].stderr
         outlog = os.path.join(tmpdir, os.path.split(outpath)[1].replace(outformat, '.chromap.log'))
-        stats = _collect_chromap_stats(chromap_stderr, outlog)
+        stats = _collect_chromap_stats(chromap_stderr.splitlines(), outlog)
     else:
         stats = {}
     
