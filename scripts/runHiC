@@ -5,15 +5,18 @@
 # Author: XiaoTao Wang
 
 ## Required Modules
-import os, sys, argparse, logging, glob, atexit, traceback, runHiC
+import os, sys, argparse, logging, glob, atexit, traceback, subprocess, runHiC
 
 ## Check for update
 currentVersion = runHiC.__version__
 
 def getargs():
+    from runHiC.binning import add_binning_arguments, resolve_resolutions
+
     ## Construct an ArgumentParser object for command-line arguments
     parser = argparse.ArgumentParser(description = '''A easy-to-use Hi-C data processing software
-                                     supporting distributed computation''',
+                                     supporting distributed computation. Parallel controls: mapping/pileup -t;
+                                     filtering/binning/pileup --nproc; binning/pileup --ice-threads.''',
                                      formatter_class = argparse.ArgumentDefaultsHelpFormatter)
     # Version
     parser.add_argument('-v', '--version', action = 'version',
@@ -66,7 +69,7 @@ def getargs():
                        this parameter as "~/data/hg38/hg38.fa", "~/data/hg38/hg38.fa", and "~/data/hg38/hg38.chromap-runhic.mmi"
                        for bwa-mem, bwa-mem2, and chromap, respectively. If not specified, the index will be built
                        automatically according to the aligner choice.''')
-    iterM.add_argument('-t', '--threads', type = int, default = 8, help = 'Number of threads.')
+    iterM.add_argument('-t', '--threads', type = int, default = 8, help = 'Alignment threads per mapping chunk.')
     iterM.add_argument('--min-mapq', type = int, default = 1,
                        help = '''The minimal MAPQ score to consider a read as uniquely mapped.''')
     iterM.add_argument('--max-molecule-size', type = int, default = 750,
@@ -128,26 +131,11 @@ def getargs():
     binReads = subparser.add_parser('binning',
                                     help = '''Generate multi-resolution contact matrices in .mcool''',
                                     formatter_class = argparse.ArgumentDefaultsHelpFormatter)
-    binReads.add_argument('-f', '--filtered', nargs = '+',
+    binReads.add_argument('-f', '--filtered', nargs = '+', required=True,
                           help = '''Path to the filtered *.pairs.gz files generated during the filtering stage.
                           Wild cards are allowed. If the path points to a folder, the binning procedure
                           will be performed on each .pairs.gz file under that folder.''')
-    binReads.add_argument('-D', '--ignore-diags', type = int, default = 2,
-                          help = '''Number of diagonals of the contact matrix to ignore during ICE correcting. 0
-                          ignores nothing, 1 ignores the main diagonal, and 2 ignores diagonals (-1, 0, 1).''')
-    binReads.add_argument('--min-nnz', type = int, default = 10,
-                          help = '''Before ICE, drop bins whose marginal number of nonzeros is less than this
-                          number.''')
-    binReads.add_argument('--min-count', type = int, default = 0,
-                          help = '''Before ICE, drop bins whose marginal count is less than this number.''')
-    binReads.add_argument('--mad-max', type = int, default = 5,
-                          help = '''Before ICE, drop bins whose log marginal sum is less than ``mad_max``
-                          median absolute deviations below the median log marginal sum.''')
-    binReads.add_argument('--resolutions', default = '5000,10000,25000,50000,100000,250000,500000,1000000,2500000',
-                          help='''List of resolutions at which the contact matrices will be generated.''')
-    binReads.add_argument('--nproc', type = int, default = 8, help = '''Number of allocated proccesses.''')
-    binReads.add_argument('--max-split', type = int, default = 2, help = '''Divide the pairs from each chromosome
-                          into at most this many chunks.''')
+    add_binning_arguments(binReads)
     binReads.add_argument('--logFile', default = 'runHiC.log', help = '''Logging file name.''')
     binReads.set_defaults(func = binning)
     
@@ -175,10 +163,7 @@ def getargs():
                                       command for Hi-C data processing.''',
                                       formatter_class = argparse.ArgumentDefaultsHelpFormatter,
                                       add_help = False)
-    streamline.add_argument('--max-split', type = int, default = 2, help = '''Divide the pairs from each chromosome
-                            into at most this many chunks.''')
-    streamline.add_argument('--resolutions', default = '5000,10000,25000,50000,100000,250000,500000,1000000,2500000',
-                            help='''List of resolutions at which the contact matrices will be generated.''')
+    add_binning_arguments(streamline)
     streamline.set_defaults(func = pileup)
     
      ## Parse the command-line arguments
@@ -187,6 +172,13 @@ def getargs():
         and len(commands) == 1)):
         commands.append('-h')
     args = parser.parse_args(commands)
+    if args.subcommand in ('binning', 'pileup'):
+        try:
+            base, _ = resolve_resolutions(args.resolutions, args.base_resolution)
+            if args.window_bp < base:
+                raise ValueError('--window-bp must be at least the base resolution')
+        except ValueError as exc:
+            parser.error(str(exc))
     
     return args, commands
     
@@ -245,8 +237,6 @@ def run(args, commands):
                             '# Temporary Dir = {0}'.format(args.tmpdir),
                             '# Remove Intermediate Alignments = {0}'.format(args.remove_intermediate)
                             ])
-        if (commands[0] == 'pileup'):
-            arglist.extend(['# Resolutions = {0}'.format(args.resolutions)])
                             
         if commands[0] == 'filtering':
             arglist.extend(['# Original Pairs = {0}'.format(args.pairFolder),
@@ -256,14 +246,20 @@ def run(args, commands):
                             '# Number of processes = {0}'.format(args.nproc),
                             '# Memory for merge = {0}'.format(args.memory)])
         if commands[0] == 'binning':
-            arglist.extend(['# Filtered Pairs = {0}'.format(args.filtered),
-                            '# Number of Diagonals to ignore = {0}'.format(args.ignore_diags),
-                            '# Minimum Marginal Nonzeros = {0}'.format(args.min_nnz),
-                            '# Minimum Marginal Counts = {0}'.format(args.min_count),
-                            '# MAD Max = {0}'.format(args.mad_max),
-                            '# Resolutions = {0}'.format(args.resolutions),
-                            '# Number of processes = {0}'.format(args.nproc)])
-        
+            arglist.append('# Filtered Pairs = {0}'.format(args.filtered))
+        if commands[0] in ('binning', 'pileup'):
+            from runHiC.binning import resolve_resolutions
+            base, levels = resolve_resolutions(args.resolutions, args.base_resolution)
+            arglist.extend(['# Matrix Backends = bundled fast_pairix_to_cool + fast_zoomify',
+                            '# Base Resolution = {0}'.format(base),
+                            '# Resolutions = {0}'.format(levels)])
+            for name in ('nproc', 'ice_threads', 'window_bp', 'buffer_contacts', 'chunksize',
+                         'io_chunk', 'compression', 'memory_gb', 'temp_dir', 'ignore_diags',
+                         'ignore_dist', 'min_nnz', 'min_count', 'mad_max', 'blacklist',
+                         'tol', 'max_iters', 'convergence_policy', 'resume', 'keep_base_cool', 'max_split'):
+                value = args.nproc if name == 'ice_threads' and args.ice_threads is None else getattr(args, name)
+                arglist.append('# {0} = {1}'.format(name.replace('_', '-'), value))
+
         if commands[0] == 'quality':
             arglist.extend(['# MetaData = {0}'.format(args.metadata),
                             '# Stats Cache File = {0}'.format(args.stats_cache)])
@@ -295,8 +291,7 @@ def mapping(args, commands):
 
     # customize temporary dir
     tmpdir = os.path.abspath(os.path.expanduser(args.tmpdir))
-    if not os.path.exists(tmpdir):
-        os.makedirs(tmpdir)
+    os.makedirs(tmpdir, exist_ok=True)
     
     # Preparing
     genomeFolder = os.path.join(args.dataFolder, args.genomeName)
@@ -348,10 +343,8 @@ def mapping(args, commands):
     pairFolder = 'pairs-{0}'.format(genomeName)
     args.pairFolder = pairFolder # To communicate with next processing step (filtering)
     args.chromsizes_file = chromsize_file
-    if not os.path.exists(bamFolder):
-        os.makedirs(bamFolder)
-    if not os.path.exists(pairFolder):
-        os.makedirs(pairFolder)
+    os.makedirs(bamFolder, exist_ok=True)
+    os.makedirs(pairFolder, exist_ok=True)
     
     logging.log(21, 'Alignment results will be outputed under {0}'.format(bamFolder))
     logging.log(21, 'Original alignments will be parsed into .pairs format under {0}'.format(pairFolder))
@@ -381,8 +374,7 @@ def mapping(args, commands):
             logging.log(21, 'Conflict process, skip')
             continue
         
-        if not os.path.exists(chunkFolder):
-            os.makedirs(chunkFolder)
+        os.makedirs(chunkFolder, exist_ok=True)
         
         if readformat == 'sra':
             sourceFile = os.path.join(fastqDir, i + '.sra')
@@ -404,40 +396,43 @@ def mapping(args, commands):
                 logging.warning('No proper FASTQ pairs can be found, skip')
                 continue
         
-        cleanDirectory(chunkFolder)
-        
-        # Chunking/Dumping lock, not the mapping lock
-        lock = open(lockFile, 'wb')
-        lock.close()
+        try:
+            fd = os.open(lockFile, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+        except FileExistsError:
+            continue
+        os.close(fd)
+        try:
+            if os.path.exists(Indicator):
+                continue
 
-        atexit.register(cleanFile, lockFile)
-        
-        ## Make chunks according to --chunksize
-        if readformat == 'sra':
-            if not args.chunkSize:
-                logging.log(21, '{0}: Dump SRA ...'.format(i))
-                uncompressSRA(sourceFile, chunkFolder)
-                logging.log(21, '{0}: Done'.format(i))
-            else:
-                logging.log(21, '{0}: Split raw SRA into chunks ...'.format(i))
-                splitSRA(sourceFile, chunkFolder, splitBy = args.chunkSize)
-                logging.log(21, '{0}: Done'.format(i))
-        else:
-            if not args.chunkSize:
-                os.symlink(Fastq_1, os.path.join(chunkFolder, os.path.split(Fastq_1)[1]))
-                os.symlink(Fastq_2, os.path.join(chunkFolder, os.path.split(Fastq_2)[1]))
-            else:
-                logging.log(21, '{0}: Split raw FASTQs into chunks ...'.format(i))
-                splitSingleFastq(Fastq_1, i, 1, chunkFolder, splitBy = args.chunkSize)
-                splitSingleFastq(Fastq_2, i, 2, chunkFolder, splitBy = args.chunkSize)
-                logging.log(21, '{0}: Done'.format(i))
-        
-        completed = open(Indicator, 'wb')
-        completed.close()
+            cleanDirectory(chunkFolder)
 
-        # Release lock
-        os.remove(lockFile)
-    
+            ## Make chunks according to --chunksize
+            if readformat == 'sra':
+                if not args.chunkSize:
+                    logging.log(21, '{0}: Dump SRA ...'.format(i))
+                    uncompressSRA(sourceFile, chunkFolder)
+                    logging.log(21, '{0}: Done'.format(i))
+                else:
+                    logging.log(21, '{0}: Split raw SRA into chunks ...'.format(i))
+                    splitSRA(sourceFile, chunkFolder, splitBy = args.chunkSize)
+                    logging.log(21, '{0}: Done'.format(i))
+            else:
+                if not args.chunkSize:
+                    os.symlink(Fastq_1, os.path.join(chunkFolder, os.path.split(Fastq_1)[1]))
+                    os.symlink(Fastq_2, os.path.join(chunkFolder, os.path.split(Fastq_2)[1]))
+                else:
+                    logging.log(21, '{0}: Split raw FASTQs into chunks ...'.format(i))
+                    splitSingleFastq(Fastq_1, i, 1, chunkFolder, splitBy = args.chunkSize)
+                    splitSingleFastq(Fastq_2, i, 2, chunkFolder, splitBy = args.chunkSize)
+                    logging.log(21, '{0}: Done'.format(i))
+
+            completed = open(Indicator, 'wb')
+            completed.close()
+
+        finally:
+            cleanFile(lockFile)
+
     logging.log(21, 'Map read pairs to {0} ...'.format(genomeName))
     for i in database:
         logging.log(21, 'Current: {0}'.format(i))
@@ -446,8 +441,7 @@ def mapping(args, commands):
         subbamFolder = os.path.join(bamFolder, i)
         subPair = os.path.join(pairFolder, i)
         for folder in [subbamFolder, subPair]:
-            if not os.path.exists(folder):
-                os.makedirs(folder)
+            os.makedirs(folder, exist_ok=True)
         
         globalIndicator = os.path.join(pairFolder, '{0}.completed'.format(i))
 
@@ -455,9 +449,19 @@ def mapping(args, commands):
             logging.log(21, 'Completed work, skip')
             continue
 
+        if not os.path.isfile(os.path.join(fastqDir, f'{i}.completed')):
+            logging.warning('%s: FASTQ preparation incomplete, skip mapping', i)
+            continue
+
         ReadFiles = [os.path.join(chunkFolder, f) for f in os.listdir(chunkFolder)]
         Read_1 = sorted([f for f in ReadFiles if (f.endswith('_1.fastq.gz') or f.endswith('_1.fastq'))])
         Read_2 = sorted([f for f in ReadFiles if (f.endswith('_2.fastq.gz') or f.endswith('_2.fastq'))])
+        if not Read_1 or len(Read_1) != len(Read_2) or any(
+            os.path.basename(r1).rsplit('_1.fastq', 1)[0] !=
+            os.path.basename(r2).rsplit('_2.fastq', 1)[0]
+            for r1, r2 in zip(Read_1, Read_2)
+        ):
+            raise ValueError(f'{i}: FASTQ chunks are missing or the two mates do not match')
         if all([f.endswith('_1.fastq') for f in Read_1]) and all([f.endswith('_2.fastq') for f in Read_2]):
             OutFiles = [os.path.join(subPair, os.path.split(f)[1].replace('_1.fastq', '.pairsam.gz')) for f in Read_1]
         else:
@@ -482,31 +486,35 @@ def mapping(args, commands):
                 logging.log(21, 'Chunk {0} of {1}: Someone is working on it, skip'.format(count, i))
                 continue
             
-            # Mapping lock
-            lock = open(lockFile, 'wb')
-            lock.close()
+            try:
+                fd = os.open(lockFile, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+            except FileExistsError:
+                continue
+            os.close(fd)
+            try:
+                if os.path.exists(Indicator):
+                    continue
 
-            atexit.register(cleanFile, lockFile)
+                # BAM/SAM
+                enzyme = database[i]['enzyme']
+                phased_snp = database[i]['phased_snp']
+                align_path, align_stats = map_core(r1, r2, genomepath, indexpath, subbamFolder, tmpdir, aligner, nthread=args.threads)
+                nproc_out = max(args.threads, 8)
+                nproc_in = max(nproc_out // 2, 3)
+                parse_align(align_path, align_stats, out, genomepath, phased_snp, chromsize_file, genomeName, args.min_mapq,
+                            args.max_molecule_size, args.max_inter_align_gap, args.walks_policy, args.include_readid, args.include_sam,
+                            args.drop_seq, tmpdir, enzyme, args.memory, args.add_frag)
 
-            # BAM/SAM
-            enzyme = database[i]['enzyme']
-            phased_snp = database[i]['phased_snp']
-            align_path, align_stats = map_core(r1, r2, genomepath, indexpath, subbamFolder, tmpdir, aligner, nthread=args.threads)
-            nproc_out = max(args.threads, 8)
-            nproc_in = max(nproc_out // 2, 3)
-            parse_align(align_path, align_stats, out, genomepath, phased_snp, chromsize_file, genomeName, args.min_mapq,
-                        args.max_molecule_size, args.max_inter_align_gap, args.walks_policy, args.include_readid, args.include_sam,
-                        args.drop_seq, tmpdir, enzyme, args.memory, args.add_frag)
+                completed = open(Indicator, 'wb')
+                completed.close()
 
-            completed = open(Indicator, 'wb')
-            completed.close()
+                logging.log(21, 'Chunk {0} of {1}: Done'.format(count, i))
 
-            logging.log(21, 'Chunk {0} of {1}: Done'.format(count, i))
+                if args.remove_intermediate:
+                    os.remove(align_path)
+            finally:
+                cleanFile(lockFile)
 
-            os.remove(lockFile)
-            if args.remove_intermediate:
-                os.remove(align_path)
-        
         if all([os.path.exists(child) for child in childchecks]):
             completed = open(globalIndicator, 'wb')
             completed.close()
@@ -701,9 +709,10 @@ def filtering(args, commands):
 
 def binning(args, commands):
     # Necessary Modules
-    from runHiC.binning import mcool_from_pairs
+    from runHiC.binning import mcool_from_pairs, resolve_resolutions
     from runHiC.utilities import cleanFile
     
+    base, resolution_spec = resolve_resolutions(args.resolutions, args.base_resolution)
     Sources = [os.path.abspath(os.path.expanduser(i)) for i in args.filtered]
 
     logging.log(21, 'Binning start ...')
@@ -741,24 +750,29 @@ def binning(args, commands):
                 logging.log(21, 'Conflicted work, skip')
                 continue
             
-            lock = open(lockFile, 'w')
-            lock.close()
-            
+            try:
+                fd = os.open(lockFile, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+            except FileExistsError:
+                logging.log(21, 'Conflicted work, skip')
+                continue
+            os.close(fd)
             atexit.register(cleanFile, lockFile)
-            
-            logging.log(21, 'Contact Matrices will be saved in .mcool format under {0}'.format(hFolder))
-            
-            resolutions = sorted([int(r) for r in args.resolutions.split(',')])
-            intermediate = os.path.join(hFolder, os.path.basename(f).replace('.pairs.gz', '.{0}.cool'.format(resolutions[0])))
-            hFile = os.path.join(hFolder, os.path.basename(f).replace('.pairs.gz', '.mcool'))
-            mcool_from_pairs(f, intermediate, hFile, resolutions, ignore_diags=args.ignore_diags,
-                             nproc=args.nproc, mad_max=args.mad_max, min_count=args.min_count,
-                             min_nnz=args.min_nnz, max_split=args.max_split)
-        
-            completed = open(Indicator, 'wb')
-            completed.close()
-                    
-            os.remove(lockFile)
+            try:
+                logging.log(21, 'Contact matrices will be saved under {0}'.format(hFolder))
+                intermediate = os.path.join(hFolder, os.path.basename(f).replace('.pairs.gz', '.{0}.cool'.format(base)))
+                hFile = os.path.join(hFolder, os.path.basename(f).replace('.pairs.gz', '.mcool'))
+                names = ('ignore_diags', 'nproc', 'mad_max', 'min_count', 'min_nnz', 'max_split',
+                         'ice_threads', 'window_bp', 'buffer_contacts', 'chunksize', 'io_chunk',
+                         'compression', 'memory_gb', 'temp_dir', 'ignore_dist', 'blacklist', 'tol',
+                         'max_iters', 'convergence_policy', 'resume', 'keep_base_cool')
+                options = {name: getattr(args, name) for name in names}
+                mcool_from_pairs(f, intermediate, hFile, resolution_spec, base_resolution=base, **options)
+                with open(Indicator, 'wb'):
+                    pass
+            finally:
+                cleanFile(lockFile)
+
+
 
 def quality(args, commands):
 
@@ -832,12 +846,7 @@ def pileup(args, commands):
     """
     mapping(args, commands)
     args.stats_cache = 'allinone.cache'
-    args.nproc = 8
     filtering(args, commands)
-    args.ignore_diags = 2
-    args.mad_max = 5
-    args.min_nnz = 10
-    args.min_count = 0
     binning(args, commands)
     
 
@@ -846,6 +855,11 @@ if __name__ == '__main__':
     args, commands = getargs()
     try:
         run(args, commands)
-    except:
-        traceback.print_exc(file = open(args.logFile, 'a'))
+    except subprocess.CalledProcessError as exc:
+        with open(args.logFile, 'a') as error_log:
+            traceback.print_exc(file=error_log)
+        sys.exit(exc.returncode if exc.returncode > 0 else 1)
+    except Exception:
+        with open(args.logFile, 'a') as error_log:
+            traceback.print_exc(file=error_log)
         sys.exit(1)

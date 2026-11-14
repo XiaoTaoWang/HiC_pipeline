@@ -7,6 +7,11 @@ Hi-C data step by step from raw sequencing reads (.sra, .fastq, and .fastq.gz)
 to the ICE-corrected contact matrices. Lastly, we will demonstrate how to streamline
 the processing pipeline by using the *pileup* subcommand.
 
+.. tip::
+
+   Running on a cluster? Start with :doc:`parallel` for worker settings
+   and the multi-node ``runHiC pileup`` example.
+
 Data Preparation
 ================
 First of all, let's make a temporary blank folder somewhere in your system, change your
@@ -174,7 +179,18 @@ In this step, an .mcool file will be produced under the *coolers-hg38* sub-folde
 is the official Hi-C data format for the `4DN consortium <https://data.4dnucleome.org/resources/data-analysis/hi_c-processing-pipeline>`_
 and can be visualized using `HiGlass <https://docs.higlass.io/>`_::
 
-    $ runHiC binning -f filtered-hg38/ --logFile runHiC-binning.log --nproc 10
+    $ runHiC binning -f filtered-hg38/ --logFile runHiC-binning.log --nproc 10 --ice-threads 10
+
+To choose how the weight column is stored when ICE reaches its iteration
+limit::
+
+    $ runHiC binning -f filtered-hg38/ --resolutions 100 --max-iters 500 --convergence-policy store_final
+
+The default ``store_nan`` writes NaN weights for the failed resolution.
+``store_final`` retains the last finite result at the iteration limit and
+marks it ``converged=False``. A numerically invalid result is saved as NaN.
+Both policies keep the raw counts and report nonconvergence with a nonzero
+exit status so that a resume is possible.
 
 Pileup
 ======

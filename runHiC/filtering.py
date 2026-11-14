@@ -148,6 +148,8 @@ def stats_pairs(inpath, refkey, matchpre=[], nproc_in=3, nproc_out=8):
                 stats[key] = int(value)
     
     pipe.communicate()
+    if pipe.returncode:
+        raise subprocess.CalledProcessError(pipe.returncode, stat_command)
     
     return stats
 
