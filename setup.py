@@ -14,16 +14,19 @@ import os, sys, runHiC, glob
 import setuptools
 
 def read(fname):
-    return open(os.path.join(os.path.dirname(__file__), fname)).read()
+    with open(os.path.join(os.path.dirname(__file__), fname), encoding='utf-8') as source:
+        return source.read()
 
-if (sys.version_info.major!=3) or (sys.version_info.minor<5):
-    print('PYTHON 3.5+ IS REQUIRED. YOU ARE CURRENTLY USING PYTHON {}'.format(sys.version.split()[0]))
+if (sys.version_info.major!=3) or (sys.version_info.minor<10):
+    print('PYTHON 3.10+ IS REQUIRED. YOU ARE CURRENTLY USING PYTHON {}'.format(sys.version.split()[0]))
     sys.exit(2)
 
 # Guarantee Unix Format
 for src in glob.glob('scripts/*'):
-    text = open(src, 'r').read().replace('\r\n', '\n')
-    open(src, 'w').write(text)
+    with open(src, 'r', encoding='utf-8') as source:
+        text = source.read()
+    with open(src, 'w', encoding='utf-8', newline='\n') as destination:
+        destination.write(text)
 
 setuptools.setup(
     name = 'runhic',
@@ -37,6 +40,8 @@ setuptools.setup(
     long_description_content_type='text/x-rst',
     scripts = glob.glob('scripts/*'),
     packages = setuptools.find_packages(),
+    python_requires = '>=3.10',
+    install_requires = ['cooler', 'pypairix'],
     classifiers = [
         'Programming Language :: Python :: 3 :: Only',
         'License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)',

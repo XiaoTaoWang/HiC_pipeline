@@ -1,5 +1,14 @@
 Release Notes
 =============
+
+Version 0.9.1
+-------------
+
+- Added a fast contact matrix backend for ``runHiC binning`` and ``runHiC pileup``, including support for 10 bp bins.
+- Added options to control the ICE iteration limit and how weights are saved when balancing does not converge.
+- Added checks for BAM integrity and failures during alignment and pair parsing.
+- Updated :doc:`parallel` with CPU settings and a multi-node ``runHiC pileup`` example.
+
 Version 0.8.7 (01/19/2023)
 --------------------------
 - Made the program compatible with pairtools v1.0.2

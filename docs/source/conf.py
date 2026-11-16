@@ -9,7 +9,7 @@
 project = 'runHiC'
 copyright = '2023, Xiaotao Wang'
 author = 'Xiaotao Wang'
-release = '0.8.7'
+release = '0.9.1'
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
@@ -29,7 +29,7 @@ exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
 
 html_theme = 'alabaster'
-html_static_path = ['_static']
+html_static_path = []
 html_sidebars = {
     '**': [
         'about.html',

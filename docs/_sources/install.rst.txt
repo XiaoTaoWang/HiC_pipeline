@@ -8,17 +8,18 @@ or softwares are required:
 
 Python requirements:
 
-- Python 3.7+
+- Python 3.10+
 - matplotlib 2.0+
 - biopython 1.78+
 - pairtools 0.3.0+
-- cooler 0.8.6+
+- cooler
+- pypairix
 
 Other requirements:
 
 - sra-tools 2.10.8+
 - bwa 0.7.17+
-- minimap2 2.17+
+- bwa-mem2 (optional alternative to BWA-MEM)
 - chromap 0.1+
 - samtools 1.10+
 - pigz 2.3.4+
@@ -31,7 +32,7 @@ on your machine, and execute the commands below::
     $ conda config --add channels defaults
     $ conda config --add channels bioconda
     $ conda config --add channels conda-forge
-    $ mamba create -n runHiC matplotlib biopython pairtools cooler sra-tools bwa minimap2 samtools pigz chromap
+    $ mamba create -n runHiC python=3.10 matplotlib biopython cooler pairtools pypairix bwa bwa-mem2 chromap samtools pigz sra-tools=3.2.1
     $ mamba activate runHiC
 
 Install runHiC

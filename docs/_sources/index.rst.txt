@@ -24,11 +24,11 @@ runHiC is designed to process Hi-C data from raw sequencing reads(.sra, .fastq, 
 contact matrices. It currently contains 5 subcommands:
 
 +------------+-------------------------------------------------------------------------------------------------------------------+
-| mapping    | Map raw sequencing reads to a supplied genome. Support three read aligners: chromap, bwa and minimap2.            |
+| mapping    | Map raw sequencing reads to a supplied genome. Support three read aligners: chromap, BWA-MEM and BWA-MEM2.        |
 +------------+-------------------------------------------------------------------------------------------------------------------+
 | filtering  | Perform read-level and fragment-level noise removing                                                              |
 +------------+-------------------------------------------------------------------------------------------------------------------+
-| binning    | 1.Generate contact matirx; 2. Perform ICE/matrix-balancing normalization                                          |
+| binning    | 1.Generate contact matrix; 2. Perform ICE/matrix-balancing normalization                                          |
 +------------+-------------------------------------------------------------------------------------------------------------------+
 | pileup     | Perform the entire processing steps from *mapping* to *binning*                                                   |
 +------------+-------------------------------------------------------------------------------------------------------------------+
